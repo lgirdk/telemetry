@@ -28,7 +28,7 @@ ACLOCAL_AMFLAGS = -I m4
 hardware_platform = i686-linux-gnu
 
 bin_PROGRAMS = telemetry2_0
-telemetry2_0_SOURCES = telemetry2_0.c t2ssp/ssp_main.c t2ssp/ssp_action.c t2ssp/ssp_messagebus_interface.c
+telemetry2_0_SOURCES = telemetry2_0.c t2ssp/ssp_main.c t2ssp/ssp_action.c t2ssp/ssp_messagebus_interface.c  t2ssp/dm_pack_datamodel.c
 telemetry2_0_CFLAGS = -DFEATURE_SUPPORT_RDKLOG
 telemetry2_0_CPPFLAGS = -fPIC -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/dbus-1.0 \
                                 -I${PKG_CONFIG_SYSROOT_DIR}$(libdir)/dbus-1.0/include \

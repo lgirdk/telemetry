@@ -77,11 +77,6 @@ static int compareLogFileNames(const void *g1, const void *g2)
 
 static T2ERROR addParameter(ProfileXConf *profile, const char* name, const char* ref, const char* fileName, int skipFreq)
 {
-    if(profile->paramNumOfEntries == MAX_PROFILE_PARAM_ENTRIES)
-    {
-        T2Error("Max Profile Param Entries Reached, ignoring addParameter request for profile : %s\n", profile->name);
-        return T2ERROR_FAILURE;
-    }
     if(skipFreq == -1)
     {
         T2Debug("Adding TR-181 Parameter : %s\n", ref);

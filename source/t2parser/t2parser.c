@@ -79,11 +79,6 @@ static T2ERROR addParameter(Profile *profile, const char* name, const char* ref,
 
     T2Debug("%s ++in\n", __FUNCTION__);
 
-    if(profile->paramNumOfEntries == MAX_PROFILE_PARAM_ENTRIES) {
-        T2Error("Max Profile Param Entries Reached, ignoring addParameter request for profileID : %s\n", profile->name);
-        return T2ERROR_FAILURE;
-    }
-
     if(!(strcmp(ptype, "dataModel"))) {
         T2Debug("Adding TR-181 Parameter : %s\n", ref);
 

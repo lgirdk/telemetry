@@ -32,5 +32,10 @@ const char destCompPath[64] = "/com/cisco/spvtg/ccsp/pam";
     fprintf(stderr, (msg), ##__VA_ARGS__ ); \
     fprintf(stderr, "\n" );
 
+#define EVENT_DEBUG(msg, ...) \
+    fprintf(stdout, "T2DEBUG:%s %s:%d: ", __func__ , __FILE__, __LINE__ ); \
+    fprintf(stdout, (msg), ##__VA_ARGS__ ); \
+    fprintf(stdout, "\n" );
+
 
 #endif /* SOURCE_COMMONLIB_TELEMETRY_BUSMESSAGE_INTERNAL_H_ */

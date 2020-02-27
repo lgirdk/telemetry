@@ -125,12 +125,12 @@ static bool isCachingRequired () {
     {
         if( access( T2_COMPONENT_READY, F_OK ) != -1 )
         {
-            EVENT_ERROR("T2 component is ready, flushing the cache\n");
+            EVENT_DEBUG("T2 component is ready, flushing the cache\n");
             isT2Ready = true;
             int eventIndex = 0;
             for(; eventIndex < Vector_Size(cachedEvents); eventIndex++)
             {
-                EVENT_ERROR("T2: Sending cached event at index : %d : %s\n", eventIndex, (char *)Vector_At(cachedEvents, eventIndex));
+                EVENT_DEBUG("T2: Sending cached event at index : %d : %s\n", eventIndex, (char *)Vector_At(cachedEvents, eventIndex));
                 int ret = CcspBaseIf_SendTelemetryDataSignal(bus_handle, (char *)Vector_At(cachedEvents, eventIndex));
                 if (ret != CCSP_SUCCESS) {
                     EVENT_ERROR("%s:%d, T2:telemetry data send failed with error : %d\n", __func__, __LINE__, ret);
@@ -142,7 +142,7 @@ static bool isCachingRequired () {
        }
         else
         {
-            EVENT_ERROR("isRFCT2Enable is true but T2 is not ready to receive events yet\n");
+            EVENT_DEBUG("isRFCT2Enable is true but T2 is not ready to receive events yet\n");
             return true;
         }
     }
@@ -153,25 +153,28 @@ static int send_data_via_telemetrysignal(char* telemetry_data) {
     int ret = 0;
     pthread_mutex_lock(&eventMutex);
     if(isCachingRequired()) {
-        EVENT_ERROR("Caching the event : %s \n", telemetry_data);
+        EVENT_DEBUG("Caching the event : %s \n", telemetry_data);
         if(!cachedEvents)
         {
             Vector_Create(&cachedEvents);
         }
         else if(Vector_Size(cachedEvents) == MAX_CACHED_EVENTS_LIMIT)
         {
-            EVENT_ERROR("Cached events reached max limit, deleting the oldest event : %s\n", (char *)Vector_At(cachedEvents, 0));
+            EVENT_DEBUG("Cached events reached max limit, deleting the oldest event : %s\n", (char *)Vector_At(cachedEvents, 0));
             Vector_RemoveItem(cachedEvents, Vector_At(cachedEvents, 0), free);
         }
         Vector_PushBack(cachedEvents, telemetry_data);
         pthread_mutex_unlock(&eventMutex);
         return T2ERROR_SUCCESS ;
     }
+
     pthread_mutex_unlock(&eventMutex);
-    EVENT_ERROR("T2: Sending event : %s\n", telemetry_data);
-    ret = CcspBaseIf_SendTelemetryDataSignal(bus_handle, telemetry_data);
-    if (ret != CCSP_SUCCESS) {
-        EVENT_ERROR("%s:%d, T2:telemetry data send failed\n", __func__, __LINE__);
+    if (isT2Ready) {
+        EVENT_DEBUG("T2: Sending event : %s\n", telemetry_data);
+        ret = CcspBaseIf_SendTelemetryDataSignal(bus_handle, telemetry_data);
+        if (ret != CCSP_SUCCESS) {
+            EVENT_ERROR("%s:%d, T2:telemetry data send failed\n", __func__, __LINE__);
+        }
     }
     free(telemetry_data);
     telemetry_data = NULL;
@@ -182,12 +185,7 @@ T2ERROR t2_event_s(char* marker, char* value) {
 
     int ret = -1;
     T2ERROR retStatus = T2ERROR_FAILURE ;
-    initRFC();
-    if(isRFCT2Enable == false)
-    {
-	    return T2ERROR_FAILURE;
-    }
-	
+
     pthread_mutex_lock(&sMutex);
     if ( NULL == marker || NULL == value) {
         EVENT_ERROR("%s:%d Error in input parameters \n", __func__, __LINE__);
@@ -219,11 +217,6 @@ T2ERROR t2_event_f(char* marker, double value) {
 
     int ret = -1;
     T2ERROR retStatus = T2ERROR_FAILURE ;
-    initRFC();
-    if(isRFCT2Enable == false)
-    {
-	    return T2ERROR_FAILURE;
-    }
 
      pthread_mutex_lock(&fMutex);
      if ( NULL == marker ) {
@@ -250,11 +243,6 @@ T2ERROR t2_event_d(char* marker, int value) {
 
     int ret = -1;
     T2ERROR retStatus = T2ERROR_FAILURE ;
-    initRFC();
-    if(isRFCT2Enable == false)
-    {
-    	return T2ERROR_FAILURE;
-    }
 
      pthread_mutex_lock(&dMutex);
      if ( NULL == marker ) {

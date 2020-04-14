@@ -1,7 +1,7 @@
 #!/bin/sh
 #masking dmcli usage when rbus service is not running
 T2_MSG_CLIENT=/usr/bin/telemetry2_0_client
-if [ -e /nvram/rbus ]; then
+if [ -e /nvram/rbus_support ]; then
     rbus_alive=`ps | grep /usr/bin/rtrouted | grep -vc grep`
     if [ "$rbus_alive" -eq "1" ];then
         IS_T2_ENABLED=`dmcli eRT getv Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.Telemetry.Enable | grep value | awk '{print $5}'`

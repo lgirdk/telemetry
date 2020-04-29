@@ -37,4 +37,8 @@ typedef enum
     T2ERROR_INTERNAL_ERROR
 }T2ERROR;
 
+#define T2_CACHE_FILE    "/tmp/t2_caching_file"
+#define T2_ATOM_CACHE_FILE    "/tmp/t2_atom_caching_file"
+#define T2_CACHE_LOCK_FILE    "/tmp/t2_lock_file"
+
 #endif /* _TELEMETRY2_0_H_ */

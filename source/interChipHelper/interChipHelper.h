@@ -56,6 +56,9 @@
 // Event on ARM when t2 daemon on atom has failed to initialize
 #define T2_DAEMON_FAILED_EVENT "daemonFailed"
 
+// Event on ATOM to remove t2 cache file
+#define DEL_T2_CACHE_FILE "t2DeleteCacheFile"
+
 #define NOTIFY_HELPER_UTIL "/lib/rdk/interChipUtils.sh"
 
 #define MIN_NOTIFY_FILE_SIZE 10

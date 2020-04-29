@@ -32,12 +32,13 @@ static void *bus_handle = NULL;
 static const char* RFC_T2_ENABLE_PARAM = "Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.Telemetry.Enable" ;
 static bool isRFCT2Enable = false ;
 static bool isT2Ready = false;
-static Vector *cachedEvents = NULL;
+static bool GetParamStatus = false;
 
 pthread_mutex_t eventMutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t sMutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t fMutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t dMutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t FileCacheMutex = PTHREAD_MUTEX_INITIALIZER;
 
 T2ERROR getParamValues(char **paramNames, const int paramNamesCount, parameterValStruct_t ***valStructs, int *valSize)
 {
@@ -91,26 +92,76 @@ static int initMessageBus() {
     return ret;
 }
 
+static int cacheEventToFile(char* telemetry_data)
+{
+
+        int fd;
+        struct flock fl = { F_WRLCK, SEEK_SET, 0,       0,     0 };
+        pthread_mutex_lock(&FileCacheMutex);
+
+        if ((fd = open(T2_CACHE_LOCK_FILE, O_RDWR | O_CREAT, 0666)) == -1)
+        {
+                EVENT_ERROR("%s:%d, T2:open failed\n", __func__, __LINE__);
+                pthread_mutex_unlock(&FileCacheMutex);
+                return -1;
+        }
+
+        if(fcntl(fd, F_SETLKW, &fl) == -1)  /* set the lock */
+        {
+                EVENT_ERROR("%s:%d, T2:fcntl failed\n", __func__, __LINE__);
+                pthread_mutex_unlock(&FileCacheMutex);
+                close(fd);
+                return -1;
+        }
+
+        FILE *fp = fopen(T2_CACHE_FILE, "a");
+        if (fp == NULL) {
+               EVENT_ERROR("%s: File open error %s\n", __FUNCTION__, T2_CACHE_FILE);
+               goto unlock;
+        }
+        fprintf(fp, "%s\n", telemetry_data);
+        fclose(fp);
+
+unlock:
+
+        fl.l_type = F_UNLCK;  /* set to unlock same region */
+        if (fcntl(fd, F_SETLK, &fl) == -1) {
+                EVENT_ERROR("fcntl failed \n");
+        }
+        close(fd);
+        pthread_mutex_unlock(&FileCacheMutex);
+        return 0;
+}
+
 static bool
 initRFC () {
     char* paramValue = NULL;
+    bool status = true ;
     // Check for RFC and proceed - if true - else return now .
     if(!bus_handle)
     {
         if(initMessageBus() != 0)
         {
             EVENT_ERROR("initMessageBus failed\n");
-            return false;
+            status = false ;
         }
-        else if(T2ERROR_SUCCESS == getParamValue(RFC_T2_ENABLE_PARAM, &paramValue))
+    }
+    if((GetParamStatus == false) && bus_handle)
+    {
+        if(T2ERROR_SUCCESS == getParamValue(RFC_T2_ENABLE_PARAM, &paramValue))
         {
             if(paramValue != NULL && strncasecmp(paramValue, "true", 4) == 0)
             {
                 isRFCT2Enable = true;
             }
+            GetParamStatus = true;
+            status = true ;
+        }
+        else {
+            status = false;
         }
     }
-    return true;
+    return status;
 }
 
 
@@ -127,17 +178,6 @@ static bool isCachingRequired () {
         {
             EVENT_DEBUG("T2 component is ready, flushing the cache\n");
             isT2Ready = true;
-            int eventIndex = 0;
-            for(; eventIndex < Vector_Size(cachedEvents); eventIndex++)
-            {
-                EVENT_DEBUG("T2: Sending cached event at index : %d : %s\n", eventIndex, (char *)Vector_At(cachedEvents, eventIndex));
-                int ret = CcspBaseIf_SendTelemetryDataSignal(bus_handle, (char *)Vector_At(cachedEvents, eventIndex));
-                if (ret != CCSP_SUCCESS) {
-                    EVENT_ERROR("%s:%d, T2:telemetry data send failed with error : %d\n", __func__, __LINE__, ret);
-                }
-            }
-            Vector_Destroy(cachedEvents, NULL);
-            cachedEvents = NULL;
             return false;
        }
         else
@@ -154,16 +194,7 @@ static int send_data_via_telemetrysignal(char* telemetry_data) {
     pthread_mutex_lock(&eventMutex);
     if(isCachingRequired()) {
         EVENT_DEBUG("Caching the event : %s \n", telemetry_data);
-        if(!cachedEvents)
-        {
-            Vector_Create(&cachedEvents);
-        }
-        else if(Vector_Size(cachedEvents) == MAX_CACHED_EVENTS_LIMIT)
-        {
-            EVENT_DEBUG("Cached events reached max limit, deleting the oldest event : %s\n", (char *)Vector_At(cachedEvents, 0));
-            Vector_RemoveItem(cachedEvents, Vector_At(cachedEvents, 0), free);
-        }
-        Vector_PushBack(cachedEvents, telemetry_data);
+        cacheEventToFile(telemetry_data);
         pthread_mutex_unlock(&eventMutex);
         return T2ERROR_SUCCESS ;
     }

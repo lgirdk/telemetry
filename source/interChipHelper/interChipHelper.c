@@ -298,6 +298,9 @@ static int processEventType(char *eventType) {
         } else {
             T2Error("%s: ProfileName not available \n", __FUNCTION__);
         }
+    }else if(strncasecmp(eventType, DEL_T2_CACHE_FILE, MAX_EVENT_TYPE_BUFFER) == 0) { //On ATOM
+        T2Info("%s Remove t2 cache file from interchip received\n", eventType);
+        remove(T2_CACHE_FILE);
     }else {
         // Unknown event type
         T2Info("Unknown event %s !!!! Ignore and return \n", eventType);

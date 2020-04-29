@@ -197,6 +197,50 @@ T2ERROR T2ER_StartDispatchThread()
     return T2ERROR_SUCCESS;
 }
 
+static T2ERROR flushCacheFromFile(void)
+{
+        T2Debug("%s ++in\n",__FUNCTION__);
+        FILE *fp;
+        char telemetry_data[255]="";
+
+#ifdef  _COSA_INTEL_XB3_ARM_
+        T2Debug("Copy cache file\n");
+        execNotifier("copyT2CacheFileToArm");
+#endif
+        fp = fopen(T2_CACHE_FILE, "r");
+        if(fp){
+                while(fgets(telemetry_data, 255, (FILE*)fp) != NULL)
+                {
+                        T2Debug("T2: Sending cache event : %s\n", telemetry_data);
+                        T2ER_Push(telemetry_data, NULL);
+                        memset(telemetry_data, 0, sizeof(telemetry_data));
+                }
+                fclose(fp);
+                remove(T2_CACHE_FILE);
+        }
+        else{
+                T2Debug("fopen failed for %s\n", T2_CACHE_FILE);
+        }
+
+        fp = fopen(T2_ATOM_CACHE_FILE, "r");
+        if(fp){
+                while(fgets(telemetry_data, 255, (FILE*)fp) != NULL)
+                {
+                        T2Debug("T2: Sending cache event : %s\n", telemetry_data);
+                        T2ER_Push(telemetry_data, NULL);
+                        memset(telemetry_data, 0, sizeof(telemetry_data));
+                }
+                fclose(fp);
+                remove(T2_ATOM_CACHE_FILE);
+        }
+        else{
+                T2Debug("fopen failed for %s\n", T2_ATOM_CACHE_FILE);
+        }
+
+        T2Debug("%s --out\n",__FUNCTION__);
+        return T2ERROR_SUCCESS;
+}
+
 T2ERROR T2ER_StopDispatchThread()
 {
     T2Debug("%s ++in\n", __FUNCTION__);
@@ -212,6 +256,7 @@ T2ERROR T2ER_StopDispatchThread()
     pthread_mutex_unlock(&erMutex);
 
     pthread_join(erThread, NULL);
+    flushCacheFromFile();
     T2Debug("%s --out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;
 }

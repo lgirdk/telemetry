@@ -61,6 +61,8 @@ TEMP_PATTERN_CONF_FILE="$TELEMETRY_PATH/temp_dcafile.conf"
 # Should match with interChipHelper.h
 TELEMTERY_LOG_GREP_CONF="/tmp/dca_sorted_file.conf"
 TELEMTERY_LOG_GREP_RESULT="/tmp/dcaGrepResult.txt"
+TELEMETRY_EVENT_CACHE_FILE="/tmp/t2_caching_file"
+TELEMETRY_EVENT_CACHE_ATOM_FILE="/tmp/t2_atom_caching_file"
 
 NOTIFY_EVENT_DCA_RESULT="dcaResult"
 
@@ -350,6 +352,14 @@ copyJsonResultToArm(){
     rm -f $PEER_COMM_ID
     
 }
+
+copyT2CacheFileToArm(){
+    GetConfigFile $PEER_COMM_ID
+    scp -i $PEER_COMM_ID root@$ATOM_INTERFACE_IP:$TELEMETRY_EVENT_CACHE_FILE $TELEMETRY_EVENT_CACHE_ATOM_FILE > /dev/null 2>&1
+    sshCmdOnAtom 't2DeleteCacheFile'
+    rm -f $PEER_COMM_ID
+}
+
 ############ End functions ############
 
 
@@ -429,6 +439,10 @@ case "$eventType" in
     *notifyEventReceiverReady* )
         # will run on ARM to notify ATOM when event receiver is ready
         notifyERReadyToAtom
+        ;;
+    *copyT2CacheFileToArm* )
+        # Will run on ATOM to copy cached file to ARM
+        copyT2CacheFileToArm 
         ;;
 
 esac

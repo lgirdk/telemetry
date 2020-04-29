@@ -36,6 +36,7 @@
 #ifdef DUAL_CORE_XB3
 #include "interChipHelper.h"
 #endif
+#include "t2eventreceiver.h"
 
 #define MAX_PARAMETERNAME_LEN    512
 /*Define signals properly to make sure they don't get overide anywhere*/
@@ -64,6 +65,7 @@ T2ERROR initTelemetry()
     else
         T2Error("Failed to initialize ReportProfiles\n");
 
+    T2Debug("%s --out\n",__FUNCTION__);
     return ret;
 }
 

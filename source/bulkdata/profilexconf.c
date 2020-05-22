@@ -243,7 +243,7 @@ static void CollectAndReport(void* data)
         T2Error("Unsupported encoding format : %s\n", profile->encodingType);
     }
     clock_gettime(CLOCK_REALTIME, &endTime);
-    getElapsedTime(&elapsedTime, &endTime, &startTime);
+    getLapsedTime(&elapsedTime, &endTime, &startTime);
     T2Info("Elapsed Time for : %s = %lu.%lu (Sec.NanoSec)\n", profile->name, elapsedTime.tv_sec, elapsedTime.tv_nsec);
     if(ret == T2ERROR_SUCCESS && jsonReport)
     {

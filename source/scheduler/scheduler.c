@@ -49,27 +49,45 @@ void freeSchedulerProfile(void *data)
     }
 }
 
-int getElapsedTime (struct timespec *result, struct timespec *x, struct timespec *y)
+/*
+ * Function:  getLapsedTime 
+ * --------------------
+ * calculates the elapsed time between time2 and time1(in seconds and nano seconds)
+ * 
+ * time2: start time
+ * time1: finish time
+ *
+ * returns: output (calculated elapsed seconds and nano seconds)
+ */
+int getLapsedTime (struct timespec *output, struct timespec *time1, struct timespec *time2)
 {
-  /* Perform the carry for the later subtraction by updating y. */
-  if (x->tv_nsec < y->tv_nsec) {
-    int nsec = (y->tv_nsec - x->tv_nsec) / 1000000000 + 1;
-    y->tv_nsec -= 1000000000 * nsec;
-    y->tv_sec += nsec;
-  }
-  if (x->tv_nsec - y->tv_nsec > 1000000000) {
-    int nsec = (x->tv_nsec - y->tv_nsec) / 1000000000;
-    y->tv_nsec += 1000000000 * nsec;
-    y->tv_sec -= nsec;
+  
+  /* handle the underflow condition, if time2 nsec has higher value */
+  int com = time1->tv_nsec < time2->tv_nsec;
+  if (com) {
+    int nsec = (time2->tv_nsec - time1->tv_nsec) / 1000000000 + 1;
+    
+    time2->tv_nsec = time2->tv_nsec - 1000000000 * nsec;
+    time2->tv_sec = time2->tv_sec + nsec;
   }
 
-  /* Compute the time remaining to wait.
-     tv_nsec is certainly positive. */
-  result->tv_sec = x->tv_sec - y->tv_sec;
-  result->tv_nsec = x->tv_nsec - y->tv_nsec;
+  com = time1->tv_nsec - time2->tv_nsec > 1000000000;
+  if (com) {
+    int nsec = (time1->tv_nsec - time2->tv_nsec) / 1000000000;
+    
+    time2->tv_nsec = time2->tv_nsec + 1000000000 * nsec;
+    time2->tv_sec  = time2->tv_sec - nsec;
+  }
 
-  /* Return 1 if result is negative. */
-  return x->tv_sec < y->tv_sec;
+  /* Calculate the elapsed time */
+  output->tv_sec = time1->tv_sec - time2->tv_sec;
+
+  output->tv_nsec = time1->tv_nsec - time2->tv_nsec;
+
+  if(time1->tv_sec < time2->tv_sec)
+    return 1;
+  else
+    return 0;
 }
 
 void* TimeoutThread(void *arg)

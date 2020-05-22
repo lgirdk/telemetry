@@ -41,7 +41,7 @@ typedef struct _SchedulerProfile
 typedef void (*TimeoutNotificationCB)(const char* profileName, bool isClearSeekMap);
 typedef void (*ActivationTimeoutCB)(const char* profileName);
 
-int getElapsedTime (struct timespec *result, struct timespec *x, struct timespec *y);
+int getLapsedTime (struct timespec *result, struct timespec *x, struct timespec *y);
 
 T2ERROR initScheduler(TimeoutNotificationCB notificationCb, ActivationTimeoutCB activationCB);
 

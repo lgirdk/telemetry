@@ -20,10 +20,6 @@
 #ifndef MESSAGESENDER_H_
 #define MESSAGESENDER_H_
 
-#include <ccsp_memory.h>
-#include <ccsp_custom.h>
-#include <ccsp_base_api.h>
-
 #include <stdio.h>
 #include <stdbool.h>
 
@@ -31,6 +27,17 @@
 #include <fcntl.h>
 #include "telemetry2_0.h"
 #define MESSAGE_DELIMITER "<#=#>"
+#define DELIMITER_LEN 5
+#define COMP_NAME "telemetry_client"
+
+/*
+ * NAME        : t2_init
+ * DESCRIPTION : Initializes the event sending module by registering
+ *               with a unique name over the entire system
+ * ARGUMENTS   : copmponent
+ *               Name of the component value in string
+*/
+void t2_init(char *component);
 
 /*
  * NAME        : t2_event_s
@@ -60,5 +67,11 @@ T2ERROR t2_event_f(char* marker, double value);
 */
 T2ERROR t2_event_d(char* marker, int value);
 
+/*
+ * NAME        : t2_uninit
+ * DESCRIPTION : Uninitializes the event sending module
+ *               
+ */
+void t2_uninit(void);
 #endif
 

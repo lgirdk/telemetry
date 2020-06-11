@@ -24,17 +24,19 @@
 #include <stddef.h>
 
 #include "reportprofiles.h"
+
+#include "t2collection.h"
 #include "persistence.h"
 #include "t2log_wrapper.h"
 #include "profile.h"
 #include "profilexconf.h"
-#include "collection.h"
 #include "t2eventreceiver.h"
 #include "t2_custom.h"
 #include "scheduler.h"
 #include "t2markers.h"
 #include "datamodel.h"
 #include "msgpack.h"
+#include "busInterface.h"
 
 #define MAX_PROFILENAMES_LENGTH 2048
 #define T2_VERSION_DATAMODEL_PARAM  "Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.Telemetry.Version"
@@ -174,6 +176,7 @@ T2ERROR ReportProfiles_deleteProfile(const char* profileName) {
     if(T2ERROR_SUCCESS != deleteProfile(profileName))
     {
         T2Error("Failed to delete profile : %s\n", profileName);
+        T2Debug("%s --out\n", __FUNCTION__);
         return T2ERROR_FAILURE;
     }
 
@@ -191,6 +194,21 @@ T2ERROR ReportProfiles_deleteProfile(const char* profileName) {
 
     T2Debug("%s --out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;
+}
+
+static void createComponentDataElements() {
+    T2Debug("%s ++in\n", __FUNCTION__);
+    Vector* componentList = NULL ;
+    int i = 0;
+    int length = 0 ;
+    getComponentsWithEventMarkers(&componentList);
+    length = Vector_Size(componentList);
+    for (i = 0; i < length; ++i) {
+        char *compName = (char*) Vector_At(componentList,i);
+        if(compName)
+            regDEforCompEventList(compName, getComponentMarkerList);
+    }
+    T2Debug("%s --out\n", __FUNCTION__);
 }
 
 T2ERROR initReportProfiles()
@@ -223,11 +241,16 @@ T2ERROR initReportProfiles()
         // Init datamodel processing thread
         if (T2ERROR_SUCCESS == datamodel_init())
         {
-            // Register TR-181 DM for T2.0
-            if (0 != initTR181_dm())
-            {
-                T2Error("Unable to initialize TR181!!! \n");
-                datamodel_unInit();
+            if(isRbusEnabled()) {
+                T2Debug("Enabling datamodel for report profiles in RBUS mode \n");
+                regDEforProfileDataModel(datamodel_processProfile);
+            }else {
+                // Register TR-181 DM for T2.0
+                T2Debug("Enabling datamodel for report profiles in DBUS mode \n");
+                if(0 != initTR181_dm()) {
+                    T2Error("Unable to initialize TR181!!! \n");
+                    datamodel_unInit();
+                }
             }
         }
         else
@@ -238,6 +261,8 @@ T2ERROR initReportProfiles()
     }
 
     if(ProfileXConf_isSet() || getProfileCount() > 0) {
+        if(isRbusEnabled())
+            createComponentDataElements();
         T2ER_StartDispatchThread();
     }
 
@@ -419,6 +444,9 @@ void ReportProfiles_ProcessReportProfilesBlob(cJSON *profiles_root) {
         }
     }
 
+    if(isRbusEnabled())
+        unregisterDEforCompEventList();
+
     for( profileIndex = 0; profileIndex < hash_map_count(receivedProfileHashMap); profileIndex++ ) {
         ReportProfile *profileEntry = (ReportProfile *)hash_map_lookup(receivedProfileHashMap, profileIndex);
         profileName = hash_map_lookupKey(receivedProfileHashMap, profileIndex);
@@ -471,6 +499,12 @@ void ReportProfiles_ProcessReportProfilesBlob(cJSON *profiles_root) {
     if (rm_flag) {
 	removeProfileFromDisk(REPORTPROFILES_PERSISTENCE_PATH, MSGPACK_REPORTPROFILES_PERSISTENT_FILE);
 	T2Info("%s is removed from disk \n", MSGPACK_REPORTPROFILES_PERSISTENT_FILE);
+    }
+
+    if(isRbusEnabled()) {
+        createComponentDataElements();
+        // Notify registered components that profile has received an update
+        publishEventsProfileUpdates();
     }
     hash_map_destroy(receivedProfileHashMap, freeReportProfileHashMap);
     hash_map_destroy(profileHashMap, freeProfilesHashMap);

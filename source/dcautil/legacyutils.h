@@ -35,9 +35,9 @@
 #include <unistd.h>
 #include <stdbool.h>
 
+#include "t2collection.h"
 #include "telemetry2_0.h"
 #include "cJSON.h"
-#include "collection.h"
 
 
 #define MAXLINE 1024

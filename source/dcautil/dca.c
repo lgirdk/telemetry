@@ -38,6 +38,7 @@
 
 #include "t2log_wrapper.h"
 #include "t2common.h"
+#include "busInterface.h"
 
 /**
  * @addtogroup DCA_TYPES

@@ -27,13 +27,14 @@
 #include "telemetry2_0.h"
 #include "t2common.h"
 #include "dcautil.h"
-#include <ccspinterface.h>
-#include <curl/curl.h>
+#include "busInterface.h"
+
 
 #define MAX_TIME_INFO_LEN  35
 
 void freeProfileValues(void *data)
 {
+    T2Debug("%s ++in\n", __FUNCTION__);
     if(data != NULL)
     {
 
@@ -44,6 +45,7 @@ void freeProfileValues(void *data)
             profVal = NULL;
         }
     }
+    T2Debug("%s --Out\n", __FUNCTION__);
 }
 
 void getTimeStamp (char** timeStamp) {
@@ -74,7 +76,11 @@ T2ERROR encodeParamResultInJSON(cJSON *valArray, Vector *paramNameList, Vector *
     for(; index < Vector_Size(paramNameList); index++)
     {
         Param* param = (Param *)Vector_At(paramNameList, index);
-        parameterValStruct_t **paramValues = ((profileValues *)Vector_At(paramValueList, index))->paramValues;
+        tr181ValStruct_t **paramValues = ((profileValues *)Vector_At(paramValueList, index))->paramValues;
+        if(param == NULL || paramValues == NULL ) {
+            // Ignore tr181 params returning null values in report
+            continue ;
+        }
         int paramValCount = ((profileValues *)Vector_At(paramValueList, index))->paramValueCount;
         T2Debug("Parameter Name : %s valueCount = %d\n", param->name, paramValCount);
         if(paramValCount == 0)
@@ -86,9 +92,12 @@ T2ERROR encodeParamResultInJSON(cJSON *valArray, Vector *paramNameList, Vector *
         }
         else if(paramValCount == 1) // Single value
         {
-            cJSON *arrayItem = cJSON_CreateObject();
-            cJSON_AddStringToObject(arrayItem, param->name, paramValues[0]->parameterValue);
-            cJSON_AddItemToArray(valArray, arrayItem);
+            if(paramValues[0]) {
+                cJSON *arrayItem = cJSON_CreateObject();
+                T2Info("Paramter value not successfully retrieved... \n");
+                cJSON_AddStringToObject(arrayItem, param->name, paramValues[0]->parameterValue);
+                cJSON_AddItemToArray(valArray, arrayItem);
+            }
         }
         else
         {
@@ -99,9 +108,11 @@ T2ERROR encodeParamResultInJSON(cJSON *valArray, Vector *paramNameList, Vector *
             cJSON_AddItemToObject(arrayItem, param->name, valList = cJSON_CreateArray());
             for (; valIndex < paramValCount; valIndex++)
             {
-                valItem = cJSON_CreateObject();
-                cJSON_AddStringToObject(valItem, paramValues[valIndex]->parameterName, paramValues[valIndex]->parameterValue);
-                cJSON_AddItemToArray(valList, valItem);
+                if(paramValues[valIndex]){
+                    valItem = cJSON_CreateObject();
+                    cJSON_AddStringToObject(valItem, paramValues[valIndex]->parameterName, paramValues[valIndex]->parameterValue);
+                    cJSON_AddItemToArray(valList, valItem);
+                }
             }
             cJSON_AddItemToArray(valArray, arrayItem);
         }
@@ -119,9 +130,13 @@ T2ERROR encodeStaticParamsInJSON(cJSON *valArray, Vector *staticParamList)
     for(; index < Vector_Size(staticParamList); index++)
     {
         StaticParam *sparam = (StaticParam *)Vector_At(staticParamList, index);
-        arrayItem = cJSON_CreateObject();
-        cJSON_AddStringToObject(arrayItem, sparam->name, sparam->value);
-        cJSON_AddItemToArray(valArray, arrayItem);
+        if(sparam) {
+            if(sparam->name == NULL || sparam->value == NULL )
+                continue ;
+            arrayItem = cJSON_CreateObject();
+            cJSON_AddStringToObject(arrayItem, sparam->name, sparam->value);
+            cJSON_AddItemToArray(valArray, arrayItem);
+        }
     }
 
     T2Debug("%s --Out \n", __FUNCTION__);
@@ -136,9 +151,13 @@ T2ERROR encodeGrepResultInJSON(cJSON *valArray, Vector *grepResult)
     for(; index < Vector_Size(grepResult); index++)
     {
         GrepResult* grep = (GrepResult *)Vector_At(grepResult, index);
-        arrayItem = cJSON_CreateObject();
-        cJSON_AddStringToObject(arrayItem, grep->markerName, grep->markerValue);
-        cJSON_AddItemToArray(valArray, arrayItem);
+        if(grep) {
+            if(grep->markerName == NULL || grep->markerValue == NULL ) // Ignore null values
+                continue ;
+            arrayItem = cJSON_CreateObject();
+            cJSON_AddStringToObject(arrayItem, grep->markerName, grep->markerValue);
+            cJSON_AddItemToArray(valArray, arrayItem);
+        }
     }
     T2Debug("%s --Out \n", __FUNCTION__);
     return T2ERROR_SUCCESS;

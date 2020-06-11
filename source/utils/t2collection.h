@@ -17,8 +17,8 @@
  * limitations under the License.
 */
 
-#ifndef _COLLECTION_H_
-#define _COLLECTION_H_
+#ifndef _T2COLLECTION_H_
+#define _T2COLLECTION_H_
 
 #include <stdint.h>
 #include <stdbool.h>
@@ -68,4 +68,4 @@ void hash_map_clear(hash_map_t *map, queue_cleanup freeItem);
 void *hash_map_get_first(hash_map_t *map);
 void *hash_map_get_next(hash_map_t *map, void *data);
 
-#endif // _COLLECTION_H_
+#endif // _T2COLLECTION_H_

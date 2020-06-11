@@ -20,12 +20,14 @@ AM_CFLAGS = -D_ANSC_LINUX
 AM_CFLAGS += -D_ANSC_USER
 AM_CFLAGS += -D_ANSC_LITTLE_ENDIAN_
 
-bin_PROGRAMS = testApp
-testApp_SOURCES = testApp.c ../t2ssp/ssp_main.c ../t2ssp/ssp_action.c ../t2ssp/ssp_messagebus_interface.c
-testApp_LDFLAGS = -lcjson -lccsp_common
-testApp_CPPFLAGS = -fPIC -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/dbus-1.0 \
+bin_PROGRAMS = testModules testCommonLib
+testModules_SOURCES = testModules.c busInterfaceTests.c ../t2ssp/ssp_main.c ../t2ssp/ssp_action.c ../t2ssp/ssp_messagebus_interface.c ../t2ssp/dm_pack_datamodel.c
+testModules_LDFLAGS = -lcjson -lccsp_common -lwebconfig_framework
+testModules_CPPFLAGS = -fPIC -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/dbus-1.0 \
                                 -I${PKG_CONFIG_SYSROOT_DIR}$(libdir)/dbus-1.0/include \
+                                -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/ \
                                 -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/ccsp \
+                                -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/rbus \
                                 -I${top_srcdir}/include \
                                 -I${top_srcdir}/source/ccspinterface \
                                 -I${top_srcdir}/source/bulkdata \
@@ -35,4 +37,18 @@ testApp_CPPFLAGS = -fPIC -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/dbus-1.0 \
                                 -I${top_srcdir}/source/reportgen \
                                 -I${top_srcdir}/source/utils
                                 
-testApp_LDADD = ${top_builddir}/source/dcautil/libdcautil.la ${top_builddir}/source/utils/libutils.la
+testModules_LDADD = ${top_builddir}/source/dcautil/libdcautil.la ${top_builddir}/source/utils/libutils.la
+
+testCommonLib_SOURCES = testCommonLibApi.c
+testCommonLib_LDFLAGS = -L${top_builddir}/source/commonlib/.libs/ -ltelemetry_msgsender
+
+testCommonLib_CPPFLAGS = -fPIC -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/dbus-1.0 \
+                                -I${PKG_CONFIG_SYSROOT_DIR}$(libdir)/dbus-1.0/include \
+                                -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/ \
+                                -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/ccsp \
+                                -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/rbus \
+                                -I${top_srcdir}/source/utils \
+                                -I${top_srcdir}/include 
+                                
+                                
+#testCommonLib_LDADD = ${top_builddir}/source/commonlib/libtelemetry_msgsender.la

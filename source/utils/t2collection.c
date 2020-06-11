@@ -21,7 +21,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
-#include "collection.h"
+
+#include "t2collection.h"
 
 queue_t *queue_create(void)
 {

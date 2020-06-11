@@ -20,7 +20,7 @@
 #ifndef  _CCSP_T2LOG_WRPPER_H_
 #define  _CCSP_T2LOG_WRPPER_H_
 
-#include <ccsp_trace.h>
+#include <ccsp/ccsp_trace.h>
 
 #define DEBUG_INI_NAME  "/etc/debug.ini"
 #define ENABLE_DEBUG_FLAG "/nvram/enable_t2_debug"

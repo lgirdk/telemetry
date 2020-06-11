@@ -24,6 +24,7 @@
 #include <string.h>
 #include <ifaddrs.h>
 #include <stdbool.h>
+#include <curl/curl.h>
 
 #include "curlinterface.h"
 #include "t2log_wrapper.h"
@@ -97,9 +98,12 @@ static T2ERROR setHeader(CURL *curl, const char* destURL, struct curl_slist **he
 
 static T2ERROR setPayload(CURL *curl, const char* payload)
 {
+    CURLcode code = CURLE_OK ;
     curl_easy_setopt(curl, CURLOPT_POSTFIELDS, payload);
-    curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, strlen(payload));
-
+    code = curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, strlen(payload));
+    if(code != CURLE_OK){
+        T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
+    }
     return T2ERROR_SUCCESS;
 }
 

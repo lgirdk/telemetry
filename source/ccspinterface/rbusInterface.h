@@ -17,25 +17,21 @@
  * limitations under the License.
 */
 
-#ifndef SOURCE_COMMONLIB_TELEMETRY_BUSMESSAGE_INTERNAL_H_
-#define SOURCE_COMMONLIB_TELEMETRY_BUSMESSAGE_INTERNAL_H_
+#ifndef _RBUSINTERFACE_H_
+#define _RBUSINTERFACE_H_
 
+#include <stdio.h>
+#include <vector.h>
 
-#define MAX_DATA_LEN 256
+#include "busInterface.h"
+#include "telemetry2_0.h"
 
-const char destCompName[64] = "eRT.com.cisco.spvtg.ccsp.pam";
-const char destCompPath[64] = "/com/cisco/spvtg/ccsp/pam";
+T2ERROR getRbusParameterVal(const char* paramName, char **paramValue);
 
+Vector* getRbusProfileParamValues(Vector *paramList);
 
-#define EVENT_ERROR(msg, ...) \
-    fprintf(stderr, "T2ERROR:%s %s:%d: ", __func__ , __FILE__, __LINE__ ); \
-    fprintf(stderr, (msg), ##__VA_ARGS__ ); \
-    fprintf(stderr, "\n" );
+T2ERROR registerRbusT2EventListener(TelemetryEventCallback eventCB);
 
-#define EVENT_DEBUG(msg, ...) \
-    fprintf(stdout, "T2DEBUG:%s %s:%d: ", __func__ , __FILE__, __LINE__ ); \
-    fprintf(stdout, (msg), ##__VA_ARGS__ ); \
-    fprintf(stdout, "\n" );
+T2ERROR unregisterRbusT2EventListener();
 
-
-#endif /* SOURCE_COMMONLIB_TELEMETRY_BUSMESSAGE_INTERNAL_H_ */
+#endif

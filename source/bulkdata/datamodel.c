@@ -20,10 +20,11 @@
 #include <stdlib.h>
 #include <cjson/cJSON.h>
 #include "datamodel.h"
+
+#include "t2collection.h"
 #include "reportprofiles.h"
 #include "t2log_wrapper.h"
 #include "t2_custom.h"
-#include "collection.h"
 
 static bool               stopProcessing = true;
 static queue_t            *rpQueue = NULL;

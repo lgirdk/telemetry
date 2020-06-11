@@ -21,11 +21,13 @@
 #include <string.h>
 
 #include "t2eventreceiver.h"
+
+#include "t2collection.h"
 #include "t2markers.h"
 #include "telemetry2_0.h"
 #include "profile.h"
-#include "collection.h"
 #include "t2log_wrapper.h"
+#include "busInterface.h"
 
 #define T2EVENTQUEUE_MAX_LIMIT 100
 #define MESSAGE_DELIMITER "<#=#>"
@@ -50,7 +52,7 @@ void freeT2Event(void *data)
     }
 }
 
-void T2ER_Push(char* eventInfo, void *user_data)
+void T2ER_PushDataWithDelim(char* eventInfo, char* user_data)
 {
     T2Debug("%s ++in\n", __FUNCTION__);
     if(EREnabled)
@@ -101,6 +103,38 @@ void T2ER_Push(char* eventInfo, void *user_data)
     }
     else
     {
+        T2Warning("ER is not initialized, ignoring telemetry events for now\n");
+    }
+    T2Debug("%s --out\n", __FUNCTION__);
+}
+
+void T2ER_Push(char* eventName, char* eventValue) {
+    T2Debug("%s ++in\n", __FUNCTION__);
+    if(EREnabled) {
+        if(!eventName || !eventValue) {
+            T2Error("EventName or EventValue is NULL, ignoring the notification\n");
+        }else {
+            pthread_mutex_lock(&erMutex);
+            if(queue_count(eQueue) > T2EVENTQUEUE_MAX_LIMIT) {
+                T2Warning("T2EventQueue max limit : %d reached, dropping packet\n", T2EVENTQUEUE_MAX_LIMIT);
+            }else {
+                T2Debug("Received eventInfo : %s value : %s\n", eventName, (char* ) eventValue);
+                T2Event *event = (T2Event *) malloc(sizeof(T2Event));
+                if(event != NULL) {
+                    event->name = strdup(eventName);
+                    event->value = strdup(eventValue);
+                    T2Debug("Adding eventName : %s eventValue : %s to t2event queue\n", event->name, event->value);
+                    queue_push(eQueue, (void *) event);
+                    if(!stopDispatchThread)
+                        pthread_cond_signal(&erCond);
+                }
+
+            }
+            pthread_mutex_unlock(&erMutex);
+            free(eventName);
+            free(eventValue);
+        }
+    }else {
         T2Warning("ER is not initialized, ignoring telemetry events for now\n");
     }
     T2Debug("%s --out\n", __FUNCTION__);
@@ -172,7 +206,13 @@ T2ERROR T2ER_Init()
     pthread_cond_init(&erCond, NULL);
 
     EREnabled = true;
-    registerForTelemetryEvents(T2ER_Push);
+    if(isRbusEnabled()) {
+       T2Debug("Register event call back function T2ER_Push \n");
+       registerForTelemetryEvents(T2ER_Push);
+    }else{
+        T2Debug("Register event call back function T2ER_PushDataWithDelim \n");
+       registerForTelemetryEvents(T2ER_PushDataWithDelim);
+    }
 
     system("touch /tmp/.t2ReadyToReceiveEvents");
 #ifdef _COSA_INTEL_XB3_ARM_
@@ -213,7 +253,7 @@ static T2ERROR flushCacheFromFile(void)
                 while(fgets(telemetry_data, 255, (FILE*)fp) != NULL)
                 {
                         T2Debug("T2: Sending cache event : %s\n", telemetry_data);
-                        T2ER_Push(telemetry_data, NULL);
+                        T2ER_PushDataWithDelim(telemetry_data, NULL);
                         memset(telemetry_data, 0, sizeof(telemetry_data));
                 }
                 fclose(fp);
@@ -228,7 +268,7 @@ static T2ERROR flushCacheFromFile(void)
                 while(fgets(telemetry_data, 255, (FILE*)fp) != NULL)
                 {
                         T2Debug("T2: Sending cache event : %s\n", telemetry_data);
-                        T2ER_Push(telemetry_data, NULL);
+                        T2ER_PushDataWithDelim(telemetry_data, NULL);
                         memset(telemetry_data, 0, sizeof(telemetry_data));
                 }
                 fclose(fp);

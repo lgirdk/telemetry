@@ -24,6 +24,9 @@
 #include "profile.h"
 #include "vector.h"
 
+
+#define MAX_EVENT_MARKER_NAME_LEN 150
+
 typedef struct _T2Marker
 {
     char* markerName;
@@ -39,7 +42,9 @@ T2ERROR clearT2MarkerComponentMap();
 
 T2ERROR addT2EventMarker(const char* markerName, const char* compName, const char *profileName, unsigned int skipFreq);
 
-T2ERROR getComponentMarkerList(const char* compName, Vector **markerList);
+void getComponentMarkerList(const char* compName, void **markerList);
+
+void getComponentsWithEventMarkers(Vector **eventComponentList);
 
 T2ERROR getMarkerProfileList(const char* markerName, Vector **profileList);
 

@@ -26,7 +26,7 @@
 #include "t2eventreceiver.h"
 #include "t2markers.h"
 #include "t2log_wrapper.h"
-#include "ccspinterface.h"
+#include "busInterface.h"
 #include "curlinterface.h"
 #include "scheduler.h"
 #include "persistence.h"

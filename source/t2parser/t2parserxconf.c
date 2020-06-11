@@ -82,7 +82,7 @@ static T2ERROR addParameter(ProfileXConf *profile, const char* name, const char*
 {
     if(skipFreq == -1)
     {
-        T2Debug("Adding TR-181 Parameter : %s\n", ref);
+        // T2Debug("Adding TR-181 Parameter : %s\n", ref);
         Param *param = (Param *)malloc(sizeof(Param));
         memset(param, 0, sizeof(Param));
         param->name = strdup(name);
@@ -93,7 +93,7 @@ static T2ERROR addParameter(ProfileXConf *profile, const char* name, const char*
     else if(fileName == NULL) //Event Marker
     {
         char *splitSuffix = NULL;
-        T2Debug("Adding Event Marker :: Param/Marker Name : %s ref/pattern/Comp : %s skipFreq : %d\n", name, ref, skipFreq);
+        // T2Debug("Adding Event Marker :: Param/Marker Name : %s ref/pattern/Comp : %s skipFreq : %d\n", name, ref, skipFreq);
         EventMarker *eMarker = (EventMarker *)malloc(sizeof(EventMarker));
         memset(eMarker, 0, sizeof(EventMarker));
         eMarker->markerName = strdup(name);
@@ -116,7 +116,7 @@ static T2ERROR addParameter(ProfileXConf *profile, const char* name, const char*
     else //Grep Marker
     {
         char *splitSuffix = NULL;
-        T2Debug("Adding Grep Marker :: Param/Marker Name : %s ref/pattern/Comp : %s fileName : %s skipFreq : %d\n", name, ref, fileName, skipFreq);
+        // T2Debug("Adding Grep Marker :: Param/Marker Name : %s ref/pattern/Comp : %s fileName : %s skipFreq : %d\n", name, ref, fileName, skipFreq);
         GrepMarker *gMarker = (GrepMarker *)malloc(sizeof(GrepMarker));
         memset(gMarker, 0, sizeof(GrepMarker));
         gMarker->markerName = strdup(name);
@@ -223,7 +223,8 @@ T2ERROR processConfigurationXConf(char* configData, ProfileXConf **localProfile)
 
             if(skipFrequency > 0)
             {
-                T2Debug("Skip Frequency is Present, Need to do grep\n");
+                // T2Debug("Skip Frequency is Present, Need to do grep\n");
+
                 ret = addParameter(profile, header, content, logfile, skipFrequency);
             }
             else if(!strncmp(logfile, MT_TR181PARAM_PATTERN, MT_TR181PATAM_PATTERN_LENGTH))

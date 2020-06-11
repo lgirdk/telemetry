@@ -113,6 +113,7 @@ static T2ERROR appendRequestParams(char *buf, const int maxArgLen) {
     int avaBufSize = maxArgLen, write_size = 0;
     char *paramVal = NULL;
     char *tempBuf = (char*) malloc(MAX_URL_ARG_LEN);
+    char build_type[BUILD_TYPE_MAX_LENGTH] = { 0 };
 
     if(tempBuf == NULL)
     {
@@ -192,7 +193,6 @@ static T2ERROR appendRequestParams(char *buf, const int maxArgLen) {
           goto error;
     }
 
-    char build_type[BUILD_TYPE_MAX_LENGTH] = { 0 };
     if(T2ERROR_SUCCESS == getBuildType(build_type)) {
         memset(tempBuf, 0, MAX_URL_ARG_LEN);
         write_size = snprintf(tempBuf, MAX_URL_ARG_LEN, "env=%s&", build_type);

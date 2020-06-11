@@ -20,34 +20,19 @@
 #ifndef _CCSPINTERFACE_H_
 #define _CCSPINTERFACE_H_
 
-#include <ccsp_base_api.h>
+#include <ccsp/ccsp_base_api.h>
 #include <stdio.h>
 #include <vector.h>
 
+#include "busInterface.h"
 #include "telemetry2_0.h"
 
-typedef struct _profileValues
-{
-    parameterValStruct_t **paramValues;
-    int paramValueCount;
-}profileValues;
+bool isCCSPInitialized();
 
-typedef void (*TelemetryEventCallback)(char* eventInfo, void *user_data);
+T2ERROR getCCSPParamVal(const char* paramName, char **paramValue);
 
-T2ERROR getParameterValue(const char* paramName, char **paramValue);
+Vector* getCCSPProfileParamValues(Vector *paramList);
 
-T2ERROR getParameterValues(const char **paramNames, const int paramNamesCount, parameterValStruct_t ***valStructs, int *valSize);
-
-T2ERROR getParameterNames(const char *objName, parameterInfoStruct_t ***paramNamesSt, int *paramNamesLength);
-
-T2ERROR getObjectParameterCount(const char* objName, unsigned int *count);
-
-void freeParamValueSt(parameterValStruct_t **valStructs, int valSize);
-
-void freeParamInfoSt(parameterInfoStruct_t **paramNamesSt, int paramNamesLength);
-
-T2ERROR registerForTelemetryEvents(TelemetryEventCallback eventCB);
-
-Vector* getProfileParameterValues(Vector *paramList);
+T2ERROR registerCcspT2EventListener(TelemetryEventCallback eventCB);
 
 #endif

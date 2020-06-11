@@ -28,20 +28,21 @@ hardware_platform = i686-linux-gnu
 lib_LTLIBRARIES=libtelemetry_msgsender.la
 libtelemetry_msgsender_la_SOURCES= telemetry_busmessage_sender.c
 libtelemetry_msgsender_la_LDFLAGS= -shared
-libtelemetry_msgsender_la_LIBADD = -lccsp_common ${top_builddir}/source/utils/libutils.la
+libtelemetry_msgsender_la_LIBADD = -lccsp_common -lrbus ${top_builddir}/source/utils/libutils.la
 libtelemetry_msgsender_la_CPPFLAGS=-fPIC -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/dbus-1.0 \
                                 -I${PKG_CONFIG_SYSROOT_DIR}$(libdir)/dbus-1.0/include \
-                                -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/ccsp \
+                                -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/rbus \
                                 -I${top_srcdir}/source/utils \
                                 -I${top_srcdir}/include
 libtelemetry_msgsender_la_DEPENDENCIES = ${top_builddir}/source/utils/libutils.la
 
 bin_PROGRAMS = telemetry2_0_client
 telemetry2_0_client_SOURCES = telemetry_client.c telemetry_busmessage_sender.c
-telemetry2_0_client_LDADD = -lccsp_common ${top_builddir}/source/utils/libutils.la
+telemetry2_0_client_LDADD = -lccsp_common -lrbus ${top_builddir}/source/utils/libutils.la
 telemetry2_0_client_CPPFLAGS = -fPIC -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/dbus-1.0 \
                                 -I${PKG_CONFIG_SYSROOT_DIR}$(libdir)/dbus-1.0/include \
                                 -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/ccsp \
+                                -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/rbus \
                                 -I${top_srcdir}/source/utils \
                                 -I${top_srcdir}/include
 telemetry2_0_client_DEPENDENCIES = ${top_builddir}/source/utils/libutils.la

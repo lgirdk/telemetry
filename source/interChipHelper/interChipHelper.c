@@ -32,10 +32,11 @@
 #include <cjson/cJSON.h>
 
 #include "interChipHelper.h"
+
+#include "t2collection.h"
 #include "telemetry2_0.h"
 #include "t2log_wrapper.h"
 #include "vector.h"
-#include "collection.h"
 #include "t2common.h"
 
 #define LOOP_SLEEP 100

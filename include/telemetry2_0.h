@@ -22,6 +22,13 @@
 
 #define COMPONENT_NAME        "telemetry2_0"
 
+// Data elements provided by telemetry 2.0
+#define T2_ROOT_PARAMETER "Telemetry.ReportProfiles."
+#define T2_EVENT_LIST_PARAM_SUFFIX ".EventMarkerList"
+#define T2_EVENT_PARAM "Telemetry.ReportProfiles.EventMarker"
+#define T2_PROFILE_UPDATED_NOTIFY "Telemetry.ReportProfiles.ProfilesUpdated"
+#define T2_REPORT_PROFILE_PARAM "Device.X_RDKCENTRAL-COM_T2.ReportProfiles"
+
 #define INFINITE_TIMEOUT      (unsigned int)~0
 
 typedef enum

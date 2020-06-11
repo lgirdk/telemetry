@@ -82,7 +82,7 @@ static T2ERROR addParameter(Profile *profile, const char* name, const char* ref,
     T2Debug("%s ++in\n", __FUNCTION__);
 
     if(!(strcmp(ptype, "dataModel"))) {
-        T2Debug("Adding TR-181 Parameter : %s\n", ref);
+        // T2Debug("Adding TR-181 Parameter : %s\n", ref);
 
         if (strstr(ref, "Profile.") == ref) {        //Static parameters from profile configuration
             StaticParam *sparam = (StaticParam *) malloc(sizeof(StaticParam));
@@ -109,7 +109,7 @@ static T2ERROR addParameter(Profile *profile, const char* name, const char* ref,
             Vector_PushBack(profile->paramList, param);
         }
     }else if(!(strcmp(ptype, "event"))) {
-        T2Debug("Adding Event Marker :: Param/Marker Name : %s ref/pattern/Comp : %s skipFreq : %d\n", name, ref, skipFreq);
+        // T2Debug("Adding Event Marker :: Param/Marker Name : %s ref/pattern/Comp : %s skipFreq : %d\n", name, ref, skipFreq);
         EventMarker *eMarker = (EventMarker *) malloc(sizeof(EventMarker));
         if(eMarker == NULL){
             T2Error("Unable to allocate memory for EventMarker \n");
@@ -139,7 +139,7 @@ static T2ERROR addParameter(Profile *profile, const char* name, const char* ref,
         Vector_PushBack(profile->eMarkerList, eMarker);
     }else { //Grep Marker
 
-        T2Debug("Adding Grep Marker :: Param/Marker Name : %s ref/pattern/Comp : %s fileName : %s skipFreq : %d\n", name, ref, fileName, skipFreq);
+        // T2Debug("Adding Grep Marker :: Param/Marker Name : %s ref/pattern/Comp : %s fileName : %s skipFreq : %d\n", name, ref, fileName, skipFreq);
 
         GrepMarker *gMarker = (GrepMarker *) malloc(sizeof(GrepMarker));
         if(gMarker == NULL){

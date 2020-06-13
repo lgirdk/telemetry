@@ -38,6 +38,10 @@
 #endif
 #include "t2eventreceiver.h"
 
+#ifdef INCLUDE_BREAKPAD
+#include "breakpad_wrapper.h"
+#endif
+
 #define MAX_PARAMETERNAME_LEN    512
 /*Define signals properly to make sure they don't get overide anywhere*/
 #define LOG_UPLOAD 10
@@ -159,21 +163,13 @@ static void t2DaemonMainModeInit( ) {
     /**
      * Signal handling is being used as way to handle log uploads . Double check whether we get minidump events for crashes
      */
+#ifdef INCLUDE_BREAKPAD
+   breakpad_ExceptionHandler();
+#endif
     signal(SIGTERM, sig_handler);
-    signal(SIGINT, sig_handler);
-    /*signal(SIGCHLD, sig_handler);*/
     signal(SIGUSR1, sig_handler);
     signal(LOG_UPLOAD, sig_handler);
-    signal(SIGUSR2, sig_handler);
-
-    signal(SIGSEGV, sig_handler);
-    signal(SIGBUS, sig_handler);
-    signal(SIGKILL, sig_handler);
     signal(EXEC_RELOAD, sig_handler);
-    signal(SIGFPE, sig_handler);
-    signal(SIGILL, sig_handler);
-    signal(SIGQUIT, sig_handler);
-    signal(SIGHUP, sig_handler);
 
     #ifdef _COSA_INTEL_XB3_ARM_
     if ( createNotifyDir() != 0 ) {

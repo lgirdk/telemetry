@@ -84,6 +84,10 @@ static T2ERROR addParameter(Profile *profile, const char* name, const char* ref,
 
         if (strstr(ref, "Profile.") == ref) {        //Static parameters from profile configuration
             StaticParam *sparam = (StaticParam *) malloc(sizeof(StaticParam));
+            if(sparam == NULL){
+                T2Error("Unable to allocate memory for Static \n");
+                return T2ERROR_FAILURE;
+            }
             sparam->paramType = strdup(ptype);
             sparam->name = strdup(name);
             sparam->value = getProfileParameter(profile, ref);
@@ -91,6 +95,10 @@ static T2ERROR addParameter(Profile *profile, const char* name, const char* ref,
             Vector_PushBack(profile->staticParamList, sparam);
         } else {
             Param *param = (Param *) malloc(sizeof(Param));
+            if(param == NULL){
+                T2Error("Unable to allocate memory for TR-181 Parameter \n");
+                return T2ERROR_FAILURE;
+            }
             param->name = strdup(name);
             param->alias = strdup(ref);
             param->paramType = strdup(ptype);
@@ -101,7 +109,10 @@ static T2ERROR addParameter(Profile *profile, const char* name, const char* ref,
     }else if(!(strcmp(ptype, "event"))) {
         T2Debug("Adding Event Marker :: Param/Marker Name : %s ref/pattern/Comp : %s skipFreq : %d\n", name, ref, skipFreq);
         EventMarker *eMarker = (EventMarker *) malloc(sizeof(EventMarker));
-
+        if(eMarker == NULL){
+            T2Error("Unable to allocate memory for EventMarker \n");
+            return T2ERROR_FAILURE;
+        }
         eMarker->markerName = strdup(name);
         eMarker->compName = strdup(ref);
         if(fileName)
@@ -110,14 +121,14 @@ static T2ERROR addParameter(Profile *profile, const char* name, const char* ref,
             eMarker->alias = NULL;
         eMarker->paramType = strdup(ptype);
         eMarker->reportEmptyParam = ReportEmpty;
-
-        if(!(strcmp(use, "absolute"))) {
+        if((use == NULL) || (0 == strcmp(use, "absolute"))) {
             eMarker->mType = MTYPE_ABSOLUTE;
             eMarker->u.markerValue = NULL;
-        }else if(!(strcmp(use, "count"))) {
+        }else if (0 == strcmp(use, "count")){
             eMarker->mType = MTYPE_COUNTER;
             eMarker->u.count = 0;
-        }else { //default to absolute type
+        } else {
+            T2Info("Unsupported marker type. Defaulting to absolute \n");
             eMarker->mType = MTYPE_ABSOLUTE;
             eMarker->u.markerValue = NULL;
         }
@@ -129,19 +140,24 @@ static T2ERROR addParameter(Profile *profile, const char* name, const char* ref,
         T2Debug("Adding Grep Marker :: Param/Marker Name : %s ref/pattern/Comp : %s fileName : %s skipFreq : %d\n", name, ref, fileName, skipFreq);
 
         GrepMarker *gMarker = (GrepMarker *) malloc(sizeof(GrepMarker));
+        if(gMarker == NULL){
+            T2Error("Unable to allocate memory for GrepMarker \n");
+            return T2ERROR_FAILURE;
+        }
         gMarker->markerName = strdup(name);
         gMarker->searchString = strdup(ref);
         gMarker->logFile = strdup(fileName);
         gMarker->paramType = strdup(ptype);
         gMarker->reportEmptyParam = ReportEmpty;
 
-        if(!(strcmp(use, "absolute"))) {
+        if((use == NULL) || (0 == strcmp(use, "absolute"))) {
             gMarker->mType = MTYPE_ABSOLUTE;
             gMarker->u.markerValue = NULL;
-        }else if(!(strcmp(use, "count"))) {
+        }else if (0 == strcmp(use, "count")){
             gMarker->mType = MTYPE_COUNTER;
             gMarker->u.count = 0;
-        }else {  //default to absolute type
+        } else {
+            T2Info("Unsupported marker type. Defaulting to absolute \n");
             gMarker->mType = MTYPE_ABSOLUTE;
             gMarker->u.markerValue = NULL;
         }
@@ -165,6 +181,9 @@ T2ERROR processConfiguration(char** configData, char *profileName, char* profile
 
     cJSON *jprofileName = cJSON_GetObjectItem(json_root, "Name");
     cJSON *jprofileHash = cJSON_GetObjectItem(json_root, "Hash");
+    if(jprofileHash == NULL) {
+        jprofileHash = cJSON_GetObjectItem(json_root, "VersionHash");
+    }
     cJSON *jprofileDescription = cJSON_GetObjectItem(json_root, "Description");
     cJSON *jprofileVersion = cJSON_GetObjectItem(json_root, "Version");
     cJSON *jprofileProtocol = cJSON_GetObjectItem(json_root, "Protocol");
@@ -206,7 +225,7 @@ T2ERROR processConfiguration(char** configData, char *profileName, char* profile
         jprofileHTTPMethod = cJSON_GetObjectItem(jprofileHTTP, "Method");
         if(jprofileHTTPURL == NULL || jprofileHTTPCompression == NULL || jprofileHTTPMethod == NULL) {
             T2Error("Incomplete profile information, unable to create profile\n");
-	    cJSON_Delete(json_root);
+	        cJSON_Delete(json_root);
             return T2ERROR_FAILURE;
         }
         jprofileHTTPRequestURIParameter = cJSON_GetObjectItem(jprofileHTTP, "RequestURIParameter");
@@ -480,10 +499,18 @@ T2ERROR processConfiguration(char** configData, char *profileName, char* profile
                 }
             }else if(!(strcmp(paramtype, "grep"))) { //grep Marker
 
-                header = cJSON_GetObjectItem(pSubitem, "marker")->valuestring;
-                content = cJSON_GetObjectItem(pSubitem, "search")->valuestring;
-                logfile = cJSON_GetObjectItem(pSubitem, "logFile")->valuestring;
-
+                cJSON *jpSubitemname = cJSON_GetObjectItem(pSubitem, "marker");
+                cJSON *jpSubitSearchString = cJSON_GetObjectItem(pSubitem, "search");
+                cJSON *jpSubitemLogFile = cJSON_GetObjectItem(pSubitem, "logFile");
+                if (jpSubitemname){
+                    header = jpSubitemname->valuestring;
+                }
+                if(jpSubitSearchString){
+                    content = jpSubitSearchString->valuestring;
+                }
+                if(jpSubitemLogFile){
+                    logfile = jpSubitemLogFile->valuestring;
+                }
             } else {
                 T2Error("%s Unknown parameter type %s \n", __FUNCTION__, paramtype);
                 continue;
@@ -502,6 +529,7 @@ T2ERROR processConfiguration(char** configData, char *profileName, char* profile
     T2Info("Number of tr181params/markers successfully added in profile = %d \n", profileParamCount);
 
     cJSON_Delete(json_root);
+    json_root = NULL ;
     *localProfile = profile;
     T2Debug("%s --out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;

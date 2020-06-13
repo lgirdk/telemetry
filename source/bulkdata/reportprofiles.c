@@ -352,8 +352,6 @@ void ReportProfiles_ProcessReportProfilesBlob(cJSON *profiles_root) {
         return;
     }
 
-    T2Debug("%s CJSON profiles_root %s \n ", __FUNCTION__, cJSON_PrintUnformatted(profiles_root));
-
     cJSON *profilesArray = cJSON_GetObjectItem(profiles_root, "profiles");
     int profiles_count = cJSON_GetArraySize(profilesArray);
 
@@ -366,8 +364,6 @@ void ReportProfiles_ProcessReportProfilesBlob(cJSON *profiles_root) {
         T2Debug("%s --out\n", __FUNCTION__);
         return;
     }
-
-    T2Debug("%s CJSON profilesArray %s \n ", __FUNCTION__, cJSON_PrintUnformatted(profilesArray));
 
     char* profileName = NULL;
     int profileIndex = 0;
@@ -385,6 +381,9 @@ void ReportProfiles_ProcessReportProfilesBlob(cJSON *profiles_root) {
 
         cJSON* nameObj = cJSON_GetObjectItem(singleProfile, "name");
         cJSON* hashObj = cJSON_GetObjectItem(singleProfile, "hash");
+        if(hashObj == NULL) {
+            hashObj = cJSON_GetObjectItem(singleProfile, "VersionHash");
+        }
         cJSON* profileObj = cJSON_GetObjectItem(singleProfile, "value");
 
         if(nameObj == NULL || hashObj == NULL || profileObj == NULL) {

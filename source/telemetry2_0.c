@@ -37,6 +37,7 @@
 #include "interChipHelper.h"
 #endif
 #include "t2eventreceiver.h"
+#include "cap.h"
 
 #ifdef INCLUDE_BREAKPAD
 #include "breakpad_wrapper.h"
@@ -46,9 +47,11 @@
 /*Define signals properly to make sure they don't get overide anywhere*/
 #define LOG_UPLOAD 10
 #define EXEC_RELOAD 15
-
-
+#define ARRAY_SIZE(x)  (sizeof(x) / sizeof(x[0]))
+#define NONROOT_DATAMODEL_PARAM  "Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.NonRootSupport.Enable"
+static bool isNonRootRFCEnabled=false;
 static bool isDebugEnabled = true;
+static cap_user appcaps;
 
 T2ERROR initTelemetry()
 {
@@ -96,6 +99,20 @@ static void _print_stack_backtrace(void)
     }
 #endif
 #endif
+}
+
+void drop_root()
+{
+  const cap_value_t cap_add[] = {CAP_KILL};
+  const cap_value_t cap_drop[] = {CAP_SYS_ADMIN,CAP_NET_ADMIN};
+  appcaps.caps = NULL;
+  appcaps.add_count = ARRAY_SIZE(cap_add);
+  appcaps.drop_count = ARRAY_SIZE(cap_drop);
+  init_capability();
+  prepare_caps(&appcaps,cap_add,cap_drop);
+  drop_root_caps(&appcaps);
+  update_process_caps(&appcaps);
+  read_capability(&appcaps);
 }
 
 void sig_handler(int sig)
@@ -190,6 +207,10 @@ static void t2DaemonMainModeInit( ) {
 
 
     T2Info("Telemetry 2.0 Component Init Success\n");
+    if (isNonRootRFCEnabled)
+    {
+     drop_root();
+    }
     while(1) {
         sleep(30);
     }
@@ -239,6 +260,7 @@ int main(int argc, char* argv[])
     pid_t process_id = 0;
     pid_t sid = 0;
     int ret = 0;
+    char* buf=NULL;
     LOGInit();
 
     printf("Starting Telemetry 2.0 Process\n");
@@ -271,7 +293,14 @@ int main(int argc, char* argv[])
         close(STDERR_FILENO);
     }
 
-
+    if(T2ERROR_SUCCESS == getParameterValue(NONROOT_DATAMODEL_PARAM, &buf)) {
+      if (strncmp(buf, "true", strlen("true")) == 0) {
+        isNonRootRFCEnabled=true;
+      }
+    }
+    free(buf);
+    buf = NULL;
+    T2Info("Telemetry 2.0: NonRootSupport RFC status %d\n",isNonRootRFCEnabled);
     T2Info("Initializing Telemetry 2.0 Component\n");
     #ifndef _COSA_INTEL_USG_ATOM_   // This doesn't apply for helper daemon on atom
     t2DaemonMainModeInit();

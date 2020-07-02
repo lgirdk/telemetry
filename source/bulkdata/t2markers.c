@@ -26,6 +26,10 @@
 
 static hash_map_t *markerCompMap = NULL;
 
+static pthread_mutex_t t2MarkersMutex;
+static pthread_mutex_t t2CompListMutex;
+
+
 static void freeT2Marker(void *data)
 {
     if(data != NULL)
@@ -47,6 +51,8 @@ T2ERROR initT2MarkerComponentMap()
 {
     T2Debug("%s ++in\n", __FUNCTION__);
     markerCompMap = hash_map_create();
+    pthread_mutex_init(&t2MarkersMutex, NULL);
+    pthread_mutex_init(&t2CompListMutex, NULL);
     T2Debug("%s --out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;
 }
@@ -54,7 +60,9 @@ T2ERROR initT2MarkerComponentMap()
 T2ERROR clearT2MarkerComponentMap()
 {
     T2Debug("%s ++in\n", __FUNCTION__);
+    pthread_mutex_lock(&t2MarkersMutex);
     hash_map_clear(markerCompMap, freeT2Marker);
+    pthread_mutex_unlock(&t2MarkersMutex);  
     T2Debug("%s --out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;
 }
@@ -64,6 +72,7 @@ T2ERROR destroyT2MarkerComponentMap()
     T2Debug("%s ++in\n", __FUNCTION__);
     hash_map_destroy(markerCompMap, freeT2Marker);
     markerCompMap = NULL;
+    pthread_mutex_destroy(&t2MarkersMutex); 
     T2Debug("%s --out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;
 }
@@ -71,6 +80,7 @@ T2ERROR destroyT2MarkerComponentMap()
 
 T2ERROR addT2EventMarker(const char* markerName, const char* compName, const char *profileName, unsigned int skipFreq)
 {
+    pthread_mutex_lock(&t2MarkersMutex);
     T2Marker *t2Marker = (T2Marker *)hash_map_get(markerCompMap, markerName);
     if(t2Marker)
     {
@@ -108,9 +118,11 @@ T2ERROR addT2EventMarker(const char* markerName, const char* compName, const cha
         else
         {
             T2Error("Unable to add Event Marker to the Map :: Malloc failure\n");
+	    pthread_mutex_unlock(&t2MarkersMutex);
             return T2ERROR_FAILURE;
         }
     }
+    pthread_mutex_unlock(&t2MarkersMutex);
     return T2ERROR_SUCCESS;
 }
 
@@ -120,6 +132,8 @@ T2ERROR getComponentMarkerList(const char* compName, Vector **markerList)
     if(T2ERROR_SUCCESS == Vector_Create(&compMarkers))
     {
         int index = 0;
+
+	pthread_mutex_lock(&t2MarkersMutex);
         for (; index < hash_map_count(markerCompMap); index++)
         {
             T2Marker *t2Marker = (T2Marker *)hash_map_lookup(markerCompMap, index);
@@ -129,6 +143,7 @@ T2ERROR getComponentMarkerList(const char* compName, Vector **markerList)
             }
         }
         *markerList = compMarkers;
+	pthread_mutex_unlock(&t2MarkersMutex);
     }
     else
     {
@@ -140,13 +155,16 @@ T2ERROR getComponentMarkerList(const char* compName, Vector **markerList)
 
 T2ERROR getMarkerProfileList(const char* markerName, Vector **profileList)
 {
+    pthread_mutex_lock(&t2MarkersMutex);
     T2Marker *t2Marker = (T2Marker *)hash_map_get(markerCompMap, markerName);
     if(t2Marker != NULL)
         *profileList = t2Marker->profileList;
     else
     {
+	pthread_mutex_unlock(&t2MarkersMutex);
         return T2ERROR_FAILURE;
     }
 
+    pthread_mutex_unlock(&t2MarkersMutex);
     return T2ERROR_SUCCESS;
 }

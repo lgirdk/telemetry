@@ -25,6 +25,8 @@
 
 #define XCONFPROFILE_PERSISTENCE_PATH "/nvram/.t2persistentfolder/"
 #define REPORTPROFILES_PERSISTENCE_PATH "/nvram/.t2reportprofiles/"
+#define MSGPACK_REPORTPROFILES_PERSISTENT_FILE "profiles.msgpack"
+#define REPORTPROFILES_FILE_PATH_SIZE 256
 
 typedef struct _Config
 {

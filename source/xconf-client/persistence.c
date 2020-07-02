@@ -123,6 +123,27 @@ T2ERROR saveConfigToFile(const char* path, const char *profileName, const char* 
     return T2ERROR_SUCCESS;
 }
 
+T2ERROR MsgPackSaveConfig(const char* path, const char *fileName, const char *msgpack_blob, size_t blob_size)
+{
+    FILE *fp;
+    char filePath[256] = {'\0'};
+
+    if(strlen(fileName) > MAX_FILENAME_LENGTH)
+    {
+        T2Error("fileName exceeds max limit of %d chars\n", MAX_FILENAME_LENGTH);
+        return T2ERROR_FAILURE;
+    }
+    sprintf(filePath, "%s%s", path, fileName);
+    fp = fopen(filePath, "wb");
+    if (NULL == fp) {
+        T2Error("%s file open is failed \n", filePath);
+	return T2ERROR_FAILURE;
+    }
+    fwrite(msgpack_blob, sizeof(char), blob_size, fp);
+    fclose(fp); 
+    return T2ERROR_SUCCESS;
+}
+
 void clearPersistenceFolder(const char* path)
 {
     char command[256] = {'\0'};

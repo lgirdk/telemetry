@@ -670,6 +670,37 @@ void sendLogUploadInterruptToScheduler()
 static void loadReportProfilesFromDisk()
 {
 
+    T2Info("loadReportProfilesFromDisk \n");
+    char filePath[REPORTPROFILES_FILE_PATH_SIZE] = {'\0'};
+    sprintf(filePath, "%s%s", REPORTPROFILES_PERSISTENCE_PATH, MSGPACK_REPORTPROFILES_PERSISTENT_FILE);
+    if (0 == access(filePath, F_OK)) {
+        T2Info("Msgpack: loadReportProfilesFromDisk \n");
+        FILE *fp;
+	struct __msgpack__ msgpack;
+
+        fp = fopen (filePath, "rb");
+        if (NULL == fp) {
+            T2Error("Unable to open %s \n", filePath);
+            return;
+        }
+        fseek(fp, 0L, SEEK_END);
+	msgpack.msgpack_blob_size = ftell(fp);
+	msgpack.msgpack_blob = malloc(sizeof(char) * msgpack.msgpack_blob_size);
+	if (NULL == msgpack.msgpack_blob) {
+            T2Error("Unable to allocate %d bytes of memory at Line %d on %s \n",
+                  msgpack.msgpack_blob_size, __LINE__, __FILE__);
+            fclose (fp);
+            return;
+        }
+        fseek(fp, 0L, SEEK_SET);
+	fread(msgpack.msgpack_blob, sizeof(char), msgpack.msgpack_blob_size, fp);
+        fclose (fp);
+	__ReportProfiles_ProcessReportProfilesMsgPackBlob((void *)&msgpack);
+	free(msgpack.msgpack_blob);
+        return;
+    }
+    T2Info("JSON: loadReportProfilesFromDisk \n");
+	
     int configIndex = 0;
     Vector *configList = NULL;
     Config *config = NULL;

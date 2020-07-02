@@ -44,6 +44,11 @@
 #include "breakpad_wrapper.h"
 #endif
 
+//Including Webconfig Framework For Telemetry 2.0 As part of RDKB-28897
+#define SUBDOC_COUNT	1
+#define SUBDOC_NAME	"telemetry"
+#define WEBCONFIG_BLOB_VERSION "/nvram/telemetry_webconfig_blob_version.txt"
+
 #define MAX_PARAMETERNAME_LEN    512
 /*Define signals properly to make sure they don't get overide anywhere*/
 #define LOG_UPLOAD 10
@@ -51,6 +56,81 @@
 
 
 static bool isDebugEnabled = true;
+
+uint32_t getTelemetryBlobVersion(char* subdoc)
+{
+    T2Debug("Inside getTelemetryBlobVersion subdoc %s \n",subdoc);
+    char *subdoc_ver = NULL;
+    char  buff[72] = {0};
+    uint32_t version = 0;
+    FILE *file = NULL;
+    file = fopen(WEBCONFIG_BLOB_VERSION,  "r+");
+    if(file == NULL)
+    {
+	T2Debug("Failed to read from /nvram/telemetry_webconfig_blob_version.txt \n");
+    }
+    else
+    {
+	fscanf(file,"%u",&version);	
+	T2Debug("Version of Telemetry blob is %u\n",version);
+	fclose(file);	
+	return version;
+    }
+    return 0;
+}
+
+
+int setTelemetryBlobVersion(char* subdoc,uint32_t version)
+{
+    T2Debug("Inside setTelemetryBlobVersion subdoc %s version %u \n",subdoc,version);
+    int loc_version=version;
+    FILE* file  = NULL;
+    file = fopen(WEBCONFIG_BLOB_VERSION,"w+");
+    if(file != NULL)
+    {
+	fprintf(file, "%u", version);
+	T2Debug("New Version of Telemetry blob is %u\n",version);
+	fclose(file);
+	return 0;
+    }
+    else
+    {
+	T2Error("Failed to write into /nvram/telemetry_webconfig_blob_version \n");
+    }
+    return -1;
+}
+
+
+int tele_web_config_init()
+{
+
+    char *sub_docs[SUBDOC_COUNT+1]= {SUBDOC_NAME,(char *) 0 };
+    blobRegInfo *blobData = NULL,*blobDataPointer = NULL;
+    int i;
+
+    blobData = (blobRegInfo*) malloc(SUBDOC_COUNT * sizeof(blobRegInfo));
+    if (blobData == NULL) {
+        T2Error("%s: Malloc error\n",__FUNCTION__);
+        return -1;
+    }
+    memset(blobData, 0, SUBDOC_COUNT * sizeof(blobRegInfo));
+
+    blobDataPointer = blobData;
+    for (i=0 ;i < SUBDOC_COUNT; i++)
+    {
+        strncpy(blobDataPointer->subdoc_name, sub_docs[i], sizeof(blobDataPointer->subdoc_name)-1);
+        blobDataPointer++;
+    }
+    blobDataPointer = blobData;
+
+    getVersion versionGet = getTelemetryBlobVersion;
+    setVersion versionSet = setTelemetryBlobVersion;
+    T2Debug("Calling Call Back Function \n");
+    register_sub_docs(blobData,SUBDOC_COUNT,versionGet,versionSet);
+    T2Debug("Called register_sub_docs Succussfully \n");
+    return 0;
+}
+
 
 T2ERROR initTelemetry()
 {
@@ -69,6 +149,7 @@ T2ERROR initTelemetry()
     }
     else
         T2Error("Failed to initialize ReportProfiles\n");
+
 
     T2Debug("%s --out\n",__FUNCTION__);
     return ret;
@@ -198,6 +279,17 @@ static void t2DaemonMainModeInit( ) {
 
 
     T2Info("Telemetry 2.0 Component Init Success\n");
+//Calling Webconfig Init
+   if(tele_web_config_init() !=0)
+   {
+	T2Error("Failed to intilize tele_web_config_init \n");
+   }
+   else
+   {
+	T2Debug("tele_web_config_init Successful\n");
+   }
+//Web Config Framework init ends
+
     while(1) {
         sleep(30);
     }

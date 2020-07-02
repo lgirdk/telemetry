@@ -25,6 +25,8 @@
 #include "xconfclient.h"
 #include "reportprofiles.h"
 #include "t2log_wrapper.h"
+#include "msgpack.h"
+
 
 static char * getProfileParameter(Profile * profile, char *ref) {
     char *pValue = "NULL";
@@ -162,7 +164,6 @@ static T2ERROR addParameter(Profile *profile, const char* name, const char* ref,
             gMarker->u.markerValue = NULL;
         }
         gMarker->skipFreq = skipFreq;
-
         Vector_PushBack(profile->gMarkerList, gMarker);
     }
 
@@ -536,3 +537,403 @@ T2ERROR processConfiguration(char** configData, char *profileName, char* profile
 
 }
 
+char *msgpack_strdup(msgpack_object *obj)
+{
+    if (NULL == obj || MSGPACK_OBJECT_STR != obj->type)
+	return NULL;
+    return strndup(obj->via.str.ptr, obj->via.str.size);
+}
+
+int msgpack_strcmp(msgpack_object *obj, char *str)
+{
+    if (NULL == obj || MSGPACK_OBJECT_STR != obj->type)
+	return -1;
+    return strncmp(str, obj->via.str.ptr, obj->via.str.size);
+}
+
+void msgpack_print(msgpack_object *obj, char *obj_name)
+{
+    if (obj) {
+	switch(obj->type) {
+	case MSGPACK_OBJECT_BOOLEAN:
+	    T2Debug("%s: %s\n", obj_name, obj->via.boolean ? "true" : "false");
+	    break;
+	case MSGPACK_OBJECT_POSITIVE_INTEGER:
+	    T2Debug("%s: %lu\n", obj_name, (unsigned long)obj->via.u64);
+	    break;
+	case MSGPACK_OBJECT_NEGATIVE_INTEGER:
+	    T2Debug("%s: %ld\n", obj_name, (signed long)obj->via.i64);
+	    break;
+	case MSGPACK_OBJECT_FLOAT:
+	    T2Debug("%s: %f\n", obj_name, obj->via.f64);
+	    break;
+	case MSGPACK_OBJECT_STR:
+	    T2Debug("%s: %.*s\n", obj_name, obj->via.str.size, obj->via.str.ptr);
+	    break;
+	case MSGPACK_OBJECT_ARRAY:
+	    T2Debug("%s size: %d\n", obj_name, obj->via.array.size);
+	case MSGPACK_OBJECT_MAP:
+	    T2Debug("%s size: %d\n", obj_name, obj->via.map.size);
+	    break;
+	default:
+	    T2Info("%s->type is Invalid\n", obj_name);
+	    T2Info("%s->type is %u \n", obj_name, obj->type);
+	}
+    } else {
+	T2Debug("%s Object is NULL\n", obj_name);
+    }
+}
+
+msgpack_object *msgpack_get_map_value(msgpack_object *obj, char *key)
+{
+    if (NULL == obj)
+	return NULL;
+    if (MSGPACK_OBJECT_MAP == obj->type)
+	if(obj->via.map.size != 0) {
+	    msgpack_object_kv* current = obj->via.map.ptr;
+	    msgpack_object_kv* const end = obj->via.map.ptr + obj->via.map.size;
+	    for(; current < end; current++)
+		if (current->key.type == MSGPACK_OBJECT_STR) {
+		    if ( 0 == strncmp(key, current->key.via.str.ptr, current->key.via.str.size))
+			return &current->val;
+		}
+	}
+    return NULL;
+}
+
+msgpack_object *msgpack_get_array_element(msgpack_object *obj, int index)
+{
+    if (NULL == obj)
+	return NULL;
+    if (MSGPACK_OBJECT_ARRAY == obj->type) {
+	if(obj->via.array.size != 0) {
+	    msgpack_object* current = obj->via.array.ptr;
+	    msgpack_object* const end = obj->via.array.ptr + obj->via.array.size;
+	    for (; current < end && index; current++, index--)
+		;
+	    return current;
+	}
+    } else if (MSGPACK_OBJECT_MAP == obj->type) {
+	if(obj->via.map.size != 0) {
+	    msgpack_object_kv* current = obj->via.map.ptr;
+	    msgpack_object_kv* const end = obj->via.map.ptr + obj->via.map.size;
+	    for(; current < end && index; current++, index--)
+		;
+	    return &current->val;
+	}
+    }
+    return NULL;
+}
+
+T2ERROR processMsgPackConfiguration(msgpack_object *profiles_array_map, Profile **profile_dp)
+{
+    msgpack_object *name_str;
+    msgpack_object *hash_str;
+    msgpack_object *value_map;
+    msgpack_object *Description_str;
+    msgpack_object *Version_str;
+    msgpack_object *Protocol_str;
+    msgpack_object *EncodingType_str;
+    msgpack_object *ReportingInterval_u64;
+    msgpack_object *TimeReference_str;
+    msgpack_object *ActivationTimeout_u64;
+    msgpack_object *Parameter_array;
+    msgpack_object *Parameter_array_map;
+    msgpack_object *Parameter_type_str;
+    msgpack_object *Parameter_marker_str;
+    msgpack_object *Parameter_search_str;
+    msgpack_object *Parameter_logFile_str;
+    msgpack_object *Parameter_use_str;
+    msgpack_object *Parameter_reference_str;
+    msgpack_object *Parameter_eventName_str;
+    msgpack_object *Parameter_component_str;
+    msgpack_object *Parameter_name_str;
+    msgpack_object *Parameter_reportEmpty_boolean;
+    msgpack_object *HTTP_map;
+    msgpack_object *URL_str;
+    msgpack_object *Compression_str;
+    msgpack_object *Method_str;
+    msgpack_object *RequestURIParameter_array;
+    msgpack_object *RequestURIParameter_array_map;
+    msgpack_object *RequestURIParameter_Name_str;
+    msgpack_object *RequestURIParameter_Reference_str;
+    msgpack_object *JSONEncoding_map;
+    msgpack_object *ReportFormat_str;
+    msgpack_object *ReportTimestamp_str;
+    msgpack_object *GenerateNow_boolean;
+
+    int i;
+    int ret;
+
+    uint32_t Parameter_array_size = 0;
+    uint32_t RequestURIParameter_array_size = 0;
+    
+    T2Debug("%s --in\n", __FUNCTION__);
+    Profile *profile = (Profile *) malloc(sizeof(Profile));
+    if(profile == NULL) {
+	T2Error("Malloc error exiting: can not allocate memory to create profile \n");
+	return T2ERROR_MEMALLOC_FAILED;
+    }
+    memset(profile, 0, sizeof(Profile));
+
+    name_str = msgpack_get_map_value(profiles_array_map, "name");
+    msgpack_print(name_str, msgpack_get_obj_name(name_str));
+    profile->name = msgpack_strdup(name_str);
+
+    hash_str = msgpack_get_map_value(profiles_array_map, "hash");
+    if(NULL == hash_str)
+        hash_str = msgpack_get_map_value(profiles_array_map, "VersionHash");
+    msgpack_print(hash_str, msgpack_get_obj_name(hash_str));
+    profile->hash = msgpack_strdup(hash_str);
+
+    value_map = msgpack_get_map_value(profiles_array_map, "value");
+
+    Protocol_str = msgpack_get_map_value(value_map, "Protocol");
+    msgpack_print(Protocol_str, msgpack_get_obj_name(Protocol_str));
+    profile->protocol = msgpack_strdup(Protocol_str);
+    if (0 == msgpack_strcmp(Protocol_str, "HTTP")) {
+	profile->t2HTTPDest = (T2HTTP *) malloc(sizeof(T2HTTP));
+	if(NULL == profile->t2HTTPDest) {
+	    free(profile->name);
+	    free(profile->hash);
+	    free(profile);
+	    T2Error("Malloc error exiting: can not allocate memory to create profile->t2HTTPDest \n");
+	    return T2ERROR_MEMALLOC_FAILED;
+	}
+    }
+
+    EncodingType_str = msgpack_get_map_value(value_map, "EncodingType");
+    msgpack_print(EncodingType_str, msgpack_get_obj_name(EncodingType_str));
+    profile->encodingType = msgpack_strdup(EncodingType_str);
+    if (0 == msgpack_strcmp(EncodingType_str, "JSON")) {
+	profile->jsonEncoding = (JSONEncoding *) malloc(sizeof(JSONEncoding));
+	if(NULL == profile->jsonEncoding) {
+	    free(profile->name);
+	    free(profile->hash);
+	    free(profile->t2HTTPDest);
+	    free(profile);
+	    T2Error("Malloc error exiting: can not allocate memory to create profile->jsonEncoding \n");
+	    return T2ERROR_MEMALLOC_FAILED;
+	}
+    }
+
+    Description_str = msgpack_get_map_value(value_map, "Description");
+    msgpack_print(Description_str, msgpack_get_obj_name(Description_str));
+    profile->Description = msgpack_strdup(Description_str);
+
+    Version_str = msgpack_get_map_value(value_map, "Version");
+    msgpack_print(Version_str, msgpack_get_obj_name(Version_str));
+    profile->version = msgpack_strdup(Version_str);
+
+    profile->activationTimeoutPeriod = INFINITE_TIMEOUT;
+    profile->generateNow = false;
+
+    GenerateNow_boolean = msgpack_get_map_value(value_map, "GenerateNow");
+    msgpack_print(GenerateNow_boolean, msgpack_get_obj_name(GenerateNow_boolean));
+    MSGPACK_GET_NUMBER(GenerateNow_boolean, profile->generateNow);
+    T2Debug("profile->generateNow: %u\n", profile->generateNow);
+    if (profile->generateNow) {
+	profile->reportingInterval = 0;
+    } else {
+
+	ReportingInterval_u64 = msgpack_get_map_value(value_map, "ReportingInterval");
+	msgpack_print(ReportingInterval_u64, msgpack_get_obj_name(ReportingInterval_u64));
+	MSGPACK_GET_NUMBER(ReportingInterval_u64, profile->reportingInterval);
+	T2Debug("profile->reportingInterval: %u\n", profile->reportingInterval);
+
+	ActivationTimeout_u64 = msgpack_get_map_value(value_map, "ActivationTimeout");
+	msgpack_print(ActivationTimeout_u64, msgpack_get_obj_name(ActivationTimeout_u64));
+	MSGPACK_GET_NUMBER(ActivationTimeout_u64, profile->activationTimeoutPeriod);
+	T2Debug("profile->activationTimeoutPeriod: %u\n", profile->activationTimeoutPeriod);
+    }
+
+    TimeReference_str = msgpack_get_map_value(value_map, "TimeReference");
+    msgpack_print(TimeReference_str, msgpack_get_obj_name(TimeReference_str));
+    /* profile->timeRef = msgpack_strdup(TimeReference_str); */
+    /* MUST TODO: Seems timeref is an unsigned int in profile structure. */
+    /* Handle the scenario accordingly */
+
+    /* Parameter Markers configuration */
+    Vector_Create(&profile->paramList);
+    Vector_Create(&profile->staticParamList);
+    Vector_Create(&profile->eMarkerList);
+    Vector_Create(&profile->gMarkerList);
+    Vector_Create(&profile->cachedReportList);
+
+    Parameter_array = msgpack_get_map_value(value_map, "Parameter");
+    int profileParamCount = 0;
+    MSGPACK_GET_ARRAY_SIZE(Parameter_array, Parameter_array_size);
+    for (i = 0; i < Parameter_array_size; i++) {
+
+	char* paramtype;
+	char* use;
+	char* header;
+	char* content;
+	char* logfile;
+	bool reportEmpty;
+	int skipFrequency;
+
+	header = NULL;
+	content = NULL;
+	logfile = NULL;
+	skipFrequency = 0;
+	paramtype = NULL;
+	use = NULL;
+	reportEmpty = false;
+
+	Parameter_array_map = msgpack_get_array_element(Parameter_array, i);
+
+	Parameter_type_str = msgpack_get_map_value(Parameter_array_map, "type");
+	if (NULL == Parameter_type_str)
+	    /*TODO:Confirm if type is not configured. For now avoid corresponding marker*/
+	    continue;
+	msgpack_print(Parameter_type_str, msgpack_get_obj_name(Parameter_type_str));
+	paramtype = msgpack_strdup(Parameter_type_str);
+
+	Parameter_use_str = msgpack_get_map_value(Parameter_array_map, "use");
+	msgpack_print(Parameter_use_str, msgpack_get_obj_name(Parameter_use_str));
+	use = msgpack_strdup(Parameter_use_str);
+
+	Parameter_reportEmpty_boolean = msgpack_get_map_value(Parameter_array_map, "reportEmpty");
+	msgpack_print(Parameter_reportEmpty_boolean, msgpack_get_obj_name(Parameter_reportEmpty_boolean));
+	MSGPACK_GET_NUMBER(Parameter_reportEmpty_boolean, reportEmpty);
+	T2Debug("reportEmpty: %u\n", reportEmpty);
+
+	if (0 == msgpack_strcmp(Parameter_type_str, "dataModel")) {
+
+	    Parameter_name_str = msgpack_get_map_value(Parameter_array_map, "name");
+	    msgpack_print(Parameter_name_str, msgpack_get_obj_name(Parameter_name_str));
+	    header = msgpack_strdup(Parameter_name_str);
+
+	    Parameter_reference_str = msgpack_get_map_value(Parameter_array_map, "reference");
+	    msgpack_print(Parameter_reference_str, msgpack_get_obj_name(Parameter_reference_str));
+	    content = msgpack_strdup(Parameter_reference_str);
+
+	    if (NULL == header)
+		header = msgpack_strdup(Parameter_reference_str);
+
+	} else if (0 == msgpack_strcmp(Parameter_type_str, "event")) {
+
+	    Parameter_name_str = msgpack_get_map_value(Parameter_array_map, "name");
+	    msgpack_print(Parameter_name_str, msgpack_get_obj_name(Parameter_name_str));
+	    logfile = msgpack_strdup(Parameter_name_str);
+
+	    Parameter_eventName_str = msgpack_get_map_value(Parameter_array_map, "eventName");
+	    msgpack_print(Parameter_eventName_str, msgpack_get_obj_name(Parameter_eventName_str));
+	    header = msgpack_strdup(Parameter_eventName_str);
+
+	    Parameter_component_str = msgpack_get_map_value(Parameter_array_map, "component");
+	    msgpack_print(Parameter_component_str, msgpack_get_obj_name(Parameter_component_str));
+	    content = msgpack_strdup(Parameter_component_str);
+
+	} else if (0 == msgpack_strcmp(Parameter_type_str, "grep")) {
+
+	    Parameter_marker_str = msgpack_get_map_value(Parameter_array_map, "marker");
+	    msgpack_print(Parameter_marker_str, msgpack_get_obj_name(Parameter_marker_str));
+	    header = msgpack_strdup(Parameter_marker_str);
+
+	    Parameter_search_str = msgpack_get_map_value(Parameter_array_map, "search");
+	    msgpack_print(Parameter_search_str, msgpack_get_obj_name(Parameter_search_str));
+	    content = msgpack_strdup(Parameter_search_str);
+
+	    Parameter_logFile_str = msgpack_get_map_value(Parameter_array_map, "logFile");
+	    msgpack_print(Parameter_logFile_str, msgpack_get_obj_name(Parameter_logFile_str));
+	    logfile = msgpack_strdup(Parameter_logFile_str);
+
+	}
+	ret = addParameter(profile, header, content, logfile, skipFrequency, paramtype, use, reportEmpty);
+	/* Add Multiple Report Profile Parameter */
+	if(T2ERROR_SUCCESS != ret) {
+	    T2Error("%s Error in adding parameter to profile %s \n", __FUNCTION__, profile->name);
+	} else {
+	    T2Debug("Added parameter:%s \n", header);
+	    profileParamCount++;
+	}
+	free(header);
+	free(content);
+	free(logfile);
+	free(use);
+	free(paramtype);
+    }
+    T2Debug("Added parameter count:%d \n", profileParamCount);
+
+    HTTP_map = msgpack_get_map_value(value_map, "HTTP");
+
+    URL_str = msgpack_get_map_value(HTTP_map, "URL");
+    msgpack_print(URL_str, msgpack_get_obj_name(URL_str));
+    profile->t2HTTPDest->URL = msgpack_strdup(URL_str);
+
+    Compression_str = msgpack_get_map_value(HTTP_map, "Compression");
+    msgpack_print(Compression_str, msgpack_get_obj_name(Compression_str));
+    profile->t2HTTPDest->Compression = COMP_NONE; /*in 1911_sprint default none*/
+
+    Method_str = msgpack_get_map_value(HTTP_map, "Method");
+    msgpack_print(Method_str, msgpack_get_obj_name(Method_str));
+    profile->t2HTTPDest->Method = HTTP_POST; /*1911_sprint default to POST */
+
+    Vector_Create(&(profile->t2HTTPDest->RequestURIparamList));
+    RequestURIParameter_array = msgpack_get_map_value(HTTP_map, "RequestURIParameter");
+    int httpParamCount = 0;
+    MSGPACK_GET_ARRAY_SIZE(RequestURIParameter_array, RequestURIParameter_array_size);
+    for ( i = 0; i < RequestURIParameter_array_size; i++) {
+	char* href;
+	char* hname;
+	int httpret = 0;
+
+	href = NULL;
+	hname = NULL;
+	RequestURIParameter_array_map = msgpack_get_array_element(RequestURIParameter_array, i);
+
+	RequestURIParameter_Reference_str = msgpack_get_map_value(RequestURIParameter_array_map,
+								  "Reference");
+	msgpack_print(RequestURIParameter_Reference_str,
+		      msgpack_get_obj_name(RequestURIParameter_Reference_str));
+	href = msgpack_strdup(RequestURIParameter_Reference_str);
+
+	RequestURIParameter_Name_str = msgpack_get_map_value(RequestURIParameter_array_map, "Name");
+	msgpack_print(RequestURIParameter_Name_str, msgpack_get_obj_name(RequestURIParameter_Name_str));
+	hname = msgpack_strdup(RequestURIParameter_Name_str);
+	if(NULL == hname)
+	    hname = msgpack_strdup(RequestURIParameter_Reference_str);
+
+	httpret = addhttpURIreqParameter(profile, hname, href);
+	if(T2ERROR_SUCCESS != httpret) {
+	    T2Error("%s Error in adding request URIparameterReference: %s for the profile: %s \n",
+		    __FUNCTION__, href, profile->name);
+	} else {
+	    T2Debug("Added  request URIparameterReference: %s \n", href);
+	    httpParamCount++;
+	}
+	free(href);
+	free(hname);
+    }
+    T2Debug("Added URI parameter count:%d \n", httpParamCount);
+
+    JSONEncoding_map = msgpack_get_map_value(value_map, "JSONEncoding");
+
+    ReportFormat_str = msgpack_get_map_value(JSONEncoding_map, "ReportFormat");
+    msgpack_print(ReportFormat_str, msgpack_get_obj_name(ReportFormat_str));
+    if(0 == msgpack_strcmp(ReportFormat_str, "NameValuePair")) {
+	profile->jsonEncoding->reportFormat = JSONRF_KEYVALUEPAIR;
+    }else if(0 == msgpack_strcmp(ReportFormat_str, "ObjectHierarchy")) {
+	profile->jsonEncoding->reportFormat = JSONRF_OBJHIERARCHY;
+    }else { /* defaulting it to NameValuePair */
+	profile->jsonEncoding->reportFormat = JSONRF_KEYVALUEPAIR;
+    }
+
+    ReportTimestamp_str = msgpack_get_map_value(JSONEncoding_map, "ReportTimestamp");
+    msgpack_print(ReportTimestamp_str, msgpack_get_obj_name(ReportTimestamp_str));
+    if(0 == msgpack_strcmp(ReportTimestamp_str, "None")) {
+	profile->jsonEncoding->tsFormat = TIMESTAMP_NONE;
+    }else if(0 == msgpack_strcmp(ReportTimestamp_str, "Unix-Epoch")) {
+	profile->jsonEncoding->tsFormat = TIMESTAMP_UNIXEPOCH;
+    }else if(0 == msgpack_strcmp(ReportTimestamp_str, "ISO-8601")) {
+	profile->jsonEncoding->tsFormat = TIMESTAMP_ISO_8601;
+    }else {/*default value for profile->jsonEncoding->tsFormat is None */
+	profile->jsonEncoding->tsFormat = TIMESTAMP_NONE;
+    }
+
+    *profile_dp = profile;
+    T2Debug("%s --out\n", __FUNCTION__);
+    return T2ERROR_SUCCESS;
+}

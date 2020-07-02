@@ -62,6 +62,7 @@
 #include "telemetry2_0.h"
 #include "t2log_wrapper.h"
 #include "datamodel.h"
+#include "ansc_platform.h"
 
 /***********************************************************************
 
@@ -93,13 +94,29 @@ ULONG Telemetry_GetParamStringValue(ANSC_HANDLE hInsContext, char* ParamName, ch
         *pUlSize = strlen(pMyObject->JsonBlob);
         return 0;
     }
+
+    if(AnscEqualString(ParamName, "ReportProfilesMsgPack", TRUE))
+    {
+        if (pMyObject->MsgpackBlob == NULL)
+            return 0;
+
+        if(*pUlSize < strlen(pMyObject->MsgpackBlob))
+        {
+            *pUlSize = strlen(pMyObject->MsgpackBlob);
+            return 1;
+        }
+
+        AnscCopyString(pValue, pMyObject->MsgpackBlob);
+        *pUlSize = strlen(pMyObject->MsgpackBlob);
+        return 0;
+    }
+   
     return -1;
 }
 
 BOOL Telemetry_SetParamStringValue(ANSC_HANDLE hInsContext, char* ParamName, char* pString)
 {
     PCOSA_DATAMODEL_TELEMETRY pMyObject = (PCOSA_DATAMODEL_TELEMETRY) g_pCosaBEManager->hTelemetry;
-
     if(AnscEqualString(ParamName, "ReportProfiles", TRUE))
     {
         if(T2ERROR_SUCCESS != datamodel_processProfile(pString))
@@ -119,5 +136,32 @@ BOOL Telemetry_SetParamStringValue(ANSC_HANDLE hInsContext, char* ParamName, cha
 
         return TRUE;
     }
+
+    if(AnscEqualString(ParamName, "ReportProfilesMsgPack", TRUE))
+    {
+        char *webConfigString  = NULL;
+        int stringSize = 0;
+	if(pString != NULL)
+	{
+ 		webConfigString = AnscBase64Decode(pString, &stringSize);
+	}
+        if(T2ERROR_SUCCESS != datamodel_MsgpackProcessProfile(webConfigString,stringSize))
+        {
+        	return FALSE;
+        }
+
+        if (pMyObject->MsgpackBlob != NULL)
+        {
+            AnscFreeMemory((ANSC_HANDLE) (pMyObject->MsgpackBlob));
+            pMyObject->MsgpackBlob = NULL;
+        }
+
+        pMyObject->MsgpackBlob = (char *)AnscAllocateMemory( AnscSizeOfString(pString) + 1 );
+        strncpy(pMyObject->MsgpackBlob, pString, strlen(pString));
+        pMyObject->MsgpackBlob[strlen(pString)] = '\0';
+	
+        return TRUE;
+    }
+
     return FALSE;
 }

@@ -24,6 +24,10 @@
 #include <cjson/cJSON.h>
 #include "telemetry2_0.h"
 
+//Including Webconfig Framework For Telemetry 2.0 As part of RDKB-28897
+#include "webconfig_framework.h"
+#include "webconfig_err.h"
+
 #define MIN_REPORT_INTERVAL     10
 #define MAX_BULKDATA_PROFILES    10
 #define MAX_PARAM_REFERENCES    100
@@ -80,5 +84,40 @@ T2ERROR ReportProfiles_uninit();
 void ReportProfiles_ProcessReportProfilesBlob(cJSON *profiles_root);
 
 void ReportProfiles_Interrupt();
+
+/* MSGPACK Declarations */
+
+struct __msgpack__
+{
+    char *msgpack_blob;
+    int msgpack_blob_size;
+};
+
+#define msgpack_get_obj_name(obj) #obj
+
+#define MSGPACK_GET_ARRAY_SIZE(obj, item)		\
+    if (obj && MSGPACK_OBJECT_ARRAY == obj->type)	\
+        item = obj->via.array.size
+
+#define MSGPACK_GET_U64(obj, item)				     \
+    if (NULL != obj && MSGPACK_OBJECT_POSITIVE_INTEGER == obj->type) \
+        item = obj->via.u64
+
+#define MSGPACK_GET_BOOLEAN(obj, item)					\
+    if (NULL != obj && MSGPACK_OBJECT_BOOLEAN == obj->type)		\
+        item = obj->via.boolean
+
+#define MSGPACK_GET_NUMBER(obj, item) do {				\
+    if(NULL == obj)							\
+	; /* Do nothing if obj is NULL*/				\
+    else if (MSGPACK_OBJECT_BOOLEAN == obj->type)			\
+	item = obj->via.boolean;					\
+    else if (MSGPACK_OBJECT_POSITIVE_INTEGER == obj->type)		\
+	item = obj->via.u64;						\
+    else if (MSGPACK_OBJECT_NEGATIVE_INTEGER == obj->type)		\
+	item = obj->via.i64;						\
+    else if (MSGPACK_OBJECT_FLOAT == obj->type)				\
+	item = obj->via.f64;						\
+    } while(0)
 
 #endif /* _BULKDATA_H_ */

@@ -32,6 +32,7 @@ libt2parser_la_CPPFLAGS = -fPIC -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/dbus-1.
                                 -I${top_srcdir}/source/reportgen \
                                 -I${top_srcdir}/source/ccspinterface \
                                 -I${top_srcdir}/source/utils
-                                
+
 libt2parser_la_DEPENDENCIES = ${top_builddir}/source/ccspinterface/libccspinterface.la ${top_builddir}/source/utils/libutils.la
 
+libt2parser_la_LDFLAGS = -lmsgpackc

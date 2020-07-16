@@ -16,7 +16,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 ##########################################################################
-SUBDIRS = utils ccspinterface t2parser xconf-client protocol reportgen scheduler dcautil commonlib bulkdata interChipHelper t2dm
+SUBDIRS = utils ccspinterface t2parser xconf-client protocol reportgen scheduler dcautil commonlib bulkdata interChipHelper
+
+if ENABLE_CCSP_SUPPORT
+SUBDIRS += t2dm
+endif
 
 AM_CFLAGS = -D_ANSC_LINUX
 AM_CFLAGS += -D_ANSC_USER
@@ -28,12 +32,11 @@ ACLOCAL_AMFLAGS = -I m4
 hardware_platform = i686-linux-gnu
 
 bin_PROGRAMS = telemetry2_0
-telemetry2_0_SOURCES = telemetry2_0.c t2ssp/ssp_main.c t2ssp/ssp_action.c t2ssp/ssp_messagebus_interface.c  t2ssp/dm_pack_datamodel.c
+telemetry2_0_SOURCES = telemetry2_0.c
 telemetry2_0_CFLAGS = -DFEATURE_SUPPORT_RDKLOG
 telemetry2_0_CPPFLAGS = -fPIC -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/dbus-1.0 \
                                 -I${PKG_CONFIG_SYSROOT_DIR}$(libdir)/dbus-1.0/include \
                                 -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/ \
-                                -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/ccsp \
                                 -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/rbus \
                                 -I${top_srcdir}/include \
                                 -I${top_srcdir}/source/utils \
@@ -46,9 +49,14 @@ telemetry2_0_CPPFLAGS = -fPIC -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/dbus-1.0 
                                 -I${top_srcdir}/source/t2parser \
                                 -I${top_srcdir}/source/utils \
                                 -I${top_srcdir}/source/xconf-client \
-                                -I${top_srcdir}/source/interChipHelper \
-                                -I${top_srcdir}/source/t2ssp
-telemetry2_0_LDFLAGS = -lrdkloggers -lccsp_common -lcjson -lwebconfig_framework
+                                -I${top_srcdir}/source/interChipHelper
+telemetry2_0_LDFLAGS = -lrdkloggers -lcjson
+if ENABLE_CCSP_SUPPORT
+telemetry2_0_LDFLAGS+=-lccsp_common -lwebconfig_framework
+telemetry2_0_SOURCES += t2ssp/ssp_main.c t2ssp/ssp_action.c t2ssp/ssp_messagebus_interface.c t2ssp/dm_pack_datamodel.c
+telemetry2_0_CPPFLAGS += -I${top_srcdir}/source/t2ssp \
+                                -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/ccsp
+endif
 telemetry2_0_LDADD = ${top_builddir}/source/utils/libutils.la ${top_builddir}/source/dcautil/libdcautil.la \
                   ${top_builddir}/source/bulkdata/libbulkdata.la ${top_builddir}/source/ccspinterface/libccspinterface.la \
                   ${top_builddir}/source/reportgen/libreportgen.la ${top_builddir}/source/scheduler/libscheduler.la \

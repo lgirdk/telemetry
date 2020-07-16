@@ -110,7 +110,11 @@ static T2ERROR initJSONReportXconf(cJSON** jsonObj, cJSON **valArray)
 
     arrayItem = cJSON_CreateObject();
     // Requirement from field triage to be a fixed string instead of actual profile name .
+#if defined(ENABLE_RDKB_SUPPORT)
     cJSON_AddStringToObject(arrayItem, "Profile", "RDKB");
+#else
+    cJSON_AddStringToObject(arrayItem, "Profile", "RDKV");
+#endif
     cJSON_AddItemToArray(*valArray, arrayItem);
 
     getTimeStamp(&currenTime);
@@ -151,7 +155,6 @@ static void* CollectAndReportXconf(void* data)
         {
             T2Error("Failed to initialize JSON Report\n");
             profile->reportInProgress = false;
-            pthread_detach(pthread_self());
             return NULL;
         }
         else
@@ -204,7 +207,6 @@ static void* CollectAndReportXconf(void* data)
                 Vector_PushBack(profile->cachedReportList, strdup(jsonReport));
 
                 profile->reportInProgress = false;
-                pthread_detach(pthread_self());
                 T2Debug("%s --out\n", __FUNCTION__);
                 return NULL;
             }
@@ -258,7 +260,6 @@ static void* CollectAndReportXconf(void* data)
     }
 
     profile->reportInProgress = false;
-    pthread_detach(pthread_self());
     T2Debug("%s --out\n", __FUNCTION__);
     return NULL;
 }

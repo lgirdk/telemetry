@@ -57,6 +57,7 @@
 
 static bool isDebugEnabled = true;
 
+#if defined(FEATURE_SUPPORT_WEBCONFIG)
 uint32_t getTelemetryBlobVersion(char* subdoc)
 {
     T2Debug("Inside getTelemetryBlobVersion subdoc %s \n",subdoc);
@@ -130,7 +131,7 @@ int tele_web_config_init()
     T2Debug("Called register_sub_docs Succussfully \n");
     return 0;
 }
-
+#endif // CCSP_SUPPORT_ENABLED
 
 T2ERROR initTelemetry()
 {
@@ -280,6 +281,7 @@ static void t2DaemonMainModeInit( ) {
 
     T2Info("Telemetry 2.0 Component Init Success\n");
 //Calling Webconfig Init
+#if defined(FEATURE_SUPPORT_WEBCONFIG)
    if(tele_web_config_init() !=0)
    {
 	T2Error("Failed to intilize tele_web_config_init \n");
@@ -288,6 +290,7 @@ static void t2DaemonMainModeInit( ) {
    {
 	T2Debug("tele_web_config_init Successful\n");
    }
+#endif
 //Web Config Framework init ends
 
     while(1) {

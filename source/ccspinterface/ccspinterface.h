@@ -17,6 +17,8 @@
  * limitations under the License.
 */
 
+#if defined(CCSP_SUPPORT_ENABLED)
+
 #ifndef _CCSPINTERFACE_H_
 #define _CCSPINTERFACE_H_
 
@@ -36,3 +38,4 @@ Vector* getCCSPProfileParamValues(Vector *paramList);
 T2ERROR registerCcspT2EventListener(TelemetryEventCallback eventCB);
 
 #endif
+#endif // CCSP_SUPPORT_ENABLED 

@@ -23,8 +23,14 @@
 #include "telemetry2_0.h"
 #include "vector.h"
 
+#if defined(ENABLE_RDKB_SUPPORT)
 #define XCONFPROFILE_PERSISTENCE_PATH "/nvram/.t2persistentfolder/"
 #define REPORTPROFILES_PERSISTENCE_PATH "/nvram/.t2reportprofiles/"
+#else
+#define XCONFPROFILE_PERSISTENCE_PATH "/opt/.t2persistentfolder/"
+#define REPORTPROFILES_PERSISTENCE_PATH "/opt/.t2reportprofiles/"
+#endif
+
 #define MSGPACK_REPORTPROFILES_PERSISTENT_FILE "profiles.msgpack"
 #define REPORTPROFILES_FILE_PATH_SIZE 256
 

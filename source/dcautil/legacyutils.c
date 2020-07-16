@@ -17,8 +17,14 @@
  * limitations under the License.
  */
 
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+
 #include "t2log_wrapper.h"
 #include "legacyutils.h"
+#include "vector.h"
+#include "dcautil.h"
 
 #define EC_BUF_LEN 20
 
@@ -224,7 +230,7 @@ T2ERROR updateLogSeek(hash_map_t *logSeekMap, char* logFileName) {
  * @return  Returns status of operation.
  * @retval  Return 1 on success.
  */
-int getLoadAvg( ) {
+int getLoadAvg(Vector* grepResultList) {
     T2Debug("%s ++in \n", __FUNCTION__);
     FILE *fp;
     char str[LEN + 1];
@@ -241,7 +247,14 @@ int getLoadAvg( ) {
     fclose(fp);
     str[LEN] = '\0';
 
-    addToSearchResult("Load_Average", str);
+    if(grepResultList != NULL) {
+        GrepResult* loadAvg = (GrepResult*) malloc(sizeof(GrepResult));
+        if(loadAvg) {
+            loadAvg->markerName = strdup("Load_Average");
+            loadAvg->markerValue = strdup(str);
+            Vector_PushBack(grepResultList, loadAvg);
+        }
+    }
     T2Debug("%s --out \n", __FUNCTION__);
     return 1;
 }

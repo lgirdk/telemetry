@@ -31,7 +31,9 @@
 #include "profile.h"
 #include "profilexconf.h"
 #include "t2eventreceiver.h"
+#if defined(CCSP_SUPPORT_ENABLED)
 #include "t2_custom.h"
+#endif
 #include "scheduler.h"
 #include "t2markers.h"
 #include "datamodel.h"
@@ -171,7 +173,10 @@ T2ERROR ReportProfiles_addReportProfile(Profile *profile) {
 }
 
 T2ERROR ReportProfiles_deleteProfile(const char* profileName) {
+    
+    bool is_profile_enable = false;
     T2Debug("%s ++in\n", __FUNCTION__);
+    is_profile_enable = isProfileEnabled(profileName);
 
     if(T2ERROR_SUCCESS != deleteProfile(profileName))
     {
@@ -179,18 +184,19 @@ T2ERROR ReportProfiles_deleteProfile(const char* profileName) {
         T2Debug("%s --out\n", __FUNCTION__);
         return T2ERROR_FAILURE;
     }
+    if(is_profile_enable == true)
+    {
+        T2ER_StopDispatchThread();
+        clearT2MarkerComponentMap();
 
-    T2ER_StopDispatchThread();
+        if(ProfileXConf_isSet())
+            ProfileXConf_updateMarkerComponentMap();
+        updateMarkerComponentMap();
 
-    clearT2MarkerComponentMap();
-
-    if(ProfileXConf_isSet())
-        ProfileXConf_updateMarkerComponentMap();
-    updateMarkerComponentMap();
-
-    /* Restart DispatchThread */
-    if (ProfileXConf_isSet() || getProfileCount() > 0)
-        T2ER_StartDispatchThread();
+        /* Restart DispatchThread */
+        if (ProfileXConf_isSet() || getProfileCount() > 0)
+            T2ER_StartDispatchThread();
+     }
 
     T2Debug("%s --out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;
@@ -233,17 +239,22 @@ T2ERROR initReportProfiles()
     T2ER_Init();
 
     ProfileXConf_init();
-    if(T2ERROR_SUCCESS == getParameterValue(T2_VERSION_DATAMODEL_PARAM, &t2Version) && !strcmp(t2Version, "2.0.1")) {
+    if(T2ERROR_SUCCESS == getParameterValue(T2_VERSION_DATAMODEL_PARAM, &t2Version) && !strcmp(t2Version, "2.0.1") ) {
         T2Debug("T2 Version = %s\n", t2Version);
         initProfileList();
         free(t2Version);
         // Init datamodel processing thread
         if (T2ERROR_SUCCESS == datamodel_init())
         {
-            if(isRbusEnabled()) {
+#if defined(CCSP_SUPPORT_ENABLED)
+            if(isRbusEnabled())
+#endif
+            {
                 T2Debug("Enabling datamodel for report profiles in RBUS mode \n");
                 regDEforProfileDataModel(datamodel_processProfile);
-            }else {
+            }
+#if defined(CCSP_SUPPORT_ENABLED)
+            else {
                 // Register TR-181 DM for T2.0
                 T2Debug("Enabling datamodel for report profiles in DBUS mode \n");
                 if(0 != initTR181_dm()) {
@@ -251,6 +262,7 @@ T2ERROR initReportProfiles()
                     datamodel_unInit();
                 }
             }
+#endif
         }
         else
         {
@@ -260,6 +272,7 @@ T2ERROR initReportProfiles()
     }
 
     if(ProfileXConf_isSet() || getProfileCount() > 0) {
+
         if(isRbusEnabled())
             createComponentDataElements();
         T2ER_StartDispatchThread();
@@ -283,8 +296,10 @@ T2ERROR ReportProfiles_uninit( ) {
     uninitScheduler();
 
     if(t2Version && !strcmp(t2Version, "2.0.1")) {
+#if defined(CCSP_SUPPORT_ENABLED)
         // Unregister TR-181 DM
         unInitTR181_dm();
+#endif
 
         // Stop datamodel processing thread;
         datamodel_unInit();
@@ -429,6 +444,7 @@ void ReportProfiles_ProcessReportProfilesBlob(cJSON *profiles_root) {
     // Delete profiles not present in the new profile list
     char *profileNameKey = NULL;
     int count = hash_map_count(profileHashMap) - 1;
+
     bool rm_flag = false;
     while(count >= 0) {
         profileNameKey = hash_map_lookupKey(profileHashMap, count--);
@@ -510,6 +526,7 @@ void ReportProfiles_ProcessReportProfilesBlob(cJSON *profiles_root) {
     return;
 }
 
+#if defined(FEATURE_SUPPORT_WEBCONFIG)
 pErr Process_Telemetry_WebConfigRequest(void *Data)
 {
      T2Info("FILE:%s\t FUNCTION:%s\t LINE:%d\n", __FILE__, __FUNCTION__, __LINE__);
@@ -756,3 +773,4 @@ int __ReportProfiles_ProcessReportProfilesMsgPackBlob(void *msgpack)
     T2Debug("%s --out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;
 }
+#endif

@@ -20,6 +20,10 @@
 #ifndef _TELEMETRY2_0_H_
 #define _TELEMETRY2_0_H_
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define COMPONENT_NAME        "telemetry2_0"
 
 // Data elements provided by telemetry 2.0
@@ -47,5 +51,9 @@ typedef enum
 #define T2_CACHE_FILE    "/tmp/t2_caching_file"
 #define T2_ATOM_CACHE_FILE    "/tmp/t2_atom_caching_file"
 #define T2_CACHE_LOCK_FILE    "/tmp/t2_lock_file"
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* _TELEMETRY2_0_H_ */

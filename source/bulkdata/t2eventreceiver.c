@@ -39,6 +39,7 @@ static bool stopDispatchThread = true;
 static pthread_t erThread;
 static pthread_mutex_t erMutex;
 static pthread_cond_t erCond;
+static pthread_mutex_t sTDMutex;
 
 void freeT2Event(void *data)
 {
@@ -203,6 +204,7 @@ T2ERROR T2ER_Init()
         return T2ERROR_FAILURE;
     }
 
+    pthread_mutex_init(&sTDMutex, NULL);
     pthread_mutex_init(&erMutex, NULL);
     pthread_cond_init(&erCond, NULL);
 
@@ -227,14 +229,17 @@ T2ERROR T2ER_Init()
 T2ERROR T2ER_StartDispatchThread()
 {
     T2Debug("%s ++in\n", __FUNCTION__);
+    pthread_mutex_lock(&sTDMutex); 
     if(!EREnabled || !stopDispatchThread)
     {
         T2Info("T2ER isn't initialized or dispatch thread is already running\n");
+        pthread_mutex_unlock(&sTDMutex);
         return T2ERROR_FAILURE;
     }
     stopDispatchThread = false;
     pthread_create(&erThread, NULL, T2ER_EventDispatchThread, NULL);
-
+ 
+    pthread_mutex_unlock(&sTDMutex);
     T2Debug("%s --out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;
 }
@@ -290,12 +295,15 @@ static T2ERROR flushCacheFromFile(void)
 T2ERROR T2ER_StopDispatchThread()
 {
     T2Debug("%s ++in\n", __FUNCTION__);
+    pthread_mutex_lock(&sTDMutex);
     if(!EREnabled || stopDispatchThread)
     {
         T2Info("T2ER isn't initialized or dispatch thread isn't running\n");
+        pthread_mutex_unlock(&sTDMutex);
         return T2ERROR_FAILURE;
     }
     stopDispatchThread = true;
+    
 
     pthread_mutex_lock(&erMutex);
     pthread_cond_signal(&erCond);
@@ -303,6 +311,7 @@ T2ERROR T2ER_StopDispatchThread()
 
     pthread_join(erThread, NULL);
     flushCacheFromFile();
+    pthread_mutex_unlock(&sTDMutex);
     T2Debug("%s --out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;
 }
@@ -319,7 +328,10 @@ void T2ER_Uninit()
 
     if(!stopDispatchThread)
     {
+        pthread_mutex_lock(&sTDMutex);
         stopDispatchThread = true;
+        pthread_mutex_unlock(&sTDMutex);
+    
         pthread_mutex_lock(&erMutex);
         pthread_cond_signal(&erCond);
         pthread_mutex_unlock(&erMutex);
@@ -327,6 +339,7 @@ void T2ER_Uninit()
         pthread_join(erThread, NULL);
 
         pthread_mutex_destroy(&erMutex);
+        pthread_mutex_destroy(&sTDMutex);
         pthread_cond_destroy(&erCond);
     }
     T2Debug("T2ER Event Dispatch Thread successfully terminated\n");

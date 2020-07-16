@@ -69,7 +69,7 @@ static void rBusInterface_Uninit( ) {
 
 T2ERROR getRbusParameterVal(const char* paramName, char **paramValue) {
     T2Debug("%s ++in \n", __FUNCTION__);
-
+    
     rbusError_t ret = RBUS_ERROR_SUCCESS;
     rbusValue_t paramValue_t;
     rbusValueType_t rbusValueType ;

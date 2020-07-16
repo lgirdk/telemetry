@@ -36,6 +36,7 @@
 #include <stdbool.h>
 
 #include "t2collection.h"
+#include "vector.h"
 #include "telemetry2_0.h"
 #include "cJSON.h"
 
@@ -63,7 +64,7 @@ extern cJSON *SEARCH_RESULT_JSON;
 extern cJSON *ROOT_JSON;
 
 /* utility functions */
-int getLoadAvg(void);
+int getLoadAvg(Vector* grepResultList);
 
 
 void removeProfileFromSeekMap(char *profileName);
@@ -92,7 +93,7 @@ void addToSearchResult(char *key, char *value);
 
 void clearSearchResultJson(cJSON **root);
 
-int getProcUsage(char *processName);
+int getProcUsage(char *processName, Vector* grepResultList );
 
 bool isPropsInitialized();
 

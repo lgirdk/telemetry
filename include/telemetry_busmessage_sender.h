@@ -25,6 +25,11 @@
 
 #include <unistd.h>
 #include <fcntl.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include "telemetry2_0.h"
 #define MESSAGE_DELIMITER "<#=#>"
 #define DELIMITER_LEN 5
@@ -73,5 +78,9 @@ T2ERROR t2_event_d(char* marker, int value);
  *               
  */
 void t2_uninit(void);
+
+#ifdef __cplusplus
+}
 #endif
 
+#endif

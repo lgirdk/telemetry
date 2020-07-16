@@ -23,7 +23,11 @@
 
 #include "t2log_wrapper.h"
 #include "busInterface.h"
+
+#if defined(CCSP_SUPPORT_ENABLED)
 #include "ccspinterface.h"
+#endif
+
 #include "rbusInterface.h"
 
 static bool isRbus = false ;
@@ -60,8 +64,10 @@ T2ERROR getParameterValue(const char* paramName, char **paramValue)
 
     if(isRbus)
         ret = getRbusParameterVal(paramName,paramValue);
+#if defined(CCSP_SUPPORT_ENABLED)
     else
         ret = getCCSPParamVal(paramName, paramValue);
+#endif
 
     T2Debug("%s --out \n", __FUNCTION__);
     return ret;
@@ -76,8 +82,10 @@ Vector* getProfileParameterValues(Vector *paramList)
 
     if(isRbus)
     	profileValueList = getRbusProfileParamValues(paramList);
+#if defined(CCSP_SUPPORT_ENABLED)
     else
         profileValueList = getCCSPProfileParamValues(paramList);
+#endif
 
     T2Debug("%s --Out\n", __FUNCTION__);
     return profileValueList;
@@ -113,11 +121,16 @@ T2ERROR registerForTelemetryEvents(TelemetryEventCallback eventCB)
     if(!isBusInit)
         busInit();
 
-    if (isRbus) {
+    if (isRbus) 
+    {
     	ret = registerRbusT2EventListener(eventCB);
-    } else {
+    }
+#if defined(CCSP_SUPPORT_ENABLED) 
+    else {
     	ret = registerCcspT2EventListener(eventCB);
     }
+#endif
+
     T2Debug("%s --out\n", __FUNCTION__);
     return ret;
 }

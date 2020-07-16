@@ -30,7 +30,14 @@
 #define DEFAULT_XCONF_URL "https://xconf.xcal.tv/loguploader/getSettings"
 
 #define DEVICE_PROPERTIES                           "/etc/device.properties"
+
 #define TR181_DEVICE_MODEL                          "Device.DeviceInfo.ModelName"
+#define TR181_DEVICE_PARTNER_ID                     "Device.DeviceInfo.X_RDKCENTRAL-COM_Syndication.PartnerId"
+#define TR181_DEVICE_ACCOUNT_ID                     "Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.AccountInfo.AccountID"
+#define TR181_CONFIG_URL                            "Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.Telemetry.ConfigURL"
+
+#if defined(ENABLE_RDKB_SUPPORT)
+
 #define TR181_DEVICE_FW_VERSION                     "Device.DeviceInfo.SoftwareVersion"
 #define TR181_DEVICE_UPTIME                         "Device.DeviceInfo.UpTime"
 #define TR181_DEVICE_WAN_MAC                        "Device.DeviceInfo.X_COMCAST-COM_WAN_MAC"
@@ -38,9 +45,23 @@
 #define TR181_DEVICE_WAN_IPv6                       "Device.DeviceInfo.X_COMCAST-COM_WAN_IPv6"
 #define TR181_DEVICE_CM_MAC                         "Device.DeviceInfo.X_COMCAST-COM_CM_MAC"
 #define TR181_DEVICE_CM_IP                          "Device.DeviceInfo.X_COMCAST-COM_CM_IP"
-#define TR181_DEVICE_PARTNER_ID                     "Device.DeviceInfo.X_RDKCENTRAL-COM_Syndication.PartnerId"
-#define TR181_DEVICE_ACCOUNT_ID                     "Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.AccountInfo.AccountID"
-#define TR181_CONFIG_URL                            "Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.Telemetry.ConfigURL"
+
+#else // ENABLE_RDKB_SUPPORT
+
+#define TR181_DEVICE_FW_VERSION                     "Device.DeviceInfo.X_COMCAST-COM_FirmwareFilename"
+#define TR181_DEVICE_UPTIME                         "Device.DeviceInfo.UpTime"
+#define TR181_DEVICE_WAN_MAC                        "Device.DeviceInfo.X_COMCAST-COM_STB_MAC"
+#define TR181_DEVICE_WAN_IPv4                       "Device.DeviceInfo.X_COMCAST-COM_STB_IP"
+#define TR181_DEVICE_WAN_IPv6                       "Device.DeviceInfo.X_COMCAST-COM_STB_IP"
+#define TR181_DEVICE_CM_MAC                         "Device.DeviceInfo.X_COMCAST-COM_STB_IP"
+#define TR181_DEVICE_CM_IP                          "Device.DeviceInfo.X_COMCAST-COM_STB_IP"
+#define TR181_DEVICE_RECEIVER_ID                    "Device.X_COMCAST-COM_Xcalibur.Client.XRE.xreReceiverId"
+
+#endif // ENABLE_RDKB_SUPPORT
+
+
+
+
 
 #define MODEL_MAX_LENGTH                            64
 #define FW_VERSION_MAX_LENGTH                       128

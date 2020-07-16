@@ -586,6 +586,25 @@ T2ERROR deleteAllProfiles(void) {
     return T2ERROR_SUCCESS;
 }
 
+bool isProfileEnabled(const char *profileName)
+{
+     bool is_profile_enable = false; 
+     Profile *get_profile = NULL;
+     pthread_mutex_lock(&plMutex);
+     if(T2ERROR_SUCCESS != getProfile(profileName, &get_profile))
+     {
+         T2Error("Profile : %s not found\n", profileName);
+         T2Debug("%s --out\n", __FUNCTION__);
+         pthread_mutex_unlock(&plMutex);
+         return false;
+     }
+     is_profile_enable = get_profile->enable;
+     T2Debug("is_profile_enable = %d \n",is_profile_enable);
+     pthread_mutex_unlock(&plMutex);
+     return is_profile_enable;
+}
+
+
 T2ERROR deleteProfile(const char *profileName)
 {
     T2Debug("%s ++in\n", __FUNCTION__);
@@ -606,12 +625,7 @@ T2ERROR deleteProfile(const char *profileName)
 
     if(profile->enable)
         profile->enable = false;
-    else
-    {
-        T2Error("Profile is disabled, ignoring the delete profile request\n");
-        pthread_mutex_unlock(&plMutex);
-        return T2ERROR_SUCCESS;
-    }
+    
     pthread_mutex_unlock(&plMutex);
     if(T2ERROR_SUCCESS != unregisterProfileFromScheduler(profileName))
     {
@@ -657,7 +671,7 @@ void sendLogUploadInterruptToScheduler()
 
 static void loadReportProfilesFromDisk()
 {
-
+#if defined(FEATURE_SUPPORT_WEBCONFIG)
     T2Info("loadReportProfilesFromDisk \n");
     char filePath[REPORTPROFILES_FILE_PATH_SIZE] = {'\0'};
     snprintf(filePath, sizeof(filePath), "%s%s", REPORTPROFILES_PERSISTENCE_PATH, MSGPACK_REPORTPROFILES_PERSISTENT_FILE);
@@ -697,6 +711,7 @@ static void loadReportProfilesFromDisk()
         }
     }
     T2Info("JSON: loadReportProfilesFromDisk \n");
+#endif
 	
     int configIndex = 0;
     Vector *configList = NULL;

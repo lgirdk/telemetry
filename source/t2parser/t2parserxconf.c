@@ -203,8 +203,13 @@ T2ERROR processConfigurationXConf(char* configData, ProfileXConf **localProfile)
     Vector_Create(&profile->cachedReportList);
 
     addParameter(profile, "mac", TR181_DEVICE_WAN_MAC, NULL, -1);
+#if defined(ENABLE_RDKB_SUPPORT)
     addParameter(profile, "erouterIpv4", TR181_DEVICE_WAN_IPv4, NULL, -1);
     addParameter(profile, "erouterIpv6", TR181_DEVICE_WAN_IPv6, NULL, -1);
+#else
+    addParameter(profile, "StbIp", TR181_DEVICE_WAN_IPv6, NULL, -1);
+   addParameter(profile, "receiverId", TR181_DEVICE_RECEIVER_ID, NULL, -1);
+#endif
     addParameter(profile, "PartnerId", TR181_DEVICE_PARTNER_ID, NULL, -1);
     addParameter(profile, "Version", TR181_DEVICE_FW_VERSION, NULL, -1);
     addParameter(profile, "AccountId", TR181_DEVICE_ACCOUNT_ID, NULL, -1);

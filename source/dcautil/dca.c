@@ -68,7 +68,7 @@ static pthread_mutex_t dcaMutex = PTHREAD_MUTEX_INITIALIZER;
  *  @return  Returns the status of the operation.
  *  @retval  Returns zero on success, appropriate errorcode otherwise.
  */
-int processTopPattern(char *logfile, GList *pchead, int pcIndex) {
+int processTopPattern(char *logfile, GList *pchead, int pcIndex, Vector* grepResultList) {
     T2Debug("%s ++in\n", __FUNCTION__);
     GList *tlist = pchead;
     pcdata_t *tmp = NULL;
@@ -76,12 +76,12 @@ int processTopPattern(char *logfile, GList *pchead, int pcIndex) {
         tmp = tlist->data;
         if(NULL != tmp) {
             if((NULL != tmp->header) && (NULL != strstr(tmp->header, "Load_Average"))) {
-                if(0 == getLoadAvg()) {
+                if(0 == getLoadAvg(grepResultList)) {
                     T2Debug("getLoadAvg() Failed with error");
                 }
             }else {
                 if(NULL != tmp->pattern) {
-                    getProcUsage(tmp->pattern);
+                    getProcUsage(tmp->pattern, grepResultList);
                 }
             }
         }
@@ -493,7 +493,9 @@ static int processPattern(char **prev_file, char *logfile, GList **rdkec_head, G
         // Process
         if(NULL != pchead) {
             if(0 == strcmp(logfile, "top_log.txt")) {
-                processTopPattern(logfile, pchead, pcIndex);
+                if(grepResultList != NULL) {
+                    processTopPattern(logfile, pchead, pcIndex, grepResultList);
+                }
             }else if(0 == strcmp(logfile, "<message_bus>")) {
                 processTr181Objects(logfile, pchead, pcIndex);
                 if (grepResultList != NULL) {

@@ -25,8 +25,10 @@
 #include "telemetry2_0.h"
 
 //Including Webconfig Framework For Telemetry 2.0 As part of RDKB-28897
+#if defined(FEATURE_SUPPORT_WEBCONFIG)
 #include "webconfig_framework.h"
 #include "webconfig_err.h"
+#endif
 
 #define MIN_REPORT_INTERVAL     10
 #define MAX_PARAM_REFERENCES    100

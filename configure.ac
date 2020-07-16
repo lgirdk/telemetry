@@ -31,10 +31,10 @@ AC_CONFIG_SRCDIR([source/protocol])
 AC_CONFIG_SRCDIR([source/interChipHelper])
 AC_CONFIG_SRCDIR([source/protocol/http])
 AC_CONFIG_SRCDIR([source/dcautil])
-AC_CONFIG_SRCDIR([source/t2dm])
 AC_CONFIG_SRCDIR([source/testApp])
 AM_INIT_AUTOMAKE([foreign no-dist-gzip dist-bzip2 1.9])
 LT_INIT
+
 
 dnl Checks for programs.
 AC_PROG_CXX
@@ -66,6 +66,21 @@ PKG_CHECK_MODULES([GLIB], [glib-2.0 >= 2.24.0])
 ENABLE_TESTS=false
 AM_CONDITIONAL([ENABLE_TESTS], [test x$ENABLE_TESTS = xtrue])
 
+ENABLE_CCSP_SUPPORT=false
+AC_ARG_ENABLE([ccspsupport],
+              AS_HELP_STRING([--enable-ccspsupport],[enable ccsp support (default is no)]),
+              [
+                case "${enableval}" in
+                 yes) ENABLE_CCSP_SUPPORT=true;;
+                  no) AC_MSG_ERROR([ccsp support is disabled]) ;;
+                   *) AC_MSG_ERROR([bad value ${enableval} for --enable-ccspsupport]) ;;
+                esac
+              ],
+              [echo "ccsp support is disabled"])
+
+AM_CONDITIONAL([ENABLE_CCSP_SUPPORT], [test x$ENABLE_CCSP_SUPPORT = xtrue])
+
+
 AC_CONFIG_FILES([Makefile
                  source/Makefile
                  source/bulkdata/Makefile
@@ -79,7 +94,10 @@ AC_CONFIG_FILES([Makefile
                  source/interChipHelper/Makefile
                  source/protocol/Makefile
                  source/dcautil/Makefile
-                 source/t2dm/Makefile
                  source/testApp/Makefile
                  source/protocol/http/Makefile])
+
+AM_COND_IF([ENABLE_CCSP_SUPPORT], [AC_CONFIG_FILES([source/t2dm/Makefile])])
+AM_COND_IF([ENABLE_CCSP_SUPPORT], [AC_CONFIG_SRCDIR([source/t2dm])])
+
 AC_OUTPUT

@@ -34,8 +34,10 @@ libbulkdata_la_CPPFLAGS = -fPIC -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/dbus-1.
                                 -I${top_srcdir}/include \
                                 -I${top_srcdir}/source/ccspinterface \
                                 -I${top_srcdir}/source/interChipHelper \
-                                -I${top_srcdir}/source/xconf-client \
-                                -I${top_srcdir}/source/t2ssp \
+                                -I${top_srcdir}/source/xconf-client
+if ENABLE_CCSP_SUPPORT
+libbulkdata_la_CPPFLAGS += -I${top_srcdir}/source/t2ssp \
                                 -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/ccsp
+endif
 
 libbulkdata_la_DEPENDENCIES = ${top_builddir}/source/utils/libutils.la ${top_builddir}/source/dcautil/libdcautil.la ${top_builddir}/source/protocol/http/libhttp.la ${top_builddir}/source/ccspinterface/libccspinterface.la ${top_builddir}/source/reportgen/libreportgen.la ${top_builddir}/source/scheduler/libscheduler.la

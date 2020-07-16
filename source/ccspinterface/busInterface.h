@@ -23,7 +23,7 @@
 #include <vector.h>
 #include "telemetry2_0.h"
 
-
+#if defined(CCSP_SUPPORT_ENABLED)
 #define CCSP_DBUS_INTERFACE_CR     "com.cisco.spvtg.ccsp.CR"
 
 #ifdef _COSA_INTEL_USG_ATOM_
@@ -31,6 +31,7 @@
 #else
 #define CCSP_COMPONENT_ID          "eRT.com.cisco.spvtg.ccsp.telemetry"
 #endif
+#endif // CCSP_SUPPORT_ENABLED 
 
 typedef struct
 {

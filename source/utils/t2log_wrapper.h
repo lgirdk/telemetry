@@ -20,15 +20,21 @@
 #ifndef  _CCSP_T2LOG_WRPPER_H_
 #define  _CCSP_T2LOG_WRPPER_H_
 
-#include <ccsp/ccsp_trace.h>
+#include "rdk_debug.h"
 
 #define DEBUG_INI_NAME  "/etc/debug.ini"
+
+#if defined(ENABLE_RDKB_SUPPORT)
 #define ENABLE_DEBUG_FLAG "/nvram/enable_t2_debug"
+#else
+#define ENABLE_DEBUG_FLAG "/opt/enable_t2_debug"
+#endif
 
 #define T2Error(...)                   T2Log(RDK_LOG_ERROR, __VA_ARGS__)
 #define T2Info(...)                    T2Log(RDK_LOG_INFO, __VA_ARGS__)
 #define T2Warning(...)                 T2Log(RDK_LOG_WARN, __VA_ARGS__)
 #define T2Debug(...)                   T2Log(RDK_LOG_DEBUG, __VA_ARGS__)
+
 
 void LOGInit();
 

@@ -94,6 +94,7 @@ static T2ERROR setHeader(CURL *curl, const char* destURL, struct curl_slist **he
        T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
     }
 
+#if defined(ENABLE_RDKB_SUPPORT)
     if(getAddressType(INTERFACE) == ADDR_UNKNOWN)
     {
         T2Error("Unknown Address Type - returning failure\n");
@@ -105,7 +106,7 @@ static T2ERROR setHeader(CURL *curl, const char* destURL, struct curl_slist **he
         curl_easy_setopt(curl, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V6);
 
     curl_easy_setopt(curl, CURLOPT_INTERFACE, INTERFACE);
-
+#endif
     *headerList = curl_slist_append(NULL, "Accept: application/json");
     curl_slist_append(*headerList, "Content-type: application/json");
 

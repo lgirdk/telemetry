@@ -303,10 +303,12 @@ static T2ERROR doHttpGet(char* httpsUrl, char **data) {
          curl_easy_setopt(curl, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V6);
  */
 
+#if defined(ENABLE_RDKB_SUPPORT)
         code = curl_easy_setopt(curl, CURLOPT_INTERFACE, IFINTERFACE);
         if(code != CURLE_OK){
            T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
         }
+#endif      
         //TODO - Introduce retry
         //TODO - configparamgen C APIs
 
@@ -380,6 +382,7 @@ static T2ERROR getRemoteConfigURL(char **configURL) {
     T2Debug("%s ++in\n", __FUNCTION__);
 
     char *paramVal = NULL;
+
     if (T2ERROR_SUCCESS == getParameterValue(TR181_CONFIG_URL, &paramVal)) {
         if (NULL != paramVal) {
             if ((strlen(paramVal) > 8) && (0 == strncmp(paramVal,"https://", 8))) {  // Enforcing https for new endpoints
@@ -398,7 +401,7 @@ static T2ERROR getRemoteConfigURL(char **configURL) {
         ret = T2ERROR_FAILURE ;
     }
     T2Debug("%s --out\n", __FUNCTION__);
-    return ret;
+    return ret; 
 }
 
 static void* getUpdatedConfigurationThread(void *data)

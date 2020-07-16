@@ -23,6 +23,7 @@
 #include <sys/stat.h>
 #include <stdlib.h>
 #include <string.h>
+#include <fcntl.h>
 
 #include "persistence.h"
 #include "t2log_wrapper.h"

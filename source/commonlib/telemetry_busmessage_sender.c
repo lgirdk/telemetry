@@ -24,9 +24,11 @@
 #include <stdlib.h>
 #include <string.h>
 
+#if defined(CCSP_SUPPORT_ENABLED)
 #include <ccsp/ccsp_memory.h>
 #include <ccsp/ccsp_custom.h>
 #include <ccsp/ccsp_base_api.h>
+#endif
 #include <rbus/rbus.h>
 
 #include "telemetry_busmessage_sender.h"
@@ -41,6 +43,7 @@
 #define T2_SCRIPT_EVENT_COMPONENT "telemetry_client"
 
 static const char* CCSP_FIXED_COMP_ID = "com.cisco.spvtg.ccsp.t2commonlib" ;
+
 static char *componentName = NULL;
 static void *bus_handle = NULL;
 static const char* RFC_T2_ENABLE_PARAM = "Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.Telemetry.Enable" ;
@@ -58,6 +61,7 @@ pthread_mutex_t dMutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t FileCacheMutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t markerListMutex = PTHREAD_MUTEX_INITIALIZER;
 
+#if defined(CCSP_SUPPORT_ENABLED)
 T2ERROR getParamValues(char **paramNames, const int paramNamesCount, parameterValStruct_t ***valStructs, int *valSize)
 {
     if (paramNames == NULL || paramNamesCount <= 0) {
@@ -96,6 +100,7 @@ static T2ERROR getCCSPParamVal(const char* paramName, char **paramValue)
     freeParamValue(valStructs, valSize);
     return T2ERROR_SUCCESS;
 }
+#endif
 
 
 static void rBusInterface_Uninit( ) {
@@ -106,10 +111,13 @@ static T2ERROR initMessageBus( ) {
     // EVENT_DEBUG("%s ++in\n", __FUNCTION__);
     T2ERROR status = T2ERROR_SUCCESS;
     char* component_id = CCSP_FIXED_COMP_ID;
+#if defined(CCSP_SUPPORT_ENABLED)
     char *pCfg = CCSP_MSG_BUS_CFG;
+#endif
     char *rbusSettings = NULL;
 
-    if(RBUS_ENABLED == rbus_checkStatus()) {
+    if(RBUS_ENABLED == rbus_checkStatus())
+    {
         // EVENT_DEBUG("%s:%d, T2:rbus is enabled\n", __func__, __LINE__);
         char commonLibName[124] = { '\0' };
         // Bus handles should be unique across the system
@@ -124,7 +132,9 @@ static T2ERROR initMessageBus( ) {
             status = T2ERROR_FAILURE;
         }
         isRbusEnabled = true;
-    } else {
+    }
+#if defined(CCSP_SUPPORT_ENABLED) 
+    else {
         int ret = 0 ;
         ret = CCSP_Message_Bus_Init(component_id, pCfg, &bus_handle, Ansc_AllocateMemory_Callback, Ansc_FreeMemory_Callback);
         if(ret == -1) {
@@ -134,12 +144,13 @@ static T2ERROR initMessageBus( ) {
             status = T2ERROR_SUCCESS ;
         }
     }
+#endif // CCSP_SUPPORT_ENABLED 
     // EVENT_DEBUG("%s --out\n", __FUNCTION__);
     return status;
 }
 
 static T2ERROR getRbusParameterVal(const char* paramName, char **paramValue) {
-
+  
     rbusError_t ret = RBUS_ERROR_SUCCESS;
     rbusValue_t paramValue_t;
     rbusValueType_t rbusValueType ;
@@ -178,8 +189,10 @@ T2ERROR getParamValue(const char* paramName, char **paramValue)
     T2ERROR ret = T2ERROR_FAILURE ;
     if(isRbusEnabled)
         ret = getRbusParameterVal(paramName,paramValue);
+#if defined(CCSP_SUPPORT_ENABLED)
     else
         ret = getCCSPParamVal(paramName, paramValue);
+#endif
 
     return ret;
 }
@@ -237,7 +250,7 @@ static bool initRFC( ) {
         }
     }
     if((getParamStatus == false) && bus_handle) {
-        if(T2ERROR_SUCCESS == getParamValue(RFC_T2_ENABLE_PARAM, &paramValue)) {
+        if(T2ERROR_SUCCESS == getParamValue(RFC_T2_ENABLE_PARAM, &paramValue) ) {
             if(paramValue != NULL && (strncasecmp(paramValue, "true", 4) == 0)) {
                 isRFCT2Enable = true;
             }
@@ -265,7 +278,8 @@ int filtered_event_send(const char* data, char *markerName) {
         return ret;
     }
 
-    if(isRbusEnabled) {
+    if(isRbusEnabled)
+    {
         // Filter data from marker list
         pthread_mutex_lock(&markerListMutex);
         if(componentName && (0 != strcmp(componentName, T2_SCRIPT_EVENT_COMPONENT))) { // Events from scripts needs to be sent without filtering
@@ -311,7 +325,9 @@ int filtered_event_send(const char* data, char *markerName) {
         rbusProperty_Release(objProperty);
         rbusValue_Release(objVal);
 
-    } else {
+    }
+#if defined(CCSP_SUPPORT_ENABLED)
+    else {
         int markerNameLen = strlen(markerName);
         int dataLen = strlen(data);
         int eventDataLen = strlen(markerName) + strlen(data) + DELIMITER_LEN + 1;
@@ -327,6 +343,7 @@ int filtered_event_send(const char* data, char *markerName) {
             status = -1 ;
         }
     }
+#endif // CCSP_SUPPORT_ENABLED 
     //EVENT_DEBUG("%s --out with status %d \n", __FUNCTION__, status);
     return status;
 }

@@ -94,4 +94,6 @@ void sendLogUploadInterruptToScheduler();
 
 void NotifyTimeout(const char* profileName, bool isClearSeekMap);
 
+bool isProfileEnabled(const char *profileName);
+
 #endif /* _PROFILE_H_ */

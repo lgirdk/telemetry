@@ -45,6 +45,9 @@
 #define MEM_STRING_SIZE 20
 #define PROC_PATH_SIZE 50
 
+#include "vector.h"
+#include "dcautil.h"
+
 #include "legacyutils.h"
 #include "t2log_wrapper.h"
 
@@ -89,9 +92,10 @@ int getCPUInfo(procMemCpuInfo *pInfo);
  * @return  Returns status of operation.
  * @retval  0 on sucess, appropiate errorcode otherwise.
  */
-int getProcUsage(char *processName) {
+int getProcUsage(char *processName, Vector* grepResultList) {
     T2Debug("%s ++in \n", __FUNCTION__);
     if(processName != NULL) {
+    	T2Debug("Process name is %s \n", processName);
         procMemCpuInfo pInfo;
         char pidofCommand[PIDOF_SIZE];
         FILE *cmdPid;
@@ -105,6 +109,7 @@ int getProcUsage(char *processName) {
         memcpy(pInfo.processName, processName, strlen(processName) + 1);
 
         snprintf(pidofCommand, sizeof(pidofCommand), "pidof %s", processName);
+        T2Debug("Command for collecting process info : \n %s \n", pidofCommand);
         if(!(cmdPid = popen(pidofCommand, "r"))) {
             T2Debug("Failed to execute %s", pidofCommand);
             return 0;
@@ -147,11 +152,23 @@ int getProcUsage(char *processName) {
             cpu_key = malloc(pname_prefix_len);
             if(NULL != mem_key && NULL != cpu_key) {
                 snprintf(cpu_key, pname_prefix_len, "cpu_%s", processName);
-
                 snprintf(mem_key, pname_prefix_len, "mem_%s", processName);
  
-                addToSearchResult(mem_key, pInfo.memUse);
-                addToSearchResult(cpu_key, pInfo.cpuUse);
+                T2Debug("Add to search result %s , value = %s , %s \n",cpu_key,  pInfo.cpuUse, pInfo.memUse);
+                GrepResult* cpuInfo = (GrepResult*) malloc(sizeof(GrepResult));
+                if(cpuInfo) {
+                    cpuInfo->markerName = strdup(cpu_key);
+                    cpuInfo->markerValue = strdup(pInfo.cpuUse);
+                    Vector_PushBack(grepResultList, cpuInfo);
+                }
+
+                GrepResult* memInfo = (GrepResult*) malloc(sizeof(GrepResult));
+                if(memInfo) {
+                    memInfo->markerName = strdup(mem_key);
+                    memInfo->markerValue = strdup(pInfo.memUse);
+                    Vector_PushBack(grepResultList, memInfo);
+                }
+
                 ret = 1;
             }
 

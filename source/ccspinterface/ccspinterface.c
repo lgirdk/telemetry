@@ -17,6 +17,7 @@
  * limitations under the License.
 */
 
+
 #include <stdbool.h>
 #include <syslog.h>
 #include <ccsp/ansc_platform.h>
@@ -312,3 +313,4 @@ T2ERROR unregisterCcspT2EventListener()
 {
     return T2ERROR_SUCCESS;
 }
+

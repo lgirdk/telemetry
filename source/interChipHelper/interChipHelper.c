@@ -30,6 +30,7 @@
 #include <unistd.h>
 #include <sys/inotify.h>
 #include <cjson/cJSON.h>
+#include <fcntl.h>
 
 #include "interChipHelper.h"
 

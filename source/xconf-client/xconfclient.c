@@ -20,6 +20,10 @@
 #include <string.h>
 #include <stdlib.h>
 #include <sys/time.h>
+#include <net/if.h>
+#include <ifaddrs.h>
+#include <stdbool.h>
+#include <curl/curl.h>
 
 #include "t2log_wrapper.h"
 #include "reportprofiles.h"
@@ -33,6 +37,7 @@
 #define RFC_RETRY_TIMEOUT 60
 #define XCONF_RETRY_TIMEOUT 180
 #define MAX_XCONF_RETRY_COUNT 5
+#define IFINTERFACE      "erouter0"
 
 static const int MAX_URL_LEN = 1024;
 static const int MAX_URL_ARG_LEN = 128;
@@ -44,6 +49,35 @@ static bool fetchRemoteConfigComplete = false;
 static pthread_t xcrThread;
 static pthread_mutex_t xcMutex;
 static pthread_cond_t xcCond;
+
+typedef enum _IFADDRESS_TYPE
+{
+    ADDR_UNKNOWN,
+    ADDR_IPV4,
+    ADDR_IPV6
+}IFADDRESS_TYPE;
+
+static IFADDRESS_TYPE getAddressType(const char *cif) {
+    struct ifaddrs *ifap, *ifa;
+    IFADDRESS_TYPE addressType = 0;
+
+    getifaddrs(&ifap);
+    for (ifa = ifap; ifa; ifa = ifa->ifa_next) {
+        if (ifa->ifa_name == NULL || strcmp(ifa->ifa_name, cif))
+            continue;
+
+        if (ifa->ifa_addr->sa_family == AF_INET)
+            addressType = ADDR_IPV4;
+        else
+            addressType = ADDR_IPV6;
+
+        break;
+    }
+
+    freeifaddrs(ifap);
+    return addressType;
+}
+
 
 static T2ERROR getBuildType(char* buildType) {
     char fileContent[255] = { '\0' };
@@ -233,8 +267,23 @@ static T2ERROR doHttpGet(char* httpsUrl, char **data) {
         curl_easy_setopt(curl, CURLOPT_TIMEOUT, 30L);
         curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, httpGetCallBack);
         curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void * ) httpResponse);
+        
+        // Set interface and addr type
+ /* For now, Let curl start hopping between v4/v6 address like it is there for legacy dca till STBIT-1511 gets resolved.*/
+ /*
 
-        //TODO - Set interface and addr type
+    if(getAddressType(IFINTERFACE) == ADDR_UNKNOWN)
+      {
+          T2Error("doHttpGet:: Unknown Address Type - returning failure\n");
+          return T2ERROR_FAILURE;
+     }
+     else if(getAddressType(IFINTERFACE) == ADDR_IPV4)
+         curl_easy_setopt(curl, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V4);
+     else
+         curl_easy_setopt(curl, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V6);
+ */
+
+     curl_easy_setopt(curl, CURLOPT_INTERFACE, IFINTERFACE);  
         //TODO - Introduce retry
         //TODO - configparamgen C APIs
 

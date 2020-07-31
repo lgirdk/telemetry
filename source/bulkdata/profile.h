@@ -25,6 +25,7 @@
 #include "cJSON.h"
 #include "telemetry2_0.h"
 #include "reportprofiles.h"
+#include "t2eventreceiver.h"
 #include "t2common.h"
 #include "collection.h"
 #include "vector.h"
@@ -74,6 +75,8 @@ int getProfileCount();
 
 T2ERROR profileWithNameExists(const char *profileName, bool *bProfileExists);
 
+T2ERROR Profile_storeMarkerEvent(const char *profileName, T2Event *eventInfo);
+
 T2ERROR enableProfile(const char *profileName);
 
 T2ERROR disableProfile(const char *profileName, bool *isDeleteRequired);
@@ -85,5 +88,9 @@ T2ERROR deleteAllProfiles(void);
 void updateMarkerComponentMap();
 
 hash_map_t *getProfileHashMap();
+
+void sendLogUploadInterruptToScheduler();
+
+void NotifyTimeout(const char* profileName, bool isClearSeekMap);
 
 #endif /* _PROFILE_H_ */

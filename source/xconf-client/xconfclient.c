@@ -225,6 +225,7 @@ static T2ERROR doHttpGet(char* httpsUrl, char **data) {
     httpResponse->size = 0;
 
     curl = curl_easy_init();
+
     if (curl) {
         curl_easy_setopt(curl, CURLOPT_URL, httpsUrl);
         curl_easy_setopt(curl, CURLOPT_SSLVERSION, CURL_SSLVERSION_TLSv1_2);
@@ -239,16 +240,21 @@ static T2ERROR doHttpGet(char* httpsUrl, char **data) {
 
         curl_code = curl_easy_perform(curl);
         curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
-        curl_easy_cleanup(curl);
 
         if (http_code == 200 && curl_code == CURLE_OK) {
             T2Info("%s:%d, T2:Telemetry XCONF communication success\n", __func__,
                     __LINE__);
-            *data = httpResponse->data;
+            *data = strdup(httpResponse->data);
+            free(httpResponse->data);
             free(httpResponse);
+            curl_easy_cleanup(curl);
         } else {
             T2Error("%s:%d, T2:Telemetry XCONF communication Failed with http code : %ld Curl code : %ld \n", __func__,
                     __LINE__, http_code, curl_code);
+            T2Error("%s : curl_easy_perform failed with error message %s from curl \n", __FUNCTION__, curl_easy_strerror(curl_code));
+            free(httpResponse->data);
+            free(httpResponse);
+            curl_easy_cleanup(curl);
             if(http_code == 404)
                 return T2ERROR_PROFILE_NOT_SET;
             else
@@ -263,6 +269,7 @@ static T2ERROR fetchRemoteConfiguration(char *configURL, char **configData) {
     // Handles the https communications with the xconf server
     T2ERROR ret = T2ERROR_FAILURE;
     T2Debug("%s ++in\n", __FUNCTION__);
+
     int write_size = 0, availableBufSize = MAX_URL_LEN;
     char* urlWithParams = (char*) malloc(MAX_URL_LEN * sizeof(char));
     if (NULL != urlWithParams)
@@ -286,6 +293,7 @@ static T2ERROR fetchRemoteConfiguration(char *configURL, char **configData) {
     {
         T2Error("Malloc failed\n");
     }
+    T2Debug("%s --out\n", __FUNCTION__);
     return ret;
 }
 
@@ -303,6 +311,7 @@ static T2ERROR getRemoteConfigURL(char **configURL) {
                 ret = T2ERROR_SUCCESS ;
             } else {
                 T2Error("URL doesn't start with https or is invalid !!! URL value received : %s .\n", paramVal);
+                free(paramVal);
             }
         } else {
             ret = T2ERROR_FAILURE;
@@ -363,6 +372,7 @@ static void getUpdatedConfigurationThread(void *data)
 
             if(T2ERROR_SUCCESS == processConfigurationXConf(configData, &profile))
             {
+
                 if(!ProfileXConf_isNameEqual(profile->name))
                 {
                     clearPersistenceFolder(XCONFPROFILE_PERSISTENCE_PATH);
@@ -374,6 +384,7 @@ static void getUpdatedConfigurationThread(void *data)
                     {
                         T2Error("Unable to delete existing xconf profile \n");
                     }
+
                 }
                 else
                 {
@@ -384,7 +395,7 @@ static void getUpdatedConfigurationThread(void *data)
                         T2Error("Unable to update an existing config file : %s\n", profile->name);
                     }
                     T2Debug("Disable and Delete old profile %s\n", profile->name);
-                    if(T2ERROR_SUCCESS != ReportProfiles_deleteProfileXConf(profile->cachedReportList))
+                    if(T2ERROR_SUCCESS != ReportProfiles_deleteProfileXConf(profile))
                     {
                         T2Error("Unable to delete old profile of : %s\n", profile->name);
                     }
@@ -402,15 +413,27 @@ static void getUpdatedConfigurationThread(void *data)
                 }
 
             }
+            if(configData != NULL) {
+                free(configData);
+                configData = NULL ;
+            }
             break;
         }
         else if(ret == T2ERROR_PROFILE_NOT_SET)
         {
             T2Warning("XConf Telemetry profile not set for this device, uninitProfileList.\n");
+            if(configData != NULL) {
+                free(configData);
+                configData = NULL ;
+            }
             break;
         }
         else
         {
+            if(configData != NULL) {
+                free(configData);
+                configData = NULL ;
+            }
             xConfRetryCount++;
             if(xConfRetryCount == MAX_XCONF_RETRY_COUNT)
             {
@@ -446,7 +469,11 @@ static void getUpdatedConfigurationThread(void *data)
     {
         T2Error("Failed to fetch updated configuration and no saved configurations on disk for XCONF, uninitializing  the process\n");
     }
+
+    if(configURL)
+        free(configURL);
     stopFetchRemoteConfiguration = true;
+    pthread_detach(pthread_self());
     T2Debug("%s --out\n", __FUNCTION__);
 }
 

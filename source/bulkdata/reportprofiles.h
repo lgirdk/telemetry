@@ -79,4 +79,6 @@ T2ERROR ReportProfiles_uninit();
 
 void ReportProfiles_ProcessReportProfilesBlob(cJSON *profiles_root);
 
+void ReportProfiles_Interrupt();
+
 #endif /* _BULKDATA_H_ */

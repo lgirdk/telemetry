@@ -82,6 +82,9 @@ static void freeProfileXConf()
         {
             Vector_Destroy(singleProfile->paramList, freeParam);
         }
+
+        // Data elements from this list is copied in new profile. So do not destroy the vector
+        free(singleProfile->cachedReportList);
         free(singleProfile);
         singleProfile = NULL;
     }
@@ -124,7 +127,7 @@ static T2ERROR initJSONReportXconf(cJSON** jsonObj, cJSON **valArray)
     return T2ERROR_SUCCESS;
 }
 
-static void CollectAndReport(void* data)
+static void CollectAndReportXconf(void* data)
 {
     ProfileXConf* profile = singleProfile;
 
@@ -148,6 +151,7 @@ static void CollectAndReport(void* data)
         {
             T2Error("Failed to initialize JSON Report\n");
             profile->reportInProgress = false;
+            pthread_detach(pthread_self());
             return;
         }
         else
@@ -168,6 +172,7 @@ static void CollectAndReport(void* data)
                 getGrepResults(profile->name, profile->gMarkerList, &grepResultList, profile->bClearSeekMap);
                 T2Info("Grep complete for %d markers \n", Vector_Size(profile->gMarkerList));
                 encodeGrepResultInJSON(valArray, grepResultList);
+                Vector_Destroy(grepResultList, freeGResult);
             }
             if(Vector_Size(profile->eMarkerList) > 0)
             {
@@ -199,6 +204,7 @@ static void CollectAndReport(void* data)
                 Vector_PushBack(profile->cachedReportList, jsonReport);
 
                 profile->reportInProgress = false;
+                pthread_detach(pthread_self());
                 T2Debug("%s --out\n", __FUNCTION__);
                 return;
             }
@@ -252,6 +258,7 @@ static void CollectAndReport(void* data)
     }
 
     profile->reportInProgress = false;
+    pthread_detach(pthread_self());
     T2Debug("%s --out\n", __FUNCTION__);
 }
 
@@ -392,7 +399,7 @@ void ProfileXConf_updateMarkerComponentMap()
     T2Debug("%s --out\n", __FUNCTION__);
 }
 
-T2ERROR ProfileXConf_delete(Vector *cachedReportList)
+T2ERROR ProfileXConf_delete(ProfileXConf *profile)
 {
     T2Debug("%s ++in\n", __FUNCTION__);
     if(!initialized)
@@ -408,14 +415,15 @@ T2ERROR ProfileXConf_delete(Vector *cachedReportList)
         pthread_mutex_unlock(&plMutex);
         return T2ERROR_FAILURE;
     }
-    pthread_mutex_unlock(&plMutex);
 
-    if(cachedReportList != NULL)
-    {
-        singleProfile->isUpdated = true;
-    } else {
-        if(T2ERROR_SUCCESS != unregisterProfileFromScheduler(singleProfile->name)) {
-            T2Error("Profile : %s failed to  unregister from scheduler\n", singleProfile->name);
+    pthread_mutex_unlock(&plMutex);
+    if(profile != NULL){
+        if(profile->cachedReportList != NULL) {
+            singleProfile->isUpdated = true;
+        }else {
+            if(T2ERROR_SUCCESS != unregisterProfileFromScheduler(singleProfile->name)) {
+                T2Error("Profile : %s failed to  unregister from scheduler\n", singleProfile->name);
+            }
         }
     }
 
@@ -428,15 +436,17 @@ T2ERROR ProfileXConf_delete(Vector *cachedReportList)
     }
 
     int count = Vector_Size(singleProfile->cachedReportList);
-    if(count > 0 && cachedReportList != NULL)
-    {
-        T2Info("There are %d cached reports in the profile \n", count);
-        int index = 0;
-        while(index < count)
-        {
-            Vector_PushBack(cachedReportList, (void *)Vector_At(singleProfile->cachedReportList, 0));
-            Vector_RemoveItem(singleProfile->cachedReportList, (void *)Vector_At(singleProfile->cachedReportList, 0), NULL);/*TODO why this instead of Vector_destroy*/
-            index++;
+    // Copy any cached message present in previous single profile to new profile
+    if(profile != NULL) {
+        profile->bClearSeekMap = singleProfile->bClearSeekMap ;
+        if(count > 0 && profile->cachedReportList != NULL) {
+            T2Info("There are %d cached reports in the profile \n", count);
+            int index = 0;
+            while(index < count) {
+                Vector_PushBack(profile->cachedReportList, (void *) Vector_At(singleProfile->cachedReportList, 0));
+                Vector_RemoveItem(singleProfile->cachedReportList, (void *) Vector_At(singleProfile->cachedReportList, 0), NULL);/*TODO why this instead of Vector_destroy*/
+                index++;
+            }
         }
     }
 #ifdef _COSA_INTEL_XB3_ARM_
@@ -517,7 +527,7 @@ void ProfileXConf_notifyTimeout(bool isClearSeekMap)
         if (singleProfile->reportThread)
             pthread_detach(singleProfile->reportThread);
 
-        reportThreadStatus = pthread_create(&singleProfile->reportThread, NULL, CollectAndReport, NULL);
+        reportThreadStatus = pthread_create(&singleProfile->reportThread, NULL, CollectAndReportXconf, NULL);
         if ( reportThreadStatus != 0 )
             T2Error("Failed to create report thread with error code = %d !!! \n", reportThreadStatus);
     }

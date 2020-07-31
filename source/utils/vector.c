@@ -28,6 +28,8 @@ Vector_Create(Vector** v)
   (*v) = (Vector *) malloc(sizeof(Vector));
   if (!(*v))
     return T2ERROR_MEMALLOC_FAILED;
+
+  memset((*v), 0 ,sizeof(Vector));
   (*v)->data = NULL;
   (*v)->capacity = 0;
   (*v)->count = 0;

@@ -18,6 +18,9 @@
 */
 
 #include <time.h>
+#include <stdlib.h>
+#include <string.h>
+#include <curl/curl.h>
 
 #include "reportgen.h"
 #include "t2log_wrapper.h"
@@ -33,11 +36,13 @@ void freeProfileValues(void *data)
 {
     if(data != NULL)
     {
-        profileValues *profVal = (profileValues *)data;
-        if(profVal->paramValueCount > 0)
+
+        profileValues *profVal = (profileValues *) data;
+        if(profVal) {
             freeParamValueSt(profVal->paramValues, profVal->paramValueCount);
-        free(profVal);
-        profVal = NULL;
+            free(profVal);
+            profVal = NULL;
+        }
     }
 }
 

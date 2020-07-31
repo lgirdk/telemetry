@@ -58,7 +58,6 @@ GrepSeekProfile *addToProfileSeekMap(char* profileName){
 }
 
 static void freeLogFileSeekMap(void *data) {
-    T2Debug("%s ++in\n", __FUNCTION__);
     if (data != NULL) {
         hash_element_t *element = (hash_element_t *) data;
 
@@ -74,7 +73,6 @@ static void freeLogFileSeekMap(void *data) {
         free(element);
         element = NULL;
     }
-    T2Debug("%s --out\n", __FUNCTION__);
 }
 
 static void freeGrepSeekProfile(GrepSeekProfile *gsProfile) {
@@ -433,13 +431,13 @@ void updateIncludeConfVal(char *logpath, char *perspath) {
         char props[255] = { "" };
         while(fscanf(file, "%s", props) != EOF) {
             char *property = NULL;
-            if(property = strstr(props, "PERSISTENT_PATH=")) {
+            if((property = strstr(props, "PERSISTENT_PATH="))) {
                 property = property + strlen("PERSISTENT_PATH=");
                 PERSISTENT_PATH = malloc(strlen(property) + 1);
                 if(NULL != PERSISTENT_PATH) {
                     strcpy(PERSISTENT_PATH, property);
                 }
-            }else if(property = strstr(props, "LOG_PATH=")) {
+            }else if((property = strstr(props, "LOG_PATH="))) {
                 if(0 == strncmp(props, "LOG_PATH=", strlen("LOG_PATH="))) {
                     property = property + strlen("LOG_PATH=");
                     LOG_PATH = malloc(strlen(property) + 1);

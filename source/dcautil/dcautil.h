@@ -31,6 +31,7 @@ typedef struct _GrepResult
 }GrepResult;
 
 void removeGrepConfig(char* profileName);
+void freeGResult(void *data);
 T2ERROR saveGrepConfig(char *name, Vector* grepMarkerList);
 T2ERROR getGrepResults(char* profileName, Vector *markerList, Vector **grepResultList, bool isClearSeekMap);
 

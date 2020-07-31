@@ -17,6 +17,7 @@
  * limitations under the License.
 */
 
+#include <stdlib.h>
 #include "t2common.h"
 
 void freeParam(void *data)
@@ -82,6 +83,8 @@ void freeGMarker(void *data)
             free(gMarker->logFile);
         if(gMarker->markerName)
             free(gMarker->markerName);
+        if(gMarker->searchString)
+        	free(gMarker->searchString);
         if(gMarker->paramType)
             free(gMarker->paramType);
         if(gMarker->mType == MTYPE_ABSOLUTE && gMarker->u.markerValue)

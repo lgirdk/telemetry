@@ -20,6 +20,7 @@
 #define __VECTOR_H_
 
 #include <stdio.h>
+#include <errno.h>
 #include "telemetry2_0.h"
 
 typedef struct _Vector

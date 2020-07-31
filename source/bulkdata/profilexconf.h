@@ -66,9 +66,10 @@ typedef struct _ProfileXConf
 T2ERROR ProfileXConf_init();
 T2ERROR ProfileXConf_uninit();
 T2ERROR ProfileXConf_set(ProfileXConf *profile);
-T2ERROR ProfileXConf_delete(Vector *cachedReportList);
+T2ERROR ProfileXConf_delete(ProfileXConf *profile);
 bool    ProfileXConf_isSet();
 bool    ProfileXConf_isNameEqual(char* profileName);
+void    ProfileXConf_updateMarkerComponentMap();
 void    ProfileXConf_notifyTimeout(bool isClearSeekMap);
 T2ERROR ProfileXConf_storeMarkerEvent(T2Event *eventInfo);
 char*   ProfileXconf_getName();

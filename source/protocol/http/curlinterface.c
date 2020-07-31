@@ -19,6 +19,7 @@
 
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <net/if.h>
 #include <string.h>
 #include <ifaddrs.h>
@@ -62,8 +63,7 @@ static size_t writeToFile(void *ptr, size_t size, size_t nmemb, void *stream) {
 
 static T2ERROR setHeader(CURL *curl, const char* destURL, struct curl_slist **headerList)
 {
-    struct curl_slist *headers = *headerList;
-
+    
     T2Debug("%s ++in\n", __FUNCTION__);
 
     T2Debug("%s DEST URL %s \n", __FUNCTION__, destURL);
@@ -85,10 +85,10 @@ static T2ERROR setHeader(CURL *curl, const char* destURL, struct curl_slist **he
 
     curl_easy_setopt(curl, CURLOPT_INTERFACE, INTERFACE);
 
-    headers = curl_slist_append(headers, "Accept: application/json");
-    headers = curl_slist_append(headers, "Content-type: application/json");
+    *headerList = curl_slist_append(NULL, "Accept: application/json");
+    curl_slist_append(*headerList, "Content-type: application/json");
 
-    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, *headerList);
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, writeToFile);
 
     T2Debug("%s --out\n", __FUNCTION__);
@@ -118,6 +118,7 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char* payload)
         if(setHeader(curl, httpUrl, &headerList) != T2ERROR_SUCCESS)
         {
             T2Error("Failed to Set HTTP Header\n");
+            curl_easy_cleanup(curl);
             return ret;
         }
         setPayload(curl, payload);
@@ -138,10 +139,10 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char* payload)
                 ret = T2ERROR_SUCCESS;
             }
 
-            curl_easy_cleanup(curl);
-            curl_slist_free_all(headerList);
             fclose(fp);
         }
+        curl_slist_free_all(headerList);
+        curl_easy_cleanup(curl);
     }
     else
     {

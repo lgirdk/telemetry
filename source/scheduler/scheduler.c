@@ -25,6 +25,7 @@
 #include <errno.h>
 #include <stdio.h>
 #include <stddef.h>
+#include <string.h>
 
 #include "t2log_wrapper.h"
 #include "scheduler.h"
@@ -44,6 +45,7 @@ void freeSchedulerProfile(void *data)
         free(schProfile->name);
         pthread_mutex_destroy(&schProfile->tMutex);
         pthread_cond_destroy(&schProfile->tCond);
+        pthread_detach(schProfile->tId);
         free(schProfile);
         schProfile = NULL;
     }
@@ -217,7 +219,7 @@ void uninitScheduler()
     if (!sc_initialized)
     {
         T2Info("Scheduler is not initialized yet \n");
-        return T2ERROR_SUCCESS;
+        return ;
     }
     sc_initialized = false;
 
@@ -267,6 +269,7 @@ T2ERROR registerProfileWithScheduler(const char* profileName, unsigned int timeI
             pthread_mutex_unlock(&scMutex);
             if (isSchedulerAssigned) {
                 T2Info("Scheduler already assigned for profile %s , exiting .\n", profileName );
+                T2Debug("%s --out\n", __FUNCTION__);
                 return T2ERROR_SUCCESS ;
             }
         }

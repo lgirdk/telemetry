@@ -17,6 +17,8 @@
  * limitations under the License.
 */
 
+#include <stdlib.h>
+#include <string.h>
 #include "t2markers.h"
 #include "t2eventreceiver.h"
 #include "collection.h"
@@ -66,13 +68,31 @@ T2ERROR destroyT2MarkerComponentMap()
     return T2ERROR_SUCCESS;
 }
 
+
 T2ERROR addT2EventMarker(const char* markerName, const char* compName, const char *profileName, unsigned int skipFreq)
 {
     T2Marker *t2Marker = (T2Marker *)hash_map_get(markerCompMap, markerName);
     if(t2Marker)
     {
-        T2Debug("Found a matching T2Marker, adding new profileName to profileList\n");
-        Vector_PushBack(t2Marker->profileList, (void *)strdup(profileName));
+        T2Debug("Found a matching T2Marker \n");
+        if(t2Marker->profileList) {
+            int i = 0;
+            int length = Vector_Size(t2Marker->profileList);
+            bool isPresent = false;
+            for( i = 0; i < length; ++i ) {
+                char* profNameInlist = (char *) Vector_At(t2Marker->profileList, i);
+                if(!strncmp(profileName, profNameInlist, length)) {
+                    isPresent = true;
+                    break;
+                }
+            }
+            if(isPresent != true) {
+                T2Debug("Found a matching T2Marker, adding new profileName %s to profileList or marker %s \n", profileName, markerName);
+                Vector_PushBack(t2Marker->profileList, (void *) strdup(profileName));
+            }else {
+                T2Debug("%s already present in eventlist of %s . Ignore updates \n", profileName, markerName);
+            }
+        }
     }
     else
     {
@@ -83,7 +103,6 @@ T2ERROR addT2EventMarker(const char* markerName, const char* compName, const cha
             t2Marker->componentName = strdup(compName);
             Vector_Create(&t2Marker->profileList);
             Vector_PushBack(t2Marker->profileList, (void *)strdup(profileName));
-
             hash_map_put(markerCompMap, strdup(markerName), (void *)t2Marker);
         }
         else

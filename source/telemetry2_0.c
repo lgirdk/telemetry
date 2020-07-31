@@ -26,6 +26,8 @@
 #include <sys/stat.h>
 #include <string.h>
 #include <pthread.h>
+#include <signal.h>
+#include <curl/curl.h>
 #ifdef DUAL_CORE_XB3
 #include <sys/inotify.h>
 #endif
@@ -55,7 +57,6 @@ T2ERROR initTelemetry()
     int ret = T2ERROR_FAILURE;
     T2Debug("%s ++in\n",__FUNCTION__);
 
-
     if(T2ERROR_SUCCESS == initReportProfiles())
     {
         if(T2ERROR_SUCCESS == initXConfClient())
@@ -71,6 +72,14 @@ T2ERROR initTelemetry()
 
     T2Debug("%s --out\n",__FUNCTION__);
     return ret;
+}
+
+
+static void terminate() {
+    uninitXConfClient();
+    ReportProfiles_uninit();
+    rdk_logger_deinit();
+    curl_global_cleanup();
 }
 
 static void _print_stack_backtrace(void)
@@ -132,12 +141,12 @@ void sig_handler(int sig)
         }else {
             T2Info("XCONF config reload - IN PROGRESS ... Ignore current reload request \n");
         }
+
     }
     else if ( sig == SIGTERM || sig == SIGKILL )
     {
         T2Info(("SIGTERM received!\n"));
-        uninitXConfClient();
-        ReportProfiles_uninit();
+        terminate();
         exit(0);
     }
     else if ( sig == SIGALRM )
@@ -150,8 +159,7 @@ void sig_handler(int sig)
         /* get stack trace first */
         _print_stack_backtrace();
         T2Warning("Signal %d received, exiting!\n", sig);
-        uninitXConfClient();
-        ReportProfiles_uninit();
+        terminate();
         exit(0);
     }
 }
@@ -242,6 +250,8 @@ int main(int argc, char* argv[])
     LOGInit();
 
     printf("Starting Telemetry 2.0 Process\n");
+
+    curl_global_init(CURL_GLOBAL_ALL);
     // Create child process
     process_id = fork();
     if (process_id < 0) {

@@ -77,8 +77,8 @@ static T2ERROR addGrepMarkersToMap () {
     }
 
     if (NULL != fgets(line, MAX_LINE_LEN, gMarkerFptr)) {
-        char *nameHeader = strSplit(line, DELIMITER);
-        char *nameValue = strSplit(NULL, DELIMITER);
+        char *nameHeader = (char*) strSplit(line, DELIMITER);
+        char *nameValue = (char*) strSplit(NULL, DELIMITER);
         int len = strlen(nameValue);
         if (0 == strcmp(nameHeader, "ProfileName") && len > 0) {
             if (nameValue[len - 1] == '\n')
@@ -107,11 +107,11 @@ static T2ERROR addGrepMarkersToMap () {
             line[--len] = '\0';
 
         // multiple string split
-        char *header = strSplit(line, DELIMITER);
-        char *grepPattern = strSplit(NULL, DELIMITER);
-        char *grepFile = strSplit(NULL, DELIMITER);
-        char *useProperty = strSplit(NULL, DELIMITER);
-        char *skipIntervalStr = strSplit(NULL, DELIMITER);
+        char *header = (char*) strSplit(line, DELIMITER);
+        char *grepPattern = (char*) strSplit(NULL, DELIMITER);
+        char *grepFile = (char*) strSplit(NULL, DELIMITER);
+        char *useProperty = (char*) strSplit(NULL, DELIMITER);
+        char *skipIntervalStr = (char*) strSplit(NULL, DELIMITER);
         int skipInterval, is_skip_param;
         if(NULL == grepFile || NULL == grepPattern || NULL == header || NULL == skipIntervalStr || NULL == useProperty)
             continue;

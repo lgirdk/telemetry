@@ -19,6 +19,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "t2parserxconf.h"
 #include "xconfclient.h"
@@ -53,6 +54,8 @@ static int getScheduleInSeconds(const char* cronPattern) {
             }
 
         }
+        if(input)
+            free(input);
     }
     // Convert minutes to seconds
     scheduleIntervalInSec = scheduleIntervalInMin * 60 ;
@@ -168,6 +171,7 @@ T2ERROR processConfigurationXConf(char* configData, ProfileXConf **localProfile)
     if(jprofileName == NULL || juploadUrl == NULL || jschedule == NULL || profileData == NULL || marker_count == 0)
     {
         T2Error("Incomplete profile information, unable to create profile\n");
+        cJSON_Delete(json_root);
         return T2ERROR_FAILURE;
     }
 

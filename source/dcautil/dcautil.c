@@ -31,6 +31,7 @@
 #include "telemetry2_0.h"
 #include "t2log_wrapper.h"
 #include "t2common.h"
+#include "legacyutils.h"
 
 
 #ifdef  _COSA_INTEL_XB3_ARM_

@@ -254,6 +254,7 @@ static void CollectAndReport(void* data)
             {
                 getGrepResults(profile->name, profile->gMarkerList, &grepResultList, profile->bClearSeekMap);
                 encodeGrepResultInJSON(valArray, grepResultList);
+                Vector_Destroy(grepResultList, freeGResult);
             }
             if(Vector_Size(profile->eMarkerList) > 0)
             {
@@ -329,7 +330,7 @@ void NotifyTimeout(const char* profileName, bool isClearSeekMap)
     {
         T2Error("Profile : %s not found\n", profileName);
         pthread_mutex_unlock(&plMutex);
-        return T2ERROR_FAILURE;
+        return ;
     }
 
     pthread_mutex_unlock(&plMutex);
@@ -502,6 +503,7 @@ void updateMarkerComponentMap()
         tempProfile = (Profile *)Vector_At(profileList, profileIndex);
         if(tempProfile->enable)
         {
+            T2Debug("Updating component map for profile %s \n", tempProfile->name);
             int emIndex = 0;
             EventMarker *eMarker = NULL;
             for(;emIndex < Vector_Size(tempProfile->eMarkerList); emIndex++)
@@ -629,8 +631,9 @@ T2ERROR deleteProfile(const char *profileName)
     }
 
     T2Info("Waiting for CollectAndReport to be complete : %s\n", profileName);
-    if (profile->reportThread)
+    if (profile->reportThread) {
         pthread_join(profile->reportThread, NULL);
+    }
 
     pthread_mutex_lock(&plMutex);
 
@@ -666,6 +669,7 @@ void sendLogUploadInterruptToScheduler()
 
 static void loadReportProfilesFromDisk()
 {
+
     int configIndex = 0;
     Vector *configList = NULL;
     Config *config = NULL;

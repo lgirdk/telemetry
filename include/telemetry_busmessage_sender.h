@@ -27,6 +27,8 @@
 #include <stdio.h>
 #include <stdbool.h>
 
+#include <unistd.h>
+#include <fcntl.h>
 #include "telemetry2_0.h"
 #define MESSAGE_DELIMITER "<#=#>"
 

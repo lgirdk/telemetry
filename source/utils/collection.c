@@ -245,6 +245,7 @@ void *hash_map_remove(hash_map_t *map, const char *key)
     assert(tmp == e);
     
     data = e->data;
+    free(e->key);
     free(e);
     
     return data;
@@ -353,6 +354,6 @@ void hash_map_clear(hash_map_t *map, queue_cleanup freeItem)
     }
     queue_destroy(map->queue, freeItem);
 
-    memset(map, 0, sizeof(hash_map_t));
+    realloc(map, sizeof(hash_map_t));
     map->queue = queue_create();
 }

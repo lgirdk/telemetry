@@ -20,6 +20,14 @@
 
 #include <stdbool.h>
 #include <unistd.h>
+#include <pthread.h>
+#include <stdlib.h>
+#include <string.h>
+
+#include <ccsp/ccsp_memory.h>
+#include <ccsp/ccsp_custom.h>
+#include <ccsp/ccsp_base_api.h>
+
 #include "telemetry_busmessage_sender.h"
 #include "vector.h"
 #include "telemetry2_0.h"
@@ -92,6 +100,7 @@ static int initMessageBus() {
     return ret;
 }
 
+
 static int cacheEventToFile(char* telemetry_data)
 {
 
@@ -135,6 +144,7 @@ unlock:
 
 static bool
 initRFC () {
+
     char* paramValue = NULL;
     bool status = true ;
     // Check for RFC and proceed - if true - else return now .
@@ -161,6 +171,7 @@ initRFC () {
             status = false;
         }
     }
+
     return status;
 }
 

@@ -267,11 +267,11 @@ static int addToVector(GList *pchead, Vector* grepResultList) {
         if(NULL != tmp) {
 
             if(tmp->pattern && grepResultList != NULL ) {
-                GrepResult* grepResult = (GrepResult*) malloc(sizeof(GrepResult));
                 if(tmp->d_type == OCCURENCE) {
                     if(tmp->count != 0) {
                         char tmp_str[5] = { 0 };
                         sprintf(tmp_str, "%d", tmp->count);
+                        GrepResult* grepResult = (GrepResult*) malloc(sizeof(GrepResult));
                         grepResult->markerName = strdup(tmp->header);
                         grepResult->markerValue = strdup(tmp_str);
                         T2Debug("Adding OCCURENCE to result list %s : %s \n", grepResult->markerName, grepResult->markerValue);
@@ -279,6 +279,7 @@ static int addToVector(GList *pchead, Vector* grepResultList) {
                     }
                 }else if(tmp->d_type == STR) {
                     if(NULL != tmp->data && (strcmp(tmp->data, "0") != 0)) {
+                    	GrepResult* grepResult = (GrepResult*) malloc(sizeof(GrepResult));
                         grepResult->markerName = strdup(tmp->header);
                         grepResult->markerValue = strdup(tmp->data);
                         T2Debug("Adding STR to result list %s : %s \n", grepResult->markerName, grepResult->markerValue);
@@ -451,7 +452,6 @@ static int processCountPattern(hash_map_t *logSeekMap, char *logfile, GList *pch
                 handleRDKErrCodes(rdkec_head, temp);
             }
         }
-        usleep(USLEEP_SEC);
     }
     T2Debug("%s --out\n", __FUNCTION__);
     return 0;
@@ -666,7 +666,6 @@ static int parseMarkerList(char* profileName, Vector* vMarkerList, Vector* grepR
         if(NULL != filename) {
             strcpy(filename, temp_file);
         }
-        usleep(USLEEP_SEC);
     }  // End of adding list to node
 
     if(NULL != filename) {
@@ -749,6 +748,23 @@ int getDCAResultsInVector(char* profileName, Vector* vecMarkerList, Vector** gre
     pthread_mutex_unlock(&dcaMutex);
     T2Debug("%s --out \n", __FUNCTION__);
     return rc;
+}
+
+
+void freeGResult(void *data)
+{
+    if(data != NULL)
+    {
+        GrepResult *grepResult = (GrepResult *) data;
+        if(grepResult->markerName)
+            free(grepResult->markerName);
+
+        if(grepResult->markerValue)
+            free(grepResult->markerValue);
+
+        free(grepResult);
+        grepResult = NULL;
+    }
 }
 
 /** @} */

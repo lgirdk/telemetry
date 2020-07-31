@@ -18,6 +18,7 @@
 */
 
 #include <stdlib.h>
+#include <string.h>
 
 #include "t2eventreceiver.h"
 #include "t2markers.h"
@@ -136,8 +137,8 @@ void* T2ER_EventDispatchThread(void *arg)
             else
             {
                 T2Warning("No Matching Profiles for event with MarkerName : %s Value : %s - Ignoring\n", event->name, event->value);
-                freeT2Event(event);
             }
+            freeT2Event(event);
         }
         else
         {

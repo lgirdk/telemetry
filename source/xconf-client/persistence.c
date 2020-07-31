@@ -21,6 +21,8 @@
 #include <dirent.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <stdlib.h>
+#include <string.h>
 
 #include "persistence.h"
 #include "t2log_wrapper.h"
@@ -67,8 +69,10 @@ T2ERROR fetchLocalConfigs(const char* path, Vector *configList)
             }
 
             Config *config = (Config *)malloc(sizeof(Config));
+            memset(config, 0 , sizeof(Config));
             config->name = strdup(entry->d_name);
             config->configData = (char *)malloc((filestat.st_size + 1) * sizeof(char));
+            memset( config->configData, 0, (filestat.st_size + 1 ));
             int read_size = fread(config->configData, sizeof(char), filestat.st_size, fp);
             config->configData[filestat.st_size] = '\0';
 
@@ -86,6 +90,8 @@ T2ERROR fetchLocalConfigs(const char* path, Vector *configList)
             continue;
         }
     }
+
+    closedir(dir);
     T2Info("Returning %d local configurations \n", Vector_Size(configList));
 
     T2Debug("%s --out\n", __FUNCTION__);

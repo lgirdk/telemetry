@@ -31,6 +31,9 @@
 #include "collection.h"
 #include "t2eventreceiver.h"
 #include "t2_custom.h"
+#include "scheduler.h"
+#include "t2markers.h"
+#include "datamodel.h"
 
 #define MAX_PROFILENAMES_LENGTH 2048
 #define T2_VERSION_DATAMODEL_PARAM  "Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.Telemetry.Version"
@@ -44,7 +47,6 @@ pthread_mutex_t rpMutex = PTHREAD_MUTEX_INITIALIZER;
 void ReportProfiles_Interrupt()
 {
     T2Debug("%s ++in\n", __FUNCTION__);
-
     char* xconfProfileName = NULL ;
     if (ProfileXConf_isSet()) {
         xconfProfileName = ProfileXconf_getName();
@@ -55,7 +57,6 @@ void ReportProfiles_Interrupt()
     }
 
     sendLogUploadInterruptToScheduler();
-
     T2Debug("%s --out\n", __FUNCTION__);
 }
 
@@ -133,7 +134,7 @@ T2ERROR ReportProfiles_setProfileXConf(ProfileXConf *profile) {
     return T2ERROR_SUCCESS;
 }
 
-T2ERROR ReportProfiles_deleteProfileXConf(Vector *cachedReportList) {
+T2ERROR ReportProfiles_deleteProfileXConf(ProfileXConf *profile) {
     T2Debug("%s ++in\n", __FUNCTION__);
     if(ProfileXConf_isSet()) {
         T2ER_StopDispatchThread();
@@ -142,7 +143,7 @@ T2ERROR ReportProfiles_deleteProfileXConf(Vector *cachedReportList) {
 
         updateMarkerComponentMap();
 
-        return ProfileXConf_delete(cachedReportList);
+        return ProfileXConf_delete(profile);
     }
     T2Debug("%s --out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;
@@ -268,7 +269,9 @@ T2ERROR ReportProfiles_uninit( ) {
 
     ProfileXConf_uninit();
     free(bulkdata.protocols);
+    bulkdata.protocols = NULL ;
     free(bulkdata.encodingTypes);
+    bulkdata.encodingTypes = NULL ;
 
 #ifdef _COSA_INTEL_XB3_ARM_
     execNotifier("notifyStopRunning");
@@ -422,10 +425,11 @@ void ReportProfiles_ProcessReportProfilesBlob(cJSON *profiles_root) {
         {
             if(!strcmp(existingProfileHash, profileEntry->hash)) {
                 T2Debug("%s Profile hash for %s is same as previous profile, ignore processing config\n", __FUNCTION__, profileName);
+                free(existingProfileHash);
                 continue;
             } else {
                 Profile *profile = 0;
-
+                free(existingProfileHash);
                 if(T2ERROR_SUCCESS == processConfiguration(&(profileEntry->config), profileName, profileEntry->hash, &profile)) { //CHECK if process configuration should have locking mechanism
 
                     if(T2ERROR_SUCCESS != saveConfigToFile(REPORTPROFILES_PERSISTENCE_PATH, profile->name, profileEntry->config))
@@ -467,3 +471,4 @@ void ReportProfiles_ProcessReportProfilesBlob(cJSON *profiles_root) {
     T2Debug("%s --out\n", __FUNCTION__);
     return;
 }
+

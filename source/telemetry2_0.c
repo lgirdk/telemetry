@@ -33,6 +33,7 @@
 #include <pthread.h>
 #include <signal.h>
 #include <curl/curl.h>
+#include <execinfo.h>
 #ifdef DUAL_CORE_XB3
 #include <sys/inotify.h>
 #endif

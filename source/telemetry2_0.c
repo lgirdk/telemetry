@@ -26,6 +26,7 @@
 #include <sys/stat.h>
 #include <string.h>
 #include <pthread.h>
+#include <execinfo.h>
 #ifdef DUAL_CORE_XB3
 #include <sys/inotify.h>
 #endif

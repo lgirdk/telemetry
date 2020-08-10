@@ -181,9 +181,11 @@ Vector* getRbusProfileParamValues(Vector *paramList) {
     return profileValueList;
 }
 
-rbusError_t eventSubHandler(rbusHandle_t handle, rbusEventSubAction_t action, const char* eventName, rbusEventFilter_t* filter) {
+rbusError_t eventSubHandler(rbusHandle_t handle, rbusEventSubAction_t action, const char* eventName, rbusFilter_t* filter, int interval, bool* autoPublish) {
     (void) handle;
     (void) filter;
+    (void) interval;
+    (void) autoPublish;
     T2Debug("%s ++in\n", __FUNCTION__);
     T2Info("eventSubHandler called:\n \taction=%s \teventName=%s\n", action == RBUS_EVENT_ACTION_SUBSCRIBE ? "subscribe" : "unsubscribe", eventName);
     T2Debug("%s --out\n", __FUNCTION__);

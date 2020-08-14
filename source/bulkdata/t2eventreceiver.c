@@ -157,6 +157,7 @@ void* T2ER_EventDispatchThread(void *arg)
                 continue;
             }
             pthread_mutex_unlock(&erMutex);
+            Vector_Create(&profileList);
             if(T2ERROR_SUCCESS == getMarkerProfileList(event->name, &profileList))
             {
                 T2Debug("Found matching profileIDs for event with markerName : %s value : %s\n", event->name, event->value);
@@ -166,6 +167,7 @@ void* T2ER_EventDispatchThread(void *arg)
                     T2Debug("Storing in profile : %s\n", (char *)Vector_At(profileList, index));
                     ReportProfiles_storeMarkerEvent((char *)Vector_At(profileList, index), event);
                 }
+                Vector_Destroy(profileList, free);
             }
             else
             {

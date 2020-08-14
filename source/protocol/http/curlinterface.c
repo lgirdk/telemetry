@@ -20,6 +20,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <pthread.h>
 #include <net/if.h>
 #include <string.h>
 #include <ifaddrs.h>
@@ -29,12 +30,19 @@
 #include "curlinterface.h"
 #include "t2log_wrapper.h"
 
+static pthread_once_t curlFileMutexOnce = PTHREAD_ONCE_INIT;
+static pthread_mutex_t curlFileMutex;
+
 typedef enum _ADDRESS_TYPE
 {
     ADDR_UNKNOWN,
     ADDR_IPV4,
     ADDR_IPV6
 }ADDRESS_TYPE;
+
+static void sendOverHTTPInit(){
+	pthread_mutex_init(&curlFileMutex, NULL);
+}
 
 static ADDRESS_TYPE getAddressType(const char *cif) {
     struct ifaddrs *ifap, *ifa;
@@ -142,6 +150,9 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char* payload)
         }
         setPayload(curl, payload);
 
+        pthread_once(&curlFileMutexOnce, sendOverHTTPInit);
+        pthread_mutex_lock(&curlFileMutex);
+
         fp = fopen(CURL_OUTPUT_FILE, "wb");
         if (fp) {
             curl_easy_setopt(curl, CURLOPT_WRITEDATA, fp);
@@ -162,6 +173,8 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char* payload)
         }
         curl_slist_free_all(headerList);
         curl_easy_cleanup(curl);
+
+        pthread_mutex_unlock(&curlFileMutex);
     }
     else
     {

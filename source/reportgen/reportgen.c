@@ -90,7 +90,6 @@ T2ERROR encodeParamResultInJSON(cJSON *valArray, Vector *paramNameList, Vector *
         {
             if(paramValues[0]) {
                 cJSON *arrayItem = cJSON_CreateObject();
-                T2Info("Paramter value not successfully retrieved... \n");
                 cJSON_AddStringToObject(arrayItem, param->name, paramValues[0]->parameterValue);
                 cJSON_AddItemToArray(valArray, arrayItem);
             }

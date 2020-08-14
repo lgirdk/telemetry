@@ -201,7 +201,7 @@ static void* CollectAndReportXconf(void* data)
                     Vector_RemoveItem(profile->cachedReportList, thirdCachedReport, NULL);
                     free(thirdCachedReport);
                 }
-                Vector_PushBack(profile->cachedReportList, jsonReport);
+                Vector_PushBack(profile->cachedReportList, strdup(jsonReport));
 
                 profile->reportInProgress = false;
                 pthread_detach(pthread_self());
@@ -227,7 +227,7 @@ static void* CollectAndReportXconf(void* data)
                             Vector_RemoveItem(profile->cachedReportList, thirdCachedReport, NULL);
                             free(thirdCachedReport);
                         }
-                        Vector_PushBack(profile->cachedReportList, jsonReport);
+                        Vector_PushBack(profile->cachedReportList, strdup(jsonReport));
 
                         T2Info("Report Cached, No. of reportes cached = %d\n", Vector_Size(profile->cachedReportList));
                     }
@@ -251,7 +251,7 @@ static void* CollectAndReportXconf(void* data)
     clock_gettime(CLOCK_REALTIME, &endTime);
     getLapsedTime(&elapsedTime, &endTime, &startTime);
     T2Info("Elapsed Time for : %s = %lu.%lu (Sec.NanoSec)\n", profile->name, elapsedTime.tv_sec, elapsedTime.tv_nsec);
-    if(ret == T2ERROR_SUCCESS && jsonReport)
+    if(jsonReport)
     {
         free(jsonReport);
         jsonReport = NULL;
@@ -321,6 +321,7 @@ T2ERROR ProfileXConf_uninit()
     {
         T2Debug("Waiting for final report before uninit\n");
         pthread_join(singleProfile->reportThread, NULL);
+        singleProfile->reportInProgress = false ;
         T2Info("Final report is completed, releasing profile memory\n");
     }
     freeProfileXConf();
@@ -342,7 +343,7 @@ T2ERROR ProfileXConf_set(ProfileXConf *profile)
     if(!singleProfile)
     {
         singleProfile = profile;
-
+        singleProfile->reportInProgress = false ;
         int emIndex = 0;
         EventMarker *eMarker = NULL;
         for(;emIndex < Vector_Size(singleProfile->eMarkerList); emIndex++)
@@ -392,11 +393,13 @@ void ProfileXConf_updateMarkerComponentMap()
     }
     int emIndex = 0;
     EventMarker *eMarker = NULL;
+    pthread_mutex_lock(&plMutex);
     for(;emIndex < Vector_Size(singleProfile->eMarkerList); emIndex++)
     {
         eMarker = (EventMarker *)Vector_At(singleProfile->eMarkerList, emIndex);
         addT2EventMarker(eMarker->markerName, eMarker->compName, singleProfile->name, eMarker->skipFreq);
     }
+    pthread_mutex_unlock(&plMutex);
     T2Debug("%s --out\n", __FUNCTION__);
 }
 
@@ -434,12 +437,14 @@ T2ERROR ProfileXConf_delete(ProfileXConf *profile)
     {
         T2Info("Waiting for CollectAndReport to be complete : %s\n", singleProfile->name);
         pthread_join(singleProfile->reportThread, NULL);
+        singleProfile->reportInProgress = false ;
     }
 
     int count = Vector_Size(singleProfile->cachedReportList);
     // Copy any cached message present in previous single profile to new profile
     if(profile != NULL) {
         profile->bClearSeekMap = singleProfile->bClearSeekMap ;
+        profile->reportInProgress = false ;
         if(count > 0 && profile->cachedReportList != NULL) {
             T2Info("There are %d cached reports in the profile \n", count);
             int index = 0;
@@ -556,6 +561,7 @@ T2ERROR ProfileXConf_storeMarkerEvent(T2Event *eventInfo)
 
     int eventIndex = 0;
     EventMarker *lookupEvent = NULL;
+    pthread_mutex_lock(&plMutex);
     for(; eventIndex < Vector_Size(singleProfile->eMarkerList); eventIndex++)
     {
         EventMarker *tempEventMarker = (EventMarker *)Vector_At(singleProfile->eMarkerList, eventIndex);
@@ -565,6 +571,8 @@ T2ERROR ProfileXConf_storeMarkerEvent(T2Event *eventInfo)
             break;
         }
     }
+    pthread_mutex_unlock(&plMutex);
+
     if(lookupEvent != NULL)
     {
         switch(lookupEvent->mType)

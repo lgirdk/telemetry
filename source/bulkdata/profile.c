@@ -581,8 +581,6 @@ T2ERROR deleteAllProfiles(void) {
     Vector_Create(&profileList);
     pthread_mutex_unlock(&plMutex);
 
-    clearPersistenceFolder(REPORTPROFILES_PERSISTENCE_PATH);
-
     T2Debug("%s --out\n", __FUNCTION__);
 
     return T2ERROR_SUCCESS;

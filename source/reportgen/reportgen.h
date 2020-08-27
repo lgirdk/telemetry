@@ -20,8 +20,9 @@
 #ifndef _REPORTGEN_H_
 #define _REPORTGEN_H_
 
+#include <cjson/cJSON.h>
+
 #include "vector.h"
-#include "cJSON.h"
 
 typedef struct _HTTPReqParam
 {

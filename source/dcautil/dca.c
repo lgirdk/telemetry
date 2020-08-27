@@ -26,7 +26,7 @@
 #include <ctype.h>
 
 #include <glib.h>
-#include <cJSON.h>
+#include <cjson/cJSON.h>
 
 #include "dcalist.h"
 #include "dcautil.h"

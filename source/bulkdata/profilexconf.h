@@ -22,7 +22,7 @@
 
 #include <stdbool.h>
 #include <pthread.h>
-#include "cJSON.h"
+#include <cjson/cJSON.h>
 #include "telemetry2_0.h"
 #include "reportprofiles.h"
 #include "t2common.h"

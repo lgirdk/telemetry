@@ -35,8 +35,8 @@
 #include <unistd.h>
 #include <stdbool.h>
 
+#include <cjson/cJSON.h>
 #include "telemetry2_0.h"
-#include "cJSON.h"
 #include "collection.h"
 
 

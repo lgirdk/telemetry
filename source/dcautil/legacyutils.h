@@ -34,10 +34,10 @@
 #include <string.h>
 #include <unistd.h>
 #include <stdbool.h>
+#include <cjson/cJSON.h>
 
 #include "t2collection.h"
 #include "telemetry2_0.h"
-#include "cJSON.h"
 
 
 #define MAXLINE 1024

@@ -22,9 +22,9 @@
 
 #include <stdbool.h>
 #include <pthread.h>
+#include <cjson/cJSON.h>
 
 #include "t2collection.h"
-#include "cJSON.h"
 #include "telemetry2_0.h"
 #include "reportprofiles.h"
 #include "t2eventreceiver.h"

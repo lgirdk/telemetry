@@ -217,7 +217,7 @@ void uninitScheduler()
     if (!sc_initialized)
     {
         T2Info("Scheduler is not initialized yet \n");
-        return T2ERROR_SUCCESS;
+        return /* T2ERROR_SUCCESS */;
     }
     sc_initialized = false;
 

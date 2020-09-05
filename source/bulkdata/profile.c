@@ -329,7 +329,7 @@ void NotifyTimeout(const char* profileName, bool isClearSeekMap)
     {
         T2Error("Profile : %s not found\n", profileName);
         pthread_mutex_unlock(&plMutex);
-        return T2ERROR_FAILURE;
+        return /* T2ERROR_FAILURE */;
     }
 
     pthread_mutex_unlock(&plMutex);

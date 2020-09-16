@@ -27,30 +27,45 @@
 #include "t2log_wrapper.h"
 #include "msgpack.h"
 
+static const int MAX_STATIC_PROP_VAL_LEN = 128 ;
+
 
 static char * getProfileParameter(Profile * profile, const char *ref) {
     char *pValue = "NULL";
     char *pName = strrchr(ref, '.') + 1;
 
-    if (!strcmp(pName, "Name"))
-    {
-        if (profile->name)
-            pValue = strdup(profile->name);
+    pValue = (char*) calloc(MAX_STATIC_PROP_VAL_LEN, sizeof(char));
+    if( pValue == NULL) {
+        T2Error("Unable to allocate memory for profile parameter value \n");
+        return pValue ;
     }
-    else if(!strcmp(pName, "Version"))
-    {
-        if (profile->version)
-            pValue = strdup(profile->version);
-    }
-    else if(!strcmp(pName, "Description"))
-    {
-        if (profile->Description)
-            pValue = strdup(profile->Description);
-    }
-    else
-    {
-        //TODO: Extend it for any other static Profile parameter
-        pValue = strdup("NULL");
+    
+    if(!strcmp(pName, "Name")) {
+        if(profile->name)
+            strncpy(pValue, profile->name, MAX_STATIC_PROP_VAL_LEN);
+    }else if(!strcmp(pName, "Version")) {
+        if(profile->version)
+            strncpy(pValue, profile->version, MAX_STATIC_PROP_VAL_LEN);
+    }else if(!strcmp(pName, "Description")) {
+        if(profile->Description)
+            strncpy(pValue, profile->Description, MAX_STATIC_PROP_VAL_LEN);
+    }else if(!strcmp(pName, "Protocol")) {
+        if(profile->protocol)
+            strncpy(pValue, profile->protocol, MAX_STATIC_PROP_VAL_LEN);
+    }else if(!strcmp(pName, "EncodingType")) {
+        if(profile->encodingType)
+            strncpy(pValue, profile->encodingType, MAX_STATIC_PROP_VAL_LEN);
+    }else if(!strcmp(pName, "ReportingInterval")) {
+        if(profile->reportingInterval)
+            snprintf(pValue, MAX_STATIC_PROP_VAL_LEN, "%d", profile->reportingInterval);
+    }else if(!strcmp(pName, "TimeReference")) {
+        if(profile->timeRef)
+            snprintf(pValue, MAX_STATIC_PROP_VAL_LEN, "%d", profile->timeRef);
+    }else if(!strcmp(pName, "ActivationTimeOut")) {
+        if(profile->activationTimeoutPeriod)
+            snprintf(pValue, MAX_STATIC_PROP_VAL_LEN, "%d", profile->activationTimeoutPeriod);
+    }else {
+        snprintf(pValue, MAX_STATIC_PROP_VAL_LEN, "No Such Parameter");
     }
 
     return pValue;

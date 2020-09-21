@@ -94,19 +94,22 @@ dropbearRecovery()
 {
    dropbearPid=`ps | grep -i dropbear | grep "$ATOM_INTERFACE_IP" | grep -v grep`
    if [ -z "$dropbearPid" ]; then
-       DROPBEAR_PARAMS_1="/tmp/.dropbear/dropcfg1$$"
-       DROPBEAR_PARAMS_2="/tmp/.dropbear/dropcfg2$$"
+       DROPBEAR_PARAMS_1="/tmp/.dropbear/dropcfg1_t2"
+       DROPBEAR_PARAMS_2="/tmp/.dropbear/dropcfg2_t2"
        if [ ! -d '/tmp/.dropbear' ]; then
           echo "wan_ssh.sh: need to create dropbear dir !!! " >> $RTL_LOG_FILE
           mkdir -p /tmp/.dropbear
        fi
        echo "wan_ssh.sh: need to create dropbear files !!! " >> $RTL_LOG_FILE
-       getConfigFile $DROPBEAR_PARAMS_1
-       getConfigFile $DROPBEAR_PARAMS_2
+       if [ ! -f $DROPBEAR_PARAMS_1 ]; then
+          getConfigFile $DROPBEAR_PARAMS_1
+       fi
+       if [ ! -f $DROPBEAR_PARAMS_2 ]; then
+          getConfigFile $DROPBEAR_PARAMS_2
+       fi
        dropbear -r $DROPBEAR_PARAMS_1 -r $DROPBEAR_PARAMS_2 -E -s -p $ATOM_INTERFACE_IP:22 &
        sleep 2
    fi
-   rm -rf /tmp/.dropbear/*
 }
 
 clearTelemetrySeekValues()
@@ -122,7 +125,9 @@ clearTelemetrySeekValues()
 sshCmdOnAtom() {
 
     command=$1
-    GetConfigFile $PEER_COMM_ID
+    if [ ! -f $PEER_COMM_ID ]; then
+        GetConfigFile $PEER_COMM_ID
+    fi
     count=0
     isCmdExecFail="true"
     while [ $count -lt $MAX_SSH_RETRY ]
@@ -139,7 +144,6 @@ sshCmdOnAtom() {
         fi
         count=$((count + 1))
     done
-    rm -f $PEER_COMM_ID
 
     if [ "x$isCmdExecFail" == "xtrue" ]; then
         echo_t "Failed to exec command $command on atom . Enable default option in interchip for recovery ... " >> $T2_0_LOGFILE
@@ -151,7 +155,9 @@ sshCmdOnAtom() {
 sshCmdOnArm(){
 
     command=$1
-    GetConfigFile $PEER_COMM_ID
+    if [ ! -f $PEER_COMM_ID ]; then
+        GetConfigFile $PEER_COMM_ID
+    fi
     count=0
     isCmdExecFail="true"
     while [ $count -lt $MAX_SSH_RETRY ]
@@ -168,7 +174,6 @@ sshCmdOnArm(){
         fi
         count=$((count + 1))
     done
-    rm -f $PEER_COMM_ID
 
     if [ "x$isCmdExecFail" == "xtrue" ]; then
         echo_t "Failed to exec command $command on arm with $MAX_SSH_RETRY retries" >> $T2_0_ATOM_LOGFILE
@@ -177,7 +182,9 @@ sshCmdOnArm(){
 }
 
 startInterChipDaemon() {
-    GetConfigFile $PEER_COMM_ID
+    if [ ! -f $PEER_COMM_ID ]; then
+        GetConfigFile $PEER_COMM_ID
+    fi
     count=0
     isInterChipFail="true"
     echo "Notified atom for starting the daemon" >> $T2_0_LOGFILE
@@ -196,7 +203,6 @@ startInterChipDaemon() {
         fi               
         count=$((count + 1))
     done
-    rm -f $PEER_COMM_ID
     if [ "x$isInterChipFail" == "xtrue" ]; then 
         echo "Failed to start ${T2_0_APP} on atom . Terminate telemetry 2.0 execution for self heal recovery ... " >> $T2_0_LOGFILE
         echo 'daemonFailed' > $TELEMETRY_INOTIFY_EVENT
@@ -213,11 +219,12 @@ stopInterChipDaemon() {
 
 copyProfileToAtom() {
     if [ -f $TELEMTERY_LOG_GREP_CONF ]; then
-        GetConfigFile $PEER_COMM_ID
+        if [ ! -f $PEER_COMM_ID ]; then
+            GetConfigFile $PEER_COMM_ID
+        fi
         scp -i $PEER_COMM_ID -r $TELEMTERY_LOG_GREP_CONF $ATOM_INTERFACE_IP:$TELEMTERY_LOG_GREP_CONF > /dev/null 2>&1
         echo "Copied profile file $TELEMTERY_LOG_GREP_CONF to $ATOM_INTERFACE_IP" >> $T2_0_LOGFILE
         sleep 1
-        rm -f $PEER_COMM_ID
         sshCmdOnAtom 'loadNewProfile'
     else
         echo "Unable to locate config file $TELEMTERY_LOG_GREP_CONF" >> $T2_0_LOGFILE
@@ -227,10 +234,11 @@ copyProfileToAtom() {
 notifyGetGrepResultFromAtom() {
     if [ -f $TELEMETRY_GREP_PROFILE_NAME ]; then
         echo "Notify atom for legacy dca results" >> $T2_0_LOGFILE
-        GetConfigFile $PEER_COMM_ID
+        if [ ! -f $PEER_COMM_ID ]; then
+            GetConfigFile $PEER_COMM_ID
+        fi
         scp -i $PEER_COMM_ID $TELEMETRY_GREP_PROFILE_NAME $ATOM_INTERFACE_IP:$TELEMETRY_GREP_PROFILE_NAME > /dev/null 2>&1
         sleep 1
-        rm -f $PEER_COMM_ID
         sshCmdOnAtom 't2Scheduler'
     else
         echo "Unable to locate profile name for grep result" >> $T2_0_LOGFILE
@@ -240,10 +248,11 @@ notifyGetGrepResultFromAtom() {
 notifyProfileRemoveToAtom() {
     if [ -f $TELEMETRY_GREP_PROFILE_NAME ]; then
         echo "Notify atom to remove a profile" >> $T2_0_LOGFILE
-        GetConfigFile $PEER_COMM_ID
+        if [ ! -f $PEER_COMM_ID ]; then
+            GetConfigFile $PEER_COMM_ID
+        fi
         scp -i $PEER_COMM_ID $TELEMETRY_GREP_PROFILE_NAME $ATOM_INTERFACE_IP:$TELEMETRY_GREP_PROFILE_NAME > /dev/null 2>&1
         sleep 1
-        rm -f $PEER_COMM_ID
         sshCmdOnAtom 't2Remove'
     else
         echo "Unable to locate profile name to be removed" >> $T2_0_LOGFILE
@@ -272,10 +281,11 @@ startT2DaemonOnAtom() {
 
 notifyERReadyToAtom() {
     if [ -f $TELEMETRY_ER_READY ]; then
-        GetConfigFile $PEER_COMM_ID
+        if [ ! -f $PEER_COMM_ID ]; then
+            GetConfigFile $PEER_COMM_ID
+        fi
         scp -i $PEER_COMM_ID -r $TELEMETRY_ER_READY $ATOM_INTERFACE_IP:$TELEMETRY_ER_READY
         echo "Notified ATOM about Event receiver ready" >> $T2_0_LOGFILE
-        rm -f $PEER_COMM_ID
     else
         #BUG: we shouldn't be here
         echo "Error: $TELEMETRY_ER_READY not available" >> $T2_0_LOGFILE
@@ -287,10 +297,11 @@ copyLogsFromArm() {
     mkdir -p $LOG_PATH
     mkdir -p $TMP_SCP_PATH
     mkdir -p $TELEMETRY_PATH_TEMP
-    GetConfigFile $PEER_COMM_ID
+    if [ ! -f $PEER_COMM_ID ]; then
+        GetConfigFile $PEER_COMM_ID
+    fi
     scp -i $PEER_COMM_ID -r $ARM_INTERFACE_IP:$LOG_PATH/* $TMP_SCP_PATH/ > /dev/null 2>&1
     scp -i $PEER_COMM_ID -r $ARM_INTERFACE_IP:$LOG_SYNC_PATH/$SelfHealBootUpLogFile  $ARM_INTERFACE_IP:$LOG_SYNC_PATH/$PcdLogFile  $TMP_SCP_PATH/ > /dev/null 2>&1
-    rm -f $PEER_COMM_ID
 
     rpcRes=`rpcclient $ARM_ARPING_IP "touch $SCP_COMPLETE"`
     rpcOk=`echo $rpcRes | grep "RPC CONNECTED"`
@@ -321,43 +332,41 @@ copyLogsFromArm() {
 }
 
 copyProfileFromArm() {
+    if [ ! -f $PEER_COMM_ID ]; then
     GetConfigFile $PEER_COMM_ID
+    fi
     scp -i $PEER_COMM_ID -r $ARM_INTERFACE_IP:$TELEMTERY_LOG_GREP_CONF $TELEMTERY_LOG_GREP_CONF
-    rm -f $PEER_COMM_ID
 }
 
 notifyDaemonStarted(){
     
     mkdir -p $TELEMETRY_PATH_TEMP
     sshCmdOnArm 'daemonStarted'
-    rm -f $PEER_COMM_ID
-    
 }
 
 notifyDaemonFailed(){
     
     mkdir -p $TELEMETRY_PATH_TEMP
     sshCmdOnArm 'daemonFailed'
-    rm -f $PEER_COMM_ID
-    
 }
 
 copyJsonResultToArm(){
-    GetConfigFile $PEER_COMM_ID
+    if [ ! -f $PEER_COMM_ID ]; then
+        GetConfigFile $PEER_COMM_ID
+    fi
     scp -i $PEER_COMM_ID $TELEMTERY_LOG_GREP_RESULT root@$ARM_INTERFACE_IP:$TELEMTERY_LOG_GREP_RESULT > /dev/null 2>&1
     if [ $? -ne 0 ]; then
         scp -i $PEER_COMM_ID $TELEMTERY_LOG_GREP_RESULT root@$ARM_INTERFACE_IP:$TELEMTERY_LOG_GREP_RESULT > /dev/null 2>&1
     fi
     sshCmdOnArm 'dcaResult'
-    rm -f $PEER_COMM_ID
-    
 }
 
 copyT2CacheFileToArm(){
-    GetConfigFile $PEER_COMM_ID
+    if [ ! -f $PEER_COMM_ID ]; then
+        GetConfigFile $PEER_COMM_ID
+    fi
     scp -i $PEER_COMM_ID root@$ATOM_INTERFACE_IP:$TELEMETRY_EVENT_CACHE_FILE $TELEMETRY_EVENT_CACHE_ATOM_FILE > /dev/null 2>&1
     sshCmdOnAtom 't2DeleteCacheFile'
-    rm -f $PEER_COMM_ID
 }
 
 ############ End functions ############

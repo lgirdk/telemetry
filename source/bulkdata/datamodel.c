@@ -113,12 +113,7 @@ T2ERROR datamodel_processProfile(char *JsonBlob)
         return T2ERROR_FAILURE;
     }
 
-    if (MAX_BULKDATA_PROFILES < cJSON_GetArraySize(profiles))
-    {
-        T2Error("Report profiles in configuration is greater than max supported profiles (%d). Unable to ReportProfiles_ProcessReportProfilesBlob\n", MAX_BULKDATA_PROFILES );
-        cJSON_Delete(rootObj);
-        return T2ERROR_FAILURE;
-    }
+    T2Info("Number of report profiles in configuration is %d \n", cJSON_GetArraySize(profiles));
 
     pthread_mutex_lock(&rpMutex);
     if (!stopProcessing)

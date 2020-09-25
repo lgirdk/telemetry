@@ -225,7 +225,6 @@ T2ERROR initReportProfiles()
     bulkdata.protocols = strdup("HTTP");
     bulkdata.encodingTypes = strdup("JSON");
     bulkdata.parameterWildcardSupported = true;
-    bulkdata.maxNoOfProfiles = MAX_BULKDATA_PROFILES;
     bulkdata.maxNoOfParamReferences = MAX_PARAM_REFERENCES;
     bulkdata.maxReportSize = DEFAULT_MAX_REPORT_SIZE;
 

@@ -29,7 +29,6 @@
 #include "webconfig_err.h"
 
 #define MIN_REPORT_INTERVAL     10
-#define MAX_BULKDATA_PROFILES    10
 #define MAX_PARAM_REFERENCES    100
 #define DEFAULT_MAX_REPORT_SIZE 51200
 #define MAX_CACHED_REPORTS 5
@@ -65,7 +64,6 @@ typedef struct _BulkData
     char *protocols;
     char *encodingTypes;
     bool parameterWildcardSupported;
-    int maxNoOfProfiles;
     int maxNoOfParamReferences;
     unsigned int maxReportSize;
 }BulkData;

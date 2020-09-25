@@ -418,13 +418,6 @@ T2ERROR addProfile(Profile *profile)
         return T2ERROR_FAILURE;
     }
     pthread_mutex_lock(&plMutex);
-    if(Vector_Size(profileList) == MAX_BULKDATA_PROFILES)
-    {
-        T2Error("Max profile count reached, can't create/add another profile\n");
-        pthread_mutex_unlock(&plMutex);
-        return T2ERROR_FAILURE;
-    }
-
     Vector_PushBack(profileList, profile);
 
 #ifdef _COSA_INTEL_XB3_ARM_

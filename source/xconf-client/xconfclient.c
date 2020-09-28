@@ -38,6 +38,7 @@
 #define XCONF_RETRY_TIMEOUT 180
 #define MAX_XCONF_RETRY_COUNT 5
 #define IFINTERFACE      "erouter0"
+#define XCONF_CONFIG_FILE  "DCMresponse.txt"
 
 static const int MAX_URL_LEN = 1024;
 static const int MAX_URL_ARG_LEN = 128;
@@ -425,7 +426,7 @@ static void getUpdatedConfigurationThread(void *data)
                 if(!ProfileXConf_isNameEqual(profile->name))
                 {
                     clearPersistenceFolder(XCONFPROFILE_PERSISTENCE_PATH);
-                    if(T2ERROR_SUCCESS != saveConfigToFile(XCONFPROFILE_PERSISTENCE_PATH, profile->name, configData))
+                    if(T2ERROR_SUCCESS != saveConfigToFile(XCONFPROFILE_PERSISTENCE_PATH, XCONF_CONFIG_FILE, configData))
                     {
                         T2Error("Unable to save profile : %s to disk\n", profile->name);
                     }
@@ -439,7 +440,7 @@ static void getUpdatedConfigurationThread(void *data)
                 {
                     T2Info("Profile exists already, updating the config in file system\n");
 
-                    if(T2ERROR_SUCCESS != saveConfigToFile(XCONFPROFILE_PERSISTENCE_PATH, profile->name, configData)) // Should be removed once XCONF sends new UUID for each update.
+                    if(T2ERROR_SUCCESS != saveConfigToFile(XCONFPROFILE_PERSISTENCE_PATH, XCONF_CONFIG_FILE, configData)) // Should be removed once XCONF sends new UUID for each update.
                     {
                         T2Error("Unable to update an existing config file : %s\n", profile->name);
                     }

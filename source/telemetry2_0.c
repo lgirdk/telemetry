@@ -38,14 +38,14 @@
 #endif
 #endif
 #endif
-#ifdef DUAL_CORE_XB3
+#if defined(DUAL_CORE_XB3) || defined (_COSA_INTEL_USG_ATOM_)
 #include <sys/inotify.h>
 #endif
 #include "t2log_wrapper.h"
 #include "syslog.h"
 #include "reportprofiles.h"
 #include "xconfclient.h"
-#ifdef DUAL_CORE_XB3
+#if defined(DUAL_CORE_XB3) || defined (_COSA_INTEL_USG_ATOM_)
 #include "interChipHelper.h"
 #endif
 #include "t2eventreceiver.h"

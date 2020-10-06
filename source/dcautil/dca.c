@@ -25,7 +25,7 @@
 #include <unistd.h>
 #include <ctype.h>
 
-#include <glib.h>
+#include <rdk_linkedlist.h>
 #include <cjson/cJSON.h>
 
 #include "dcalist.h"
@@ -68,12 +68,12 @@ static pthread_mutex_t dcaMutex = PTHREAD_MUTEX_INITIALIZER;
  *  @return  Returns the status of the operation.
  *  @retval  Returns zero on success, appropriate errorcode otherwise.
  */
-int processTopPattern(char *logfile, GList *pchead, int pcIndex, Vector* grepResultList) {
+int processTopPattern(char *logfile, rdkList_t *pchead, int pcIndex, Vector* grepResultList) {
     T2Debug("%s ++in\n", __FUNCTION__);
-    GList *tlist = pchead;
+    rdkList_t *tlist = pchead;
     pcdata_t *tmp = NULL;
     while(NULL != tlist) {
-        tmp = tlist->data;
+        tmp = tlist->m_pUserData;
         if(NULL != tmp) {
             if((NULL != tmp->header) && (NULL != strstr(tmp->header, "Load_Average"))) {
                 if(0 == getLoadAvg(grepResultList)) {
@@ -85,7 +85,7 @@ int processTopPattern(char *logfile, GList *pchead, int pcIndex, Vector* grepRes
                 }
             }
         }
-        tlist = g_list_next(tlist);
+        tlist = rdk_list_find_next_node(tlist);
     }
     T2Debug("%s --out\n", __FUNCTION__);
     return 0;
@@ -140,19 +140,19 @@ static void appendData(pcdata_t* dst, const char* src) {
  *  @retval Returns 1 on failure, 0 on success
  *  Retaining this for skip frequency param confined to XCONF profile
  */
-static T2ERROR processTr181Objects(char *logfile, GList *pchead, int pcIndex) {
+static T2ERROR processTr181Objects(char *logfile, rdkList_t *pchead, int pcIndex) {
     T2Debug("%s ++in\n", __FUNCTION__);
     T2ERROR ret_val = T2ERROR_FAILURE;
     int length, obj_count, i = 0;
-    GList *tlist = NULL;
+    rdkList_t *tlist = NULL;
     pcdata_t *tmp = NULL;
     char tr181objBuff[TR181BUF_LENGTH + 15] = { '\0' };
     char *tck, *first_tck = NULL;
 
     //Loop through the given list and fill the data field of each node
-    for( tlist = pchead; tlist != NULL; tlist = g_list_next(tlist) ) {
+    for( tlist = pchead; tlist != NULL; tlist = rdk_list_find_next_node(tlist) ) {
         char* tr181dataBuff = NULL;
-        tmp = tlist->data;
+        tmp = tlist->m_pUserData;
         if(NULL != tmp) {
             if(NULL != tmp->header && NULL != tmp->pattern && strlen(tmp->pattern) < TR181BUF_LENGTH && NULL == tmp->data) {
 
@@ -220,13 +220,13 @@ static T2ERROR processTr181Objects(char *logfile, GList *pchead, int pcIndex) {
  *
  * @return Returns status of operation.
  */
-void addToJson(GList *pchead) {
+static void addToJson(rdkList_t *pchead) {
 
     T2Debug("%s ++in\n", __FUNCTION__);
-    GList *tlist = pchead;
+    rdkList_t *tlist = pchead;
     pcdata_t *tmp = NULL;
     while(NULL != tlist) {
-        tmp = tlist->data;
+        tmp = tlist->m_pUserData;
         if(NULL != tmp) {
             if(tmp->pattern) {
                 if(tmp->d_type == OCCURENCE) {
@@ -242,7 +242,7 @@ void addToJson(GList *pchead) {
                 }
             }
         }
-        tlist = g_list_next(tlist);
+        tlist = rdk_list_find_next_node(tlist);
     }
     T2Debug("%s --out\n", __FUNCTION__);
 }
@@ -255,14 +255,14 @@ void addToJson(GList *pchead) {
  *
  * @return Returns status of operation.
  */
-static int addToVector(GList *pchead, Vector* grepResultList) {
+static int addToVector(rdkList_t *pchead, Vector* grepResultList) {
 
     T2Debug("%s ++in\n", __FUNCTION__);
-    GList *tlist = pchead;
+    rdkList_t *tlist = pchead;
     pcdata_t *tmp = NULL;
 
     while(NULL != tlist) {
-        tmp = tlist->data;
+        tmp = tlist->m_pUserData;
         if(NULL != tmp) {
 
             if(tmp->pattern && grepResultList != NULL ) {
@@ -290,7 +290,7 @@ static int addToVector(GList *pchead, Vector* grepResultList) {
                 T2Debug("%s : grepResultList is NULL \n", __FUNCTION__);
             }
         }
-        tlist = g_list_next(tlist);
+        tlist = rdk_list_find_next_node(tlist);
     }
     T2Debug("%s --out\n", __FUNCTION__);
     return 0;
@@ -392,7 +392,7 @@ int getErrorCode(char *str, char *ec) {
  * @return Returns status of operation.
  * @retval Return 0 upon success, -1 on failure.
  */
-static int handleRDKErrCodes(GList **rdkec_head, char *line) {
+static int handleRDKErrCodes(rdkList_t **rdkec_head, char *line) {
     T2Debug("%s ++in\n", __FUNCTION__);
     char err_code[20] = { 0 }, rdkec[20] = { 0 };
     pcdata_t *tnode = NULL;
@@ -405,7 +405,7 @@ static int handleRDKErrCodes(GList **rdkec_head, char *line) {
         if(NULL != tnode) {
             tnode->count++;
         }else {
-            /* Args:  GList **pch, char *pattern, char *header, DType_t dtype, int count, char *data */
+            /* Args:  rdkList_t **pch, char *pattern, char *header, DType_t dtype, int count, char *data */
             insertPCNode(rdkec_head, rdkec, rdkec, OCCURENCE, 1, NULL);
         }
         T2Debug("%s --out\n", __FUNCTION__);
@@ -426,7 +426,7 @@ static int handleRDKErrCodes(GList **rdkec_head, char *line) {
  * @return Returns status of operation.
  * @retval Return 0 upon success, -1 on failure.
  */
-static int processCountPattern(hash_map_t *logSeekMap, char *logfile, GList *pchead, int pcIndex, GList **rdkec_head) {
+static int processCountPattern(hash_map_t *logSeekMap, char *logfile, rdkList_t *pchead, int pcIndex, rdkList_t **rdkec_head) {
     T2Debug("%s ++in\n", __FUNCTION__);
     char temp[MAXLINE];
 
@@ -469,7 +469,7 @@ static int processCountPattern(hash_map_t *logSeekMap, char *logfile, GList *pch
  * @return Returns status on operation.
  * @retval Returns 0 upon success.
  */
-static int processPattern(char **prev_file, char *logfile, GList **rdkec_head, GList *pchead, int pcIndex, Vector *grepResultList, hash_map_t* logSeekMap) {
+static int processPattern(char **prev_file, char *logfile, rdkList_t **rdkec_head, rdkList_t *pchead, int pcIndex, Vector *grepResultList, hash_map_t* logSeekMap) {
 
     T2Debug("%s ++in\n", __FUNCTION__);
     if(NULL != logfile) {
@@ -580,7 +580,7 @@ static int parseMarkerList(char* profileName, Vector* vMarkerList, Vector* grepR
 
     char *filename = NULL, *prevfile = NULL;
     int pcIndex = 0;
-    GList *pchead = NULL, *rdkec_head = NULL;
+    rdkList_t *pchead = NULL, *rdkec_head = NULL;
     GrepSeekProfile* gsProfile = NULL ;
     int var = 0;
 

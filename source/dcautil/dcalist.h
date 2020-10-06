@@ -39,7 +39,7 @@
 #include <string.h>
 #include <unistd.h>
 
-#include <glib.h>
+#include <rdk_linkedlist.h>
 
 typedef enum {
   OCCURENCE,
@@ -56,12 +56,12 @@ typedef struct pclist {
   };
 } pcdata_t;
 
-extern GList *pchead;
+extern rdkList_t *pchead;
 
-int insertPCNode(GList **pch, char *pattern, char *header, DType_t dtype, int count, char *data);
-pcdata_t* searchPCNode(GList *pch, char *pattern);
-void printPCNodes(GList *pch);
-void clearPCNodes(GList **pch);
+int insertPCNode(rdkList_t **pch, char *pattern, char *header, DType_t dtype, int count, char *data);
+pcdata_t* searchPCNode(rdkList_t *pch, char *pattern);
+void printPCNodes(rdkList_t *pch);
+void clearPCNodes(rdkList_t **pch);
 
 
 /** @} */

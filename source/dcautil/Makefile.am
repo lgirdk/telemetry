@@ -19,9 +19,9 @@
 lib_LTLIBRARIES = libdcautil.la
 
 libdcautil_la_SOURCES = dcautil.c dca.c dcalist.c legacyutils.c dcaproc.c dcajson.c
-libdcautil_la_CFLAGS = $(GLIB_CFLAGS)
-libdcautil_la_LDFLAGS = -shared -fPIC $(GLIB_LIBS) -lcjson
-libdcautil_la_CFLAGS += $(DBUS_CFLAGS) -DUSE_TR181_CCSP_MESSAGEBUS 
+libdcautil_la_CFLAGS =
+libdcautil_la_LDFLAGS = -shared -fPIC -lrdklist -lcjson
+libdcautil_la_CFLAGS += $(DBUS_CFLAGS) -DUSE_TR181_CCSP_MESSAGEBUS
 libdcautil_la_LDFLAGS += $(DBUS_LIBS)
 
 libdcautil_la_LIBADD = ${top_builddir}/source/ccspinterface/libccspinterface.la ${top_builddir}/source/utils/libt2utils.la

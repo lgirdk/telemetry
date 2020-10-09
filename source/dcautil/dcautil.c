@@ -45,6 +45,7 @@ static T2ERROR getInterChipDCAResult(char* profileName, cJSON** pdcaResultObj, b
     FILE *profileFp = fopen(TELEMETRY_GREP_PROFILE_NAME, "w");
     if (profileFp == NULL) {
         T2Error("%s: File open error %s\n", __FUNCTION__, TELEMETRY_GREP_PROFILE_NAME);
+        pthread_mutex_unlock(&pInterChipLock);
         return T2ERROR_FAILURE;
     }
     fprintf(profileFp, "%s%s%d\n", profileName, DELIMITER, isClearSeekMap ? 1:0);
@@ -59,12 +60,14 @@ static T2ERROR getInterChipDCAResult(char* profileName, cJSON** pdcaResultObj, b
     if (notifyfd < 0) {
         T2Error("getInterChipDCAResult : Error on adding inotify_init \n");
         execNotifier("clearInotifyDir");
+        pthread_mutex_unlock(&pInterChipLock);
         return T2ERROR_FAILURE;
     }
     watchfd = inotify_add_watch(notifyfd, DIRECTORY_TO_MONITOR, IN_CREATE);
     if (watchfd < 0) {
         T2Error("getInterChipDCAResult : Error in adding inotify_add_watch on directory : %s \n", DIRECTORY_TO_MONITOR);
         execNotifier("clearInotifyDir");
+        pthread_mutex_unlock(&pInterChipLock);
         return T2ERROR_FAILURE;
     }
     T2Debug("Successfully added watch on directory %s \n", DIRECTORY_TO_MONITOR);
@@ -80,6 +83,7 @@ static T2ERROR getInterChipDCAResult(char* profileName, cJSON** pdcaResultObj, b
             grepResultFp = fopen(TELEMTERY_LOG_GREP_RESULT, "r");
             if(NULL == grepResultFp) {
                 T2Error("Unable to open DCA result file \n");
+                pthread_mutex_unlock(&pInterChipLock);
                 return T2ERROR_FAILURE;
             }
             line = (char *)malloc((filestat.st_size + 1) * sizeof(char));
@@ -96,10 +100,12 @@ static T2ERROR getInterChipDCAResult(char* profileName, cJSON** pdcaResultObj, b
             remove(TELEMTERY_LOG_GREP_RESULT);
         } else {
             T2Info("Unable to get file stats for %s \n", TELEMTERY_LOG_GREP_RESULT );
+            pthread_mutex_unlock(&pInterChipLock);
             return T2ERROR_FAILURE;
         }
     } else {
         T2Info("%s %d Unable to get DCA results from ATOM \n", __FUNCTION__, __LINE__);
+        pthread_mutex_unlock(&pInterChipLock);
         return T2ERROR_FAILURE;
     }
     pthread_mutex_unlock(&pInterChipLock);
@@ -115,6 +121,7 @@ static void sendDeleteProfileEvent(char *profileName) {
     FILE *profileFp = fopen(TELEMETRY_GREP_PROFILE_NAME, "w");
     if (profileFp == NULL) {
         T2Error("%s: File open error %s\n", __FUNCTION__, TELEMETRY_GREP_PROFILE_NAME);
+        pthread_mutex_unlock(&pInterChipLock);
         return;
     }
     fprintf(profileFp, "%s", profileName);
@@ -158,12 +165,12 @@ T2ERROR saveGrepConfig(char *name, Vector* grepMarkerList) {
         T2Info("Successfully saved config file %s for interchip \n", TELEMTERY_LOG_GREP_CONF);
         // notify ATOM to pick and load the config file
         execNotifier("notifyConfigUpdate");
-        pthread_mutex_unlock(&pInterChipLock);
 
         T2Info("Notified interchip to pick latest config \n");
         returnStatus = T2ERROR_SUCCESS ;
     }
 
+    pthread_mutex_unlock(&pInterChipLock);
     return returnStatus ;
 }
 #endif

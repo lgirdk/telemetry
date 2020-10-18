@@ -93,8 +93,6 @@ struct __msgpack__
     int msgpack_blob_size;
 };
 
-void __msgpack_free_blob(void *user_data);
-
 int __ReportProfiles_ProcessReportProfilesMsgPackBlob(void *msgpack);
 
 void ReportProfiles_ProcessReportProfilesMsgPackBlob(char *msgpack_blob , int msgpack_blob_size);

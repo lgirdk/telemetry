@@ -650,6 +650,13 @@ pErr Process_Telemetry_WebConfigRequest(void *Data)
      return execRetVal;
 }
 
+static void __msgpack_free_blob(void *user_data)
+{
+    struct __msgpack__ *msgpack = (struct __msgpack__ *)user_data;
+    free(msgpack->msgpack_blob);
+    free(msgpack);
+}
+
 void msgpack_free_blob(void *exec_data)
 {
     execData *execDataPf = (execData *)exec_data;
@@ -658,13 +665,6 @@ void msgpack_free_blob(void *exec_data)
 }
 
 #endif
-
-void __msgpack_free_blob(void *user_data)
-{
-    struct __msgpack__ *msgpack = (struct __msgpack__ *)user_data;
-    free(msgpack->msgpack_blob);
-    free(msgpack);
-}
 
 void ReportProfiles_ProcessReportProfilesMsgPackBlob(char *msgpack_blob , int msgpack_blob_size)
 {

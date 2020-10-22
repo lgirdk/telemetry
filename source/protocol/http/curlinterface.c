@@ -38,7 +38,7 @@ typedef enum _ADDRESS_TYPE
 
 static ADDRESS_TYPE getAddressType(const char *cif) {
     struct ifaddrs *ifap, *ifa;
-    ADDRESS_TYPE addressType = 0;
+    ADDRESS_TYPE addressType = ADDR_UNKNOWN;
 
     getifaddrs(&ifap);
     for (ifa = ifap; ifa; ifa = ifa->ifa_next) {
@@ -68,11 +68,23 @@ static T2ERROR setHeader(CURL *curl, const char* destURL, struct curl_slist **he
     T2Debug("%s ++in\n", __FUNCTION__);
 
     T2Debug("%s DEST URL %s \n", __FUNCTION__, destURL);
-
-    curl_easy_setopt(curl, CURLOPT_URL, destURL);
-    curl_easy_setopt(curl, CURLOPT_SSLVERSION, TLSVERSION);
-    curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, HTTP_METHOD);
-    curl_easy_setopt(curl, CURLOPT_TIMEOUT, TIMEOUT);
+    CURLcode code=CURLE_OK;
+    code = curl_easy_setopt(curl, CURLOPT_URL, destURL);
+    if(code != CURLE_OK){
+       T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
+    }
+    code = curl_easy_setopt(curl, CURLOPT_SSLVERSION, TLSVERSION);
+    if(code != CURLE_OK){
+       T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
+    }
+    code = curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, HTTP_METHOD);
+    if(code != CURLE_OK){
+       T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
+    }
+    code = curl_easy_setopt(curl, CURLOPT_TIMEOUT, TIMEOUT);
+    if(code != CURLE_OK){
+       T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
+    }
 
     if(getAddressType(INTERFACE) == ADDR_UNKNOWN)
     {
@@ -99,7 +111,10 @@ static T2ERROR setHeader(CURL *curl, const char* destURL, struct curl_slist **he
 static T2ERROR setPayload(CURL *curl, const char* payload)
 {
     CURLcode code = CURLE_OK ;
-    curl_easy_setopt(curl, CURLOPT_POSTFIELDS, payload);
+    code = curl_easy_setopt(curl, CURLOPT_POSTFIELDS, payload);
+    if(code != CURLE_OK){
+        T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
+    }
     code = curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, strlen(payload));
     if(code != CURLE_OK){
         T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
@@ -168,7 +183,6 @@ T2ERROR sendCachedReportsOverHTTP(char *httpUrl, Vector *reportList)
         }
         Vector_RemoveItem(reportList, payload, NULL);
         free(payload);
-        payload = NULL;
     }
     return T2ERROR_SUCCESS;
 }

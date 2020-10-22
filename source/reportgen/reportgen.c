@@ -37,13 +37,9 @@ void freeProfileValues(void *data)
     T2Debug("%s ++in\n", __FUNCTION__);
     if(data != NULL)
     {
-
         profileValues *profVal = (profileValues *) data;
-        if(profVal) {
-            freeParamValueSt(profVal->paramValues, profVal->paramValueCount);
-            free(profVal);
-            profVal = NULL;
-        }
+        freeParamValueSt(profVal->paramValues, profVal->paramValueCount);
+        free(profVal);
     }
     T2Debug("%s --Out\n", __FUNCTION__);
 }
@@ -272,17 +268,23 @@ char *prepareHttpUrl(T2HTTP *http)
 
             int new_params_len = params_len /* current params length */
                            + strlen(httpParam->HttpName) /* Length of parameter 'Name' */ + strlen("=")
-                           + strlen(httpParamVal) /* Length of parameter 'Value' */
                            + strlen("&") /* Add '&' for next paramter */ + 1;
-
+            if(httpParamVal)
+            {
+                new_params_len += strlen(httpParamVal);
+            }
             url_params = realloc(url_params, new_params_len);
-
+            if(url_params == NULL){
+                T2Error("Unable to allocate %d bytes of memory at Line %d on %s \n",new_params_len, __LINE__, __FILE__);
+                curl_free(httpParamVal);
+                continue;
+            }
             params_len += snprintf(url_params+params_len, new_params_len-params_len, "%s=%s&", httpParam->HttpName, httpParamVal);
 
             curl_free(httpParamVal);
         }
 
-        if (params_len > 0)
+        if (params_len > 0 && url_params != NULL)
         {
             url_params[params_len-1] = '\0';
 
@@ -292,8 +294,10 @@ char *prepareHttpUrl(T2HTTP *http)
             httpUrl = realloc(httpUrl, modified_url_len);
             snprintf(httpUrl+url_len, modified_url_len-url_len, "?%s", url_params);
 
-            free(url_params);
         }
+       if(url_params){
+           free(url_params);
+       }
     }
 
     curl_easy_cleanup(curl);

@@ -70,7 +70,6 @@ COSA_Init(ULONG uMaxVersionSupported, void* hCosaPlugInfo /* PCOSA_PLUGIN_INFO p
 ) {
     PCOSA_PLUGIN_INFO pPlugInfo = (PCOSA_PLUGIN_INFO) hCosaPlugInfo;
     COSAGetInterfaceByNameProc pGetInterfaceByNameProc = (COSAGetInterfaceByNameProc) NULL;
-    ULONG ret = 0;
 
     if(uMaxVersionSupported < THIS_PLUGIN_VERSION) {
         /* this version is not supported */

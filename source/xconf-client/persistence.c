@@ -39,7 +39,7 @@ T2ERROR fetchLocalConfigs(const char* path, Vector *configList)
         T2Error("Failed to open persistence folder : %s, creating folder\n", path);
 
         char command[256] = {'\0'};
-        sprintf(command, "mkdir %s", path);
+        snprintf(command, sizeof(command), "mkdir %s", path);
         T2Debug("Executing command : %s\n", command);
         system(command);
 
@@ -55,30 +55,30 @@ T2ERROR fetchLocalConfigs(const char* path, Vector *configList)
         if(entry->d_name[0] == '.')
             continue;
 
-        sprintf(absfilepath, "%s%s", path, entry->d_name);
+        snprintf(absfilepath,sizeof(absfilepath), "%s%s", path, entry->d_name);
         T2Debug("Config file : %s\n", absfilepath);
-        status = stat(absfilepath, &filestat);
+        int fp = open(absfilepath, O_RDONLY);
+        if(fp == -1)
+        {
+            T2Error("Failed to open file : %s\n", entry->d_name);
+            continue;
+        }
+
+        status = fstat(fp, &filestat);
         if(status == 0) {
             T2Info("Filename : %s Size : %ld\n", entry->d_name, filestat.st_size);
-
-            FILE *fp = fopen(absfilepath, "r");
-            if(fp == NULL)
-            {
-                T2Error("Failed to open file : %s\n", entry->d_name);
-                continue;
-            }
 
             Config *config = (Config *)malloc(sizeof(Config));
             memset(config, 0 , sizeof(Config));
             config->name = strdup(entry->d_name);
             config->configData = (char *)malloc((filestat.st_size + 1) * sizeof(char));
             memset( config->configData, 0, (filestat.st_size + 1 ));
-            int read_size = fread(config->configData, sizeof(char), filestat.st_size, fp);
+            int read_size = read(fp, config->configData, filestat.st_size);
             config->configData[filestat.st_size] = '\0';
 
             if(read_size != filestat.st_size)
                 T2Error("read size = %d filestat.st_size = %d\n", read_size, filestat.st_size);
-            fclose(fp);
+            close(fp);
             Vector_PushBack(configList, config);
 
             T2Debug("Config data size = %d\n", strlen(config->configData));
@@ -87,13 +87,13 @@ T2ERROR fetchLocalConfigs(const char* path, Vector *configList)
         else
         {
             T2Error("Unable to stat, Invalid file : %s\n", entry->d_name);
+            close(fp);
             continue;
         }
     }
 
-    closedir(dir);
     T2Info("Returning %d local configurations \n", Vector_Size(configList));
-
+    closedir(dir);
     T2Debug("%s --out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;
 }
@@ -109,7 +109,7 @@ T2ERROR saveConfigToFile(const char* path, const char *profileName, const char* 
         T2Error("profileID exceeds max limit of %d chars\n", MAX_FILENAME_LENGTH);
         return T2ERROR_FAILURE;
     }
-    sprintf(filePath, "%s%s", path, profileName);
+    snprintf(filePath, sizeof(filePath), "%s%s", path, profileName);
 
     fp = fopen(filePath, "w");
     if(fp == NULL)
@@ -133,7 +133,7 @@ T2ERROR MsgPackSaveConfig(const char* path, const char *fileName, const char *ms
         T2Error("fileName exceeds max limit of %d chars\n", MAX_FILENAME_LENGTH);
         return T2ERROR_FAILURE;
     }
-    sprintf(filePath, "%s%s", path, fileName);
+    snprintf(filePath, sizeof(filePath), "%s%s", path, fileName);
     fp = fopen(filePath, "wb");
     if (NULL == fp) {
         T2Error("%s file open is failed \n", filePath);
@@ -149,7 +149,7 @@ void clearPersistenceFolder(const char* path)
     char command[256] = {'\0'};
     T2Debug("%s ++in\n", __FUNCTION__);
 
-    sprintf(command, "rm -f %s*", path);
+    snprintf(command, sizeof(command), "rm -f %s*", path);
     T2Debug("Executing command : %s\n", command);
     system(command);
 
@@ -161,7 +161,7 @@ void removeProfileFromDisk(const char* path, const char* fileName)
     char command[256] = {'\0'};
     T2Debug("%s ++in\n", __FUNCTION__);
 
-    sprintf(command, "rm -f %s%s", path, fileName);
+    snprintf(command, sizeof(command), "rm -f %s%s", path, fileName);
     T2Debug("Executing command : %s\n", command);
     system(command);
 

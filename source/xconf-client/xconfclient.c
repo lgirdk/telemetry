@@ -45,7 +45,6 @@ static const int MAX_URL_ARG_LEN = 128;
 static int xConfRetryCount = 0;
 static bool stopFetchRemoteConfiguration = false;
 static bool isXconfInit = false ;
-static bool fetchRemoteConfigComplete = false;
 
 static pthread_t xcrThread;
 static pthread_mutex_t xcMutex;
@@ -85,14 +84,13 @@ static T2ERROR getBuildType(char* buildType) {
     FILE *deviceFilePtr;
     char *pBldTypeStr = NULL;
     int offsetValue = 0;
-    deviceFilePtr = fopen( DEVICE_PROPERTIES, "r");
 
     if (NULL == buildType) {
        return T2ERROR_FAILURE;
     }
-
+    deviceFilePtr = fopen( DEVICE_PROPERTIES, "r");
     if (deviceFilePtr) {
-        while (fscanf(deviceFilePtr, "%s", fileContent) != EOF) {
+        while (fscanf(deviceFilePtr, "%255s", fileContent) != EOF) {
             if ((pBldTypeStr = strstr(fileContent, "BUILD_TYPE")) != NULL) {
                 offsetValue = strlen("BUILD_TYPE=");
                 pBldTypeStr = pBldTypeStr + offsetValue;
@@ -101,8 +99,11 @@ static T2ERROR getBuildType(char* buildType) {
         }
         fclose(deviceFilePtr);
     }
-    strncpy(buildType, pBldTypeStr, BUILD_TYPE_MAX_LENGTH - 1);
-    return T2ERROR_SUCCESS;
+    if(pBldTypeStr != NULL){
+         strncpy(buildType, pBldTypeStr, BUILD_TYPE_MAX_LENGTH - 1);
+         return T2ERROR_SUCCESS;
+    }
+    return T2ERROR_FAILURE;
 }
 
 static T2ERROR appendRequestParams(char *buf, const int maxArgLen) {
@@ -231,7 +232,7 @@ static size_t httpGetCallBack(void *response, size_t len, size_t nmemb,
     char *ptr = (char*) realloc(httpResponse->data,
             httpResponse->size + realsize + 1);
     if (!ptr) {
-        T2Error("%s:%d, T2:memory realloc failed\n", __func__, __LINE__);
+        T2Error("%s:%u , T2:memory realloc failed\n", __func__, __LINE__);
         return 0;
     }
     httpResponse->data = ptr;
@@ -248,12 +249,13 @@ static T2ERROR doHttpGet(char* httpsUrl, char **data) {
 
     T2Info("%s with url %s \n", __FUNCTION__, httpsUrl);
     CURL *curl;
+    CURLcode code=CURLE_OK;
     long http_code = 0;
     long curl_code = 0;
 
     if (NULL == httpsUrl) {
         T2Error("NULL httpsUrl given, doHttpGet failed\n");
-        return -1;
+        return T2ERROR_FAILURE;
     }
     curlResponseData* httpResponse = (curlResponseData *)malloc(sizeof(curlResponseData));
     httpResponse->data = malloc(1);
@@ -262,13 +264,30 @@ static T2ERROR doHttpGet(char* httpsUrl, char **data) {
     curl = curl_easy_init();
 
     if (curl) {
-        curl_easy_setopt(curl, CURLOPT_URL, httpsUrl);
-        curl_easy_setopt(curl, CURLOPT_SSLVERSION, CURL_SSLVERSION_TLSv1_2);
-        curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 30L);
-        curl_easy_setopt(curl, CURLOPT_TIMEOUT, 30L);
-        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, httpGetCallBack);
-        curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void * ) httpResponse);
-        
+        code = curl_easy_setopt(curl, CURLOPT_URL, httpsUrl);
+        if(code != CURLE_OK){
+           T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
+        }
+        code = curl_easy_setopt(curl, CURLOPT_SSLVERSION, CURL_SSLVERSION_TLSv1_2);
+        if(code != CURLE_OK){
+           T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
+        }
+        code = curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 30L);
+        if(code != CURLE_OK){
+           T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
+        }
+        code = curl_easy_setopt(curl, CURLOPT_TIMEOUT, 30L);
+        if(code != CURLE_OK){
+           T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
+        }
+        code = curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, httpGetCallBack);
+        if(code != CURLE_OK){
+           T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
+        }
+        code = curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void * ) httpResponse);
+        if(code != CURLE_OK){
+           T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
+        }
         // Set interface and addr type
  /* For now, Let curl start hopping between v4/v6 address like it is there for legacy dca till STBIT-1511 gets resolved.*/
  /*
@@ -284,7 +303,10 @@ static T2ERROR doHttpGet(char* httpsUrl, char **data) {
          curl_easy_setopt(curl, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V6);
  */
 
-     curl_easy_setopt(curl, CURLOPT_INTERFACE, IFINTERFACE);  
+        code = curl_easy_setopt(curl, CURLOPT_INTERFACE, IFINTERFACE);
+        if(code != CURLE_OK){
+           T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
+        }
         //TODO - Introduce retry
         //TODO - configparamgen C APIs
 
@@ -310,6 +332,12 @@ static T2ERROR doHttpGet(char* httpsUrl, char **data) {
             else
                 return T2ERROR_FAILURE;
         }
+    }
+    else
+    {
+	free(httpResponse->data);
+    	free(httpResponse);
+	return T2ERROR_FAILURE;
     }
     T2Debug("%s --out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;
@@ -337,7 +365,6 @@ static T2ERROR fetchRemoteConfiguration(char *configURL, char **configData) {
             }
         }
         free(urlWithParams);
-        urlWithParams = NULL;
     }
     else
     {
@@ -374,7 +401,7 @@ static T2ERROR getRemoteConfigURL(char **configURL) {
     return ret;
 }
 
-static void getUpdatedConfigurationThread(void *data)
+static void* getUpdatedConfigurationThread(void *data)
 {
     T2ERROR configFetch = T2ERROR_FAILURE;
     T2Debug("%s ++in\n", __FUNCTION__);
@@ -525,6 +552,7 @@ static void getUpdatedConfigurationThread(void *data)
     stopFetchRemoteConfiguration = true;
     pthread_detach(pthread_self());
     T2Debug("%s --out\n", __FUNCTION__);
+    return NULL;
 }
 
 void uninitXConfClient()

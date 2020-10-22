@@ -53,8 +53,7 @@
  * @{
  */
 
-#define MEM_KEY_PREFIX "mem_"
-#define CPU_KEY_PREFIX "cpu_"
+#define PREFIX_SIZE 5
 
 typedef struct proc_info {
     int utime; /**< User mode jiffies */
@@ -101,11 +100,11 @@ int getProcUsage(char *processName) {
         int index = 0;
         pid_t *pid = NULL;
         pid_t *temp = NULL;
-
+        int pname_prefix_len = strlen(processName) + PREFIX_SIZE + 1;
         memset(&pInfo, '\0', sizeof(procMemCpuInfo));
         memcpy(pInfo.processName, processName, strlen(processName) + 1);
 
-        sprintf(pidofCommand, "pidof %s", processName);
+        snprintf(pidofCommand, sizeof(pidofCommand), "pidof %s", processName);
         if(!(cmdPid = popen(pidofCommand, "r"))) {
             T2Debug("Failed to execute %s", pidofCommand);
             return 0;
@@ -144,15 +143,13 @@ int getProcUsage(char *processName) {
         pclose(cmdPid);
 
         if(0 != getProcInfo(&pInfo)) {
-            mem_key = malloc(strlen(processName) + strlen(MEM_KEY_PREFIX) + 1);
-            cpu_key = malloc(strlen(processName) + strlen(CPU_KEY_PREFIX) + 1);
+            mem_key = malloc(pname_prefix_len);
+            cpu_key = malloc(pname_prefix_len);
             if(NULL != mem_key && NULL != cpu_key) {
-                strcpy(cpu_key, CPU_KEY_PREFIX);
-                strcat(cpu_key, processName);
+                snprintf(cpu_key, pname_prefix_len, "cpu_%s", processName);
 
-                strcpy(mem_key, MEM_KEY_PREFIX);
-                strcat(mem_key, processName);
-
+                snprintf(mem_key, pname_prefix_len, "mem_%s", processName);
+ 
                 addToSearchResult(mem_key, pInfo.memUse);
                 addToSearchResult(cpu_key, pInfo.cpuUse);
                 ret = 1;
@@ -192,7 +189,7 @@ int getProcPidStat(int pid, procinfo * pinfo) {
     char szFileName[CMD_LEN], szStatStr[2048], *s, *t;
     FILE *fp;
     struct stat st;
-    int ppid, pgrp, session, tty, tpgid, counter, priority, starttime, signal, blocked, sigignore, sigcatch;
+    int ppid, fd, pgrp, session, tty, tpgid, counter, priority, starttime, signal, blocked, sigignore, sigcatch, j;
     char exName[CMD_LEN], state;
     unsigned euid, egid;
     unsigned int flags, minflt, cminflt, majflt, cmajflt, timeout, itrealvalue, vsize, rlim, startcode, endcode, startstack, kstkesp, kstkeip, wchan;
@@ -203,28 +200,25 @@ int getProcPidStat(int pid, procinfo * pinfo) {
     }
 
     sprintf(szFileName, "/proc/%u/stat", (unsigned) pid);
-    if(-1 == access(szFileName, R_OK)) {
-        T2Debug("Unable to access file in get proc info");
+    if((fd = open(szFileName, O_RDONLY)) == -1)
+    {
+        T2Debug("Failed to open file in get process info");
         return 0;
     }
 
-    if(-1 != stat(szFileName, &st)) {
+    if(-1 != fstat(fd, &st)) {
         euid = st.st_uid;
         egid = st.st_gid;
     }else {
         euid = egid = -1;
     }
 
-    if((fp = fopen(szFileName, "r")) == NULL) {
-        T2Debug("Failed to open file in get process info");
+
+    if((j = read(fd, szStatStr, 2047)) == -1) {
+        close(fd);
         return 0;
     }
-
-    if((s = fgets(szStatStr, 2048, fp)) == NULL) {
-        fclose(fp);
-        return 0;
-    }
-
+    szStatStr[j++] = '\0';
     /** pid **/
     s = strchr(szStatStr, '(') + 1;
     t = strchr(szStatStr, ')');
@@ -238,13 +232,12 @@ int getProcPidStat(int pid, procinfo * pinfo) {
             &(pinfo->rss), &(rlim), &(startcode), &(endcode), &(startstack), &(kstkesp), &(kstkeip), &(signal), &(blocked), &(sigignore), &(sigcatch),
             &(wchan));
 
-    fclose(fp);
+    close(fd);
 
     T2Debug("%s --out \n", __FUNCTION__);
 
     return 1;
 }
-
 /**
  * @brief To get CPU and mem info.
  *
@@ -294,11 +287,7 @@ int getMemInfo(procMemCpuInfo *pmInfo) {
     intValue = intStr;
     if(intValue >= 1024)
         intStr = intStr / 1024;
-    snprintf(retMem, sizeof(retMem), "%d", intStr);
-    if(intValue >= 1024)
-        strcat(retMem, "m");
-    else
-        strcat(retMem, "k");
+    snprintf(retMem, sizeof(retMem), "%d%c", intStr, (intValue >= 1024) ? 'm' : 'k');
 
     strncpy(pmInfo->memUse, retMem, strlen(retMem) + 1);
     T2Debug("%s --out \n", __FUNCTION__);
@@ -352,11 +341,7 @@ int getCPUInfo(procMemCpuInfo *pInfo) {
 #else 
     /* ps -C Receiver -o %cpu -o %mem */
     //sprintf(command, "ps -C '%s' -o %%cpu -o %%mem | sed 1d", pInfo->processName);
-    if(1 == cmd_option) {
-        sprintf(command, "top -b -n 1 -c | grep -v grep | grep -i '%s'", pInfo->processName);
-    }else {
-        sprintf(command, "top -b -n 1 | grep -i '%s'", pInfo->processName);
-    }
+    snprintf(command, CMD_LEN, "top -b -n 1 %s | grep -v grep | grep -i '%s'", (cmd_option == 1) ? "-c" : "", pInfo->processName);
 
 #endif
 
@@ -375,7 +360,7 @@ int getCPUInfo(procMemCpuInfo *pInfo) {
     //#endif
 #else
     while(fgets(top_op, 2048, inFp) != NULL) {
-        if(sscanf(top_op, "%s %s %s %s %s %s %s %s %s %s", var1, var2, var3, var4, var5, var6, var7, var8, var9, var10) == 10) {
+        if(sscanf(top_op, "%16s %16s %16s %16s %16s %16s %16s %512s %512s %512s", var1, var2, var3, var4, var5, var6, var7, var8, var9, var10) == 10) {
             total_cpu_usage += atoi(var9);
             ret = 1;
         }

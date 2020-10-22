@@ -93,7 +93,6 @@ extern  PCCSP_CCD_INTERFACE             pT2CcdIf;
 extern  ANSC_HANDLE                     bus_handle;
 extern char                             g_Subsystem[32];
 
-static  COMPONENT_COMMON_DM             CommonDm = {0};
 
 ANSC_STATUS
 ssp_create_t2
@@ -200,14 +199,7 @@ ssp_engage_t2
     pDslhCpeController->SetDbusHandle((ANSC_HANDLE)pDslhCpeController, bus_handle);
     pDslhCpeController->Engage((ANSC_HANDLE)pDslhCpeController);
 
-    if ( g_Subsystem[0] != 0 )
-    {
-        _ansc_sprintf(CrName, "%s%s", g_Subsystem, CCSP_DBUS_INTERFACE_CR);
-    }
-    else
-    {
-        _ansc_sprintf(CrName, "%s", CCSP_DBUS_INTERFACE_CR);
-    }
+     _ansc_snprintf(CrName, sizeof(CrName), "%s%s", g_Subsystem, CCSP_DBUS_INTERFACE_CR);
 
     returnStatus = CcspComponentLoadDmXmlList(pStartCfg->DmXmlCfgFileName, &pXmlCfgList);
 
@@ -260,16 +252,8 @@ ssp_cancel_t2
         return ANSC_STATUS_SUCCESS;
     }
 
-    if ( g_Subsystem[0] != 0 )
-    {
-        _ansc_sprintf(CrName, "%s%s", g_Subsystem, CCSP_DBUS_INTERFACE_CR);
-        _ansc_sprintf(CpName, "%s%s", g_Subsystem, pStartCfg->ComponentName);
-    }
-    else
-    {
-        _ansc_sprintf(CrName, "%s", CCSP_DBUS_INTERFACE_CR);
-        _ansc_sprintf(CpName, "%s", pStartCfg->ComponentName);
-    }
+    _ansc_snprintf(CrName, sizeof(CrName), "%s%s", g_Subsystem, CCSP_DBUS_INTERFACE_CR);
+    _ansc_snprintf(CpName, sizeof(CpName), "%s%s", g_Subsystem, pStartCfg->ComponentName);
     /* unregister component */
     nRet = CcspBaseIf_unregisterComponent(bus_handle, CrName, CpName );
     AnscTrace("unregisterComponent returns %d\n", nRet);

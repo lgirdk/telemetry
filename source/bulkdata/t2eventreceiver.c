@@ -48,7 +48,6 @@ void freeT2Event(void *data)
         free(event->name);
         free(event->value);
         free(event);
-        event = NULL;
     }
 }
 
@@ -89,13 +88,13 @@ void T2ER_PushDataWithDelim(char* eventInfo, char* user_data)
                     {
                         free(event->name);
                         free(event);
-                        event = NULL;
                         T2Error("Missing event value\n");
                     }
                 }
                 else
                 {
                     T2Error("Missing delimiter in the event received\n");
+                    free(event);
                 }
             }
             pthread_mutex_unlock(&erMutex);
@@ -257,7 +256,9 @@ static T2ERROR flushCacheFromFile(void)
                         memset(telemetry_data, 0, sizeof(telemetry_data));
                 }
                 fclose(fp);
-                remove(T2_CACHE_FILE);
+                if(remove(T2_CACHE_FILE) != 0){
+                        T2Error("Failed to remove the file %s\n",T2_CACHE_FILE);
+                }
         }
         else{
                 T2Debug("fopen failed for %s\n", T2_CACHE_FILE);
@@ -272,7 +273,9 @@ static T2ERROR flushCacheFromFile(void)
                         memset(telemetry_data, 0, sizeof(telemetry_data));
                 }
                 fclose(fp);
-                remove(T2_ATOM_CACHE_FILE);
+                if(remove(T2_ATOM_CACHE_FILE) != 0){
+                        T2Error("Failed to remove the file %s\n",T2_ATOM_CACHE_FILE);
+                }
         }
         else{
                 T2Debug("fopen failed for %s\n", T2_ATOM_CACHE_FILE);

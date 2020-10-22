@@ -71,7 +71,6 @@ static void freeLogFileSeekMap(void *data) {
         }
 
         free(element);
-        element = NULL;
     }
 }
 
@@ -101,7 +100,6 @@ static void freeProfileSeekHashMap(void *data) {
         }
 
         free(element);
-        element = NULL;
     }
     T2Debug("%s --out\n", __FUNCTION__);
 }
@@ -129,7 +127,6 @@ void removeProfileFromSeekMap(char *profileName) {
 GrepSeekProfile *getLogSeekMapForProfile(char* profileName)
 {
     T2Debug("%s ++in\n", __FUNCTION__);
-    int profileMapIndex = 0;
     GrepSeekProfile* gsProfile = NULL ;
     T2Debug("Get profileseek map for %s \n", profileName);
     pthread_mutex_lock(&pSeekLock);
@@ -193,8 +190,6 @@ static int getLogSeekValue(hash_map_t *logSeekMap, char *name, long *seek_value)
  */
 T2ERROR updateLogSeek(hash_map_t *logSeekMap, char* logFileName) {
     T2Debug("%s ++in\n", __FUNCTION__);
-    T2ERROR retStatus = T2ERROR_FAILURE ;
-    int *data = NULL ;
 
     pthread_mutex_lock(&pSeekLock);
     if(NULL != logSeekMap) {
@@ -212,6 +207,7 @@ T2ERROR updateLogSeek(hash_map_t *logSeekMap, char* logFileName) {
     }
     pthread_mutex_unlock(&pSeekLock);
     T2Debug("%s --out\n", __FUNCTION__);
+    return T2ERROR_SUCCESS;
 }
 
 /**
@@ -263,7 +259,12 @@ static int fsize(FILE *fp) {
     int prev = ftell(fp);
     fseek(fp, 0L, SEEK_END);
     int sz = ftell(fp);
-    fseek(fp, prev, SEEK_SET);
+    if(prev >= 0)
+    {
+        if(fseek(fp, prev, SEEK_SET) != 0){
+             T2Error("Cannot set the file position indicator for the stream pointed to by stream\n");
+        }
+    }
     return sz;
 }
 
@@ -301,21 +302,19 @@ char *getLogLine(hash_map_t *logSeekMap, char *buf, int buflen, char *name) {
         T2Debug("Path variables are empty");
         return NULL;
     }
-
+    int logname_len = strlen(LOG_PATH) + strlen(name) +1;
     if(NULL == pcurrentLogFile) {
         char *currentLogFile = NULL;
         long seek_value = 0;
 
-        currentLogFile = malloc(strlen(LOG_PATH) + strlen(name) + 1);
+        currentLogFile = malloc(logname_len);
 
 
         if(NULL != currentLogFile) {
-            strcpy(currentLogFile, LOG_PATH);
-            strcat(currentLogFile, name);
+            snprintf(currentLogFile,logname_len, "%s%s", LOG_PATH, name);
             if(0 != getLogSeekValue(logSeekMap, name, &seek_value)) {
                 pcurrentLogFile = fopen(currentLogFile, "rb");
                 free(currentLogFile);
-                currentLogFile = NULL;
 
                 if(NULL == pcurrentLogFile)
                     return NULL;
@@ -324,7 +323,6 @@ char *getLogLine(hash_map_t *logSeekMap, char *buf, int buflen, char *name) {
 
                 pcurrentLogFile = fopen(currentLogFile, "rb");
                 free(currentLogFile);
-                currentLogFile = NULL;
 
                 if(NULL == pcurrentLogFile) {
                     LAST_SEEK_VALUE = 0;
@@ -334,18 +332,21 @@ char *getLogLine(hash_map_t *logSeekMap, char *buf, int buflen, char *name) {
                 fileSize = fsize(pcurrentLogFile);
 
                 if(seek_value <= fileSize) {
-                    fseek(pcurrentLogFile, seek_value, 0);
+                    if( fseek(pcurrentLogFile, seek_value, 0) != 0){
+                         T2Error("Cannot set the file position indicator for the stream pointed to by stream\n");
+                    }
                 }else {
                     if((NULL != DEVICE_TYPE) && (0 == strcmp("broadband", DEVICE_TYPE))) {
                         T2Debug("Telemetry file pointer corrupted");
-                        fseek(pcurrentLogFile, 0, 0);
+                        if(fseek(pcurrentLogFile, 0, 0) != 0){
+                            T2Error("Cannot set the file position indicator for the stream pointed to by stream\n");
+                        }
                     }else {
                         char *fileExtn = ".1";
-                        char * rotatedLog = malloc(strlen(LOG_PATH) + strlen(name) + strlen(fileExtn) + 1);
+                        int fileExtn_len = logname_len + strlen(fileExtn);
+                        char * rotatedLog = malloc(fileExtn_len);
                         if(NULL != rotatedLog) {
-                            strcpy(rotatedLog, LOG_PATH);
-                            strcat(rotatedLog, name);
-                            strcat(rotatedLog, fileExtn);
+                            snprintf(rotatedLog, fileExtn_len, "%s%s%s", LOG_PATH, name, fileExtn);
 
                             fclose(pcurrentLogFile);
                             pcurrentLogFile = NULL;
@@ -356,14 +357,14 @@ char *getLogLine(hash_map_t *logSeekMap, char *buf, int buflen, char *name) {
                                 T2Debug("Error in opening file %s", rotatedLog);
                                 LAST_SEEK_VALUE = 0;
                                 free(rotatedLog);
-                                rotatedLog = NULL;
                                 return NULL;
                             }
 
                             free(rotatedLog);
-                            rotatedLog = NULL;
 
-                            fseek(pcurrentLogFile, seek_value, 0);
+                            if(fseek(pcurrentLogFile, seek_value, 0) != 0){
+                                T2Error("Cannot set the file position indicator for the stream pointed to by stream\n");
+                            }
                             is_rotated_log = 1;
                         }
                     }
@@ -384,38 +385,34 @@ char *getLogLine(hash_map_t *logSeekMap, char *buf, int buflen, char *name) {
             if(is_rotated_log == 1) {
                 char *curLog = NULL;
                 is_rotated_log = 0;
-                curLog = malloc(strlen(LOG_PATH) + strlen(name) + 1);
+                curLog = malloc(logname_len);
                 if(NULL != curLog) {
-                    strcpy(curLog, LOG_PATH);
-                    strcat(curLog, name);
+                    snprintf(curLog, logname_len, "%s%s", LOG_PATH, name);
                     pcurrentLogFile = fopen(curLog, "rb");
 
                     if(NULL == pcurrentLogFile) {
                         T2Debug("Error in opening file %s", curLog);
                         LAST_SEEK_VALUE = 0;
                         free(curLog);
-                        curLog = NULL;
                         return NULL;
                     }
 
                     free(curLog);
-                    curLog = NULL;
-                }
-                rval = fgets(buf, buflen, pcurrentLogFile);
-                if(NULL == rval) {
-                    seek_value = ftell(pcurrentLogFile);
-                    LAST_SEEK_VALUE = seek_value;
 
-                    fclose(pcurrentLogFile);
-                    pcurrentLogFile = NULL;
+                    rval = fgets(buf, buflen, pcurrentLogFile);
+                    if(NULL == rval) {
+                        seek_value = ftell(pcurrentLogFile);
+                        LAST_SEEK_VALUE = seek_value;
+
+                        fclose(pcurrentLogFile);
+                        pcurrentLogFile = NULL;
                 }
             }
         }
     }
-
+}
     return rval;
 }
-
 /**
  *  @brief Function to update the global paths like PERSISTENT_PATH,LOG_PATH from include.properties file.
  *
@@ -429,21 +426,19 @@ void updateIncludeConfVal(char *logpath, char *perspath) {
     FILE *file = fopen( INCLUDE_PROPERTIES, "r");
     if(NULL != file) {
         char props[255] = { "" };
-        while(fscanf(file, "%s", props) != EOF) {
+        while(fscanf(file, "%255s", props) != EOF) {
             char *property = NULL;
             if((property = strstr(props, "PERSISTENT_PATH="))) {
                 property = property + strlen("PERSISTENT_PATH=");
-                PERSISTENT_PATH = malloc(strlen(property) + 1);
-                if(NULL != PERSISTENT_PATH) {
-                    strcpy(PERSISTENT_PATH, property);
+                if(PERSISTENT_PATH != NULL)
+                {
+                   free(PERSISTENT_PATH);
                 }
+                PERSISTENT_PATH = strdup(property);
             }else if((property = strstr(props, "LOG_PATH="))) {
                 if(0 == strncmp(props, "LOG_PATH=", strlen("LOG_PATH="))) {
                     property = property + strlen("LOG_PATH=");
-                    LOG_PATH = malloc(strlen(property) + 1);
-                    if(NULL != LOG_PATH) {
-                        strcpy(LOG_PATH, property);
-                    }
+                    LOG_PATH = strdup(property);
                 }
             }
         }
@@ -453,10 +448,11 @@ void updateIncludeConfVal(char *logpath, char *perspath) {
 
     if(NULL != logpath && strcmp(logpath, "") != 0) {
         char *tmp = NULL;
-        tmp = realloc(LOG_PATH, strlen(logpath) + 1);
+        int logpath_len = strlen(logpath) + 1;
+        tmp = realloc(LOG_PATH, logpath_len);
         if(NULL != tmp) {
             LOG_PATH = tmp;
-            strcpy(LOG_PATH, logpath);
+            strncpy(LOG_PATH, logpath, logpath_len);
         }else {
             free(LOG_PATH);
             LOG_PATH = NULL;
@@ -465,10 +461,11 @@ void updateIncludeConfVal(char *logpath, char *perspath) {
 
     if(NULL != perspath && strcmp(perspath, "") != 0) {
         char *tmp = NULL;
-        tmp = realloc(PERSISTENT_PATH, strlen(perspath) + 1);
+        int perspath_len = strlen(perspath) + 1;
+        tmp = realloc(PERSISTENT_PATH, perspath_len);
         if(NULL != tmp) {
             PERSISTENT_PATH = tmp;
-            strcpy(PERSISTENT_PATH, perspath);
+            strncpy(PERSISTENT_PATH, perspath, perspath_len);
         }else {
             free(PERSISTENT_PATH);
             PERSISTENT_PATH = NULL;
@@ -476,8 +473,8 @@ void updateIncludeConfVal(char *logpath, char *perspath) {
     }
 
     T2Debug("%s --out \n", __FUNCTION__);
-}
 
+}
 /**
  *  @brief Function to update the configuration values from device.properties file.
  *
@@ -494,14 +491,11 @@ void initProperties(char *logpath, char *perspath) {
     file = fopen( DEVICE_PROPERTIES, "r");
     if(NULL != file) {
         char props[255] = { "" };
-        while(fscanf(file, "%s", props) != EOF) {
+        while(fscanf(file, "%255s", props) != EOF) {
             char *property = NULL;
             if(property = strstr(props, "DEVICE_TYPE=")) {
                 property = property + strlen("DEVICE_TYPE=");
-                DEVICE_TYPE = malloc(strlen(property) + 1);
-                if(NULL != DEVICE_TYPE) {
-                    strcpy(DEVICE_TYPE, property);
-                }
+                DEVICE_TYPE = strdup(property);
                 break;
             }
         }
@@ -511,17 +505,19 @@ void initProperties(char *logpath, char *perspath) {
     updateIncludeConfVal(logpath, perspath);
 
     if(NULL != DEVICE_TYPE && NULL != PERSISTENT_PATH && NULL != LOG_PATH) {
-
+        int logpath_len = strlen(LOG_PATH);
+        int perspath_len = strlen(PERSISTENT_PATH);
         if(0 == strcmp("broadband", DEVICE_TYPE)) { // Update config for broadband
             char *tmp_seek_file = "/.telemetry/tmp/rtl_";
             char *tmp_log_file = "/";
             char *tmp = NULL;
-
+            int tmp_seek_len = strlen(tmp_seek_file) + 1;
+            int tmp_log_len = strlen(tmp_log_file) + 1;
             if(NULL == perspath || strcmp(perspath, "") == 0) {
-                tmp = realloc(PERSISTENT_PATH, strlen(PERSISTENT_PATH) + strlen(tmp_seek_file) + 1);
+                tmp = realloc(PERSISTENT_PATH, perspath_len + tmp_seek_len);
                 if(NULL != tmp) {
                     PERSISTENT_PATH = tmp;
-                    strcat(PERSISTENT_PATH, tmp_seek_file);
+                    strncat(PERSISTENT_PATH, tmp_seek_file, tmp_seek_len);
                 }else {
                     free(PERSISTENT_PATH);
                     PERSISTENT_PATH = NULL;
@@ -529,10 +525,10 @@ void initProperties(char *logpath, char *perspath) {
             }
 
             if(NULL == logpath || strcmp(logpath, "") == 0) {
-                tmp = realloc(LOG_PATH, strlen(LOG_PATH) + strlen(tmp_log_file) + 1);
+                tmp = realloc(LOG_PATH, logpath_len + tmp_log_len);;
                 if(NULL != tmp) {
                     LOG_PATH = tmp;
-                    strcat(LOG_PATH, tmp_log_file);
+                    strncat(LOG_PATH, tmp_log_file, tmp_log_len);
                 }else {
                     free(LOG_PATH);
                     LOG_PATH = NULL;
@@ -543,12 +539,13 @@ void initProperties(char *logpath, char *perspath) {
             char *tmp_seek_file = DEFAULT_SEEK_PREFIX;
             char *tmp_log_file = DEFAULT_LOG_PATH;
             char *tmp = NULL;
-
+            int tmp_seek_len = strlen(tmp_seek_file) + 1;
+            int tmp_log_len = strlen(tmp_log_file) + 1;
             if(NULL == perspath || strcmp(perspath, "") == 0) {
-                tmp = realloc(PERSISTENT_PATH, strlen(tmp_seek_file) + 1);
+                tmp = realloc(PERSISTENT_PATH, tmp_seek_len);
                 if(NULL != tmp) {
                     PERSISTENT_PATH = tmp;
-                    strcpy(PERSISTENT_PATH, tmp_seek_file);
+                    strncpy(PERSISTENT_PATH, tmp_seek_file, tmp_seek_len);
                 }else {
                     free(PERSISTENT_PATH);
                     PERSISTENT_PATH = NULL;
@@ -556,10 +553,10 @@ void initProperties(char *logpath, char *perspath) {
             }
 
             if(NULL == logpath || strcmp(logpath, "") == 0) {
-                tmp = realloc(LOG_PATH, strlen(tmp_log_file) + 1);
+                tmp = realloc(LOG_PATH, tmp_log_len);
                 if(NULL != tmp) {
                     LOG_PATH = tmp;
-                    strcpy(LOG_PATH, tmp_log_file);
+                    strncpy(LOG_PATH, tmp_log_file, tmp_log_len);
                 }else {
                     free(LOG_PATH);
                     LOG_PATH = NULL;
@@ -570,7 +567,6 @@ void initProperties(char *logpath, char *perspath) {
 
     isPropsIntialized = true ;
     T2Debug("%s --out \n", __FUNCTION__);
-
 }
 
 bool isPropsInitialized() {

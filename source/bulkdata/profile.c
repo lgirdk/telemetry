@@ -50,7 +50,6 @@ static void freeRequestURIparam(void *data)
         if(hparam->HttpValue)
             free(hparam->HttpValue);
         free(hparam);
-        hparam = NULL;
     }
 }
 
@@ -114,7 +113,6 @@ static void freeProfile(void *data)
             Vector_Destroy(profile->staticParamList, freeStaticParam);
         }
         free(profile);
-        profile = NULL;
     }
     T2Debug("%s ++out \n", __FUNCTION__);
 }
@@ -154,7 +152,6 @@ static T2ERROR initJSONReportProfile(cJSON** jsonObj, cJSON **valArray)
 
     cJSON_AddItemToObject(*jsonObj, "Report", *valArray = cJSON_CreateArray());
 
-    cJSON *arrayItem = NULL;
 
     return T2ERROR_SUCCESS;
 }
@@ -192,12 +189,12 @@ T2ERROR profileWithNameExists(const char *profileName, bool *bProfileExists)
     return T2ERROR_PROFILE_NOT_FOUND;
 }
 
-static void CollectAndReport(void* data)
+static void* CollectAndReport(void* data)
 {
     if(data == NULL)
     {
         T2Error("data passed is NULL can't identify the profile, existing from CollectAndReport\n");
-        return;
+        return NULL;
     }
     Profile* profile = (Profile *)data;
     profile->reportInProgress = true;
@@ -224,14 +221,14 @@ static void CollectAndReport(void* data)
             //TODO: Support 'ObjectHierarchy' format in RDKB-26154.
             T2Error("Only JSON name-value pair format is supported \n");
             profile->reportInProgress = false;
-            return;
+            return NULL;
         }
 
         if(T2ERROR_SUCCESS != initJSONReportProfile(&profile->jsonReportObj, &valArray))
         {
             T2Error("Failed to initialize JSON Report\n");
             profile->reportInProgress = false;
-            return;
+            return NULL;
         }
         else
         {
@@ -268,7 +265,7 @@ static void CollectAndReport(void* data)
             {
                 T2Error("Unable to generate report for : %s\n", profile->name);
                 profile->reportInProgress = false;
-                return;
+                return NULL;
             }
             long size = strlen(jsonReport);
             T2Info("cJSON Report = %s\n", jsonReport);
@@ -295,7 +292,6 @@ static void CollectAndReport(void* data)
                     ret = sendCachedReportsOverHTTP(httpUrl, profile->cachedReportList);
                 }
                 free(httpUrl);
-                httpUrl = NULL;
             }
             else
             {
@@ -318,6 +314,7 @@ static void CollectAndReport(void* data)
 
     profile->reportInProgress = false;
     T2Info("%s --out\n", __FUNCTION__);
+    return NULL;
 }
 
 void NotifyTimeout(const char* profileName, bool isClearSeekMap)
@@ -615,16 +612,16 @@ T2ERROR deleteProfile(const char *profileName)
         pthread_mutex_unlock(&plMutex);
         return T2ERROR_FAILURE;
     }
-    pthread_mutex_unlock(&plMutex);
 
     if(profile->enable)
         profile->enable = false;
     else
     {
         T2Error("Profile is disabled, ignoring the delete profile request\n");
+        pthread_mutex_unlock(&plMutex);
         return T2ERROR_SUCCESS;
     }
-
+    pthread_mutex_unlock(&plMutex);
     if(T2ERROR_SUCCESS != unregisterProfileFromScheduler(profileName))
     {
         T2Info("Profile : %s already removed from scheduler\n", profileName);
@@ -672,19 +669,20 @@ static void loadReportProfilesFromDisk()
 
     T2Info("loadReportProfilesFromDisk \n");
     char filePath[REPORTPROFILES_FILE_PATH_SIZE] = {'\0'};
-    sprintf(filePath, "%s%s", REPORTPROFILES_PERSISTENCE_PATH, MSGPACK_REPORTPROFILES_PERSISTENT_FILE);
-    if (0 == access(filePath, F_OK)) {
+    snprintf(filePath, sizeof(filePath), "%s%s", REPORTPROFILES_PERSISTENCE_PATH, MSGPACK_REPORTPROFILES_PERSISTENT_FILE);
+    FILE *fp;
+    fp = fopen (filePath, "rb");
+    if(fp != NULL){
         T2Info("Msgpack: loadReportProfilesFromDisk \n");
-        FILE *fp;
-	struct __msgpack__ msgpack;
-
-        fp = fopen (filePath, "rb");
-        if (NULL == fp) {
-            T2Error("Unable to open %s \n", filePath);
-            return;
-        }
+        struct __msgpack__ msgpack;
         fseek(fp, 0L, SEEK_END);
 	msgpack.msgpack_blob_size = ftell(fp);
+        if(msgpack.msgpack_blob_size < 0)
+        {
+            T2Error("Unable to detect the file pointer position for file %s\n", filePath);
+            fclose(fp);
+            return;
+        }
 	msgpack.msgpack_blob = malloc(sizeof(char) * msgpack.msgpack_blob_size);
 	if (NULL == msgpack.msgpack_blob) {
             T2Error("Unable to allocate %d bytes of memory at Line %d on %s \n",
@@ -693,7 +691,13 @@ static void loadReportProfilesFromDisk()
             return;
         }
         fseek(fp, 0L, SEEK_SET);
-	fread(msgpack.msgpack_blob, sizeof(char), msgpack.msgpack_blob_size, fp);
+        if(fread(msgpack.msgpack_blob, sizeof(char), msgpack.msgpack_blob_size, fp) < msgpack.msgpack_blob_size)
+        {
+            T2Error("fread is returning fewer bytes than expected from the file %s\n", filePath);
+            free(msgpack.msgpack_blob);
+            fclose(fp);
+            return;
+        }
         fclose (fp);
 	__ReportProfiles_ProcessReportProfilesMsgPackBlob((void *)&msgpack);
 	free(msgpack.msgpack_blob);
@@ -731,8 +735,8 @@ static void loadReportProfilesFromDisk()
              }
          }
      }
-     Vector_Destroy(configList, freeReportProfileConfig);
      T2Info("Completed processing %d profiles on the disk,trying to fetch new/updated profiles\n", Vector_Size(configList));
+     Vector_Destroy(configList, freeReportProfileConfig);
 
     T2Debug("%s --out\n", __FUNCTION__);
 }

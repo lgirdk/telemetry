@@ -140,7 +140,7 @@ static void appendData(pcdata_t* dst, const char* src) {
  *  @retval Returns 1 on failure, 0 on success
  *  Retaining this for skip frequency param confined to XCONF profile
  */
-static int processTr181Objects(char *logfile, GList *pchead, int pcIndex) {
+static T2ERROR processTr181Objects(char *logfile, GList *pchead, int pcIndex) {
     T2Debug("%s ++in\n", __FUNCTION__);
     T2ERROR ret_val = T2ERROR_FAILURE;
     int length, obj_count, i = 0;
@@ -176,8 +176,7 @@ static int processTr181Objects(char *logfile, GList *pchead, int pcIndex) {
                     if(NULL == tck) {
                         //Get NumberOfEntries of a multi-instance object
                         length = first_tck - tmp->pattern;
-                        snprintf(tr181objBuff, length, tmp->pattern);
-                        strcat(tr181objBuff, "NumberOfEntries");
+                        snprintf(tr181objBuff, sizeof(tr181objBuff), "%sNumberOfEntries", tmp->pattern);
                         ret_val = getParameterValue(tr181objBuff, &tr181dataBuff);
                         if(T2ERROR_SUCCESS == ret_val) {
                             obj_count = atoi(tr181dataBuff);
@@ -187,8 +186,7 @@ static int processTr181Objects(char *logfile, GList *pchead, int pcIndex) {
                             if(obj_count > 0) {
                                 for( i = 1; i <= obj_count; i++ ) {
                                     //Replace multi-instance token with an object instance number
-                                    snprintf(tr181objBuff, (length + 1), tmp->pattern);
-                                    sprintf(tr181objBuff + length, "%d%s", i, (tmp->pattern + length + DELIMITER_SIZE));
+                                    snprintf(tr181objBuff, sizeof(tr181objBuff), "%s%d%s", tmp->pattern, i, (tmp->pattern + length + DELIMITER_SIZE));
                                     ret_val = getParameterValue(tr181objBuff, &tr181dataBuff);
                                     if(T2ERROR_SUCCESS == ret_val) {
                                         appendData(tmp, tr181dataBuff);
@@ -212,7 +210,7 @@ static int processTr181Objects(char *logfile, GList *pchead, int pcIndex) {
     } //End of node loop through for loop
 
     T2Debug("%s --out\n", __FUNCTION__);
-    return 0;
+    return ret_val;
 }
 
 /**
@@ -222,7 +220,7 @@ static int processTr181Objects(char *logfile, GList *pchead, int pcIndex) {
  *
  * @return Returns status of operation.
  */
-static int addToJson(GList *pchead) {
+void addToJson(GList *pchead) {
 
     T2Debug("%s ++in\n", __FUNCTION__);
     GList *tlist = pchead;
@@ -295,6 +293,7 @@ static int addToVector(GList *pchead, Vector* grepResultList) {
         tlist = g_list_next(tlist);
     }
     T2Debug("%s --out\n", __FUNCTION__);
+    return 0;
 }
 
 /**
@@ -371,7 +370,7 @@ int getErrorCode(char *str, char *ec) {
                             i++;
                             j++;
                             ec[j] = '\0';
-                            strcpy(ec, tmpEC);
+                            strncpy(ec, tmpEC, LEN);
                         }
                         break;
                     }
@@ -398,10 +397,9 @@ static int handleRDKErrCodes(GList **rdkec_head, char *line) {
     char err_code[20] = { 0 }, rdkec[20] = { 0 };
     pcdata_t *tnode = NULL;
 
-    getErrorCode(line, err_code);
+    int len = strlen(err_code);
     if(strcmp(err_code, "") != 0) {
-        strcpy(rdkec, "RDK-");
-        strcat(rdkec, err_code);
+        snprintf(rdkec, RDK_EC_MAXLEN+len, "RDK-%s", err_code);
         tnode = searchPCNode(*rdkec_head, rdkec);
         if(NULL != tnode) {
             tnode->count++;
@@ -476,25 +474,21 @@ static int processPattern(char **prev_file, char *logfile, GList **rdkec_head, G
     if(NULL != logfile) {
 
         if((NULL == *prev_file) || (strcmp(*prev_file, logfile) != 0)) {
-            if(NULL == *prev_file) {
-                *prev_file = malloc(strlen(logfile) + 1);
-            }else {
-                char *tmp = NULL;
-                updateLogSeek(logSeekMap, *prev_file);
-                tmp = realloc(*prev_file, strlen(logfile) + 1);
-                if(NULL != tmp) {
-                    *prev_file = tmp;
-                }else {
-                    free(*prev_file);
-                    *prev_file = NULL;
-                }
+            if(NULL == *prev_file){
+                 *prev_file = strdup(logfile);
+                 if(*prev_file == NULL){
+                   T2Error("Insufficient memory available to allocate duplicate string %s\n", logfile);
+                 }
             }
-
-            if(NULL != *prev_file) {
-                strcpy(*prev_file, logfile);
-            }
+            else {
+              updateLogSeek(logSeekMap, *prev_file);
+              free(*prev_file);
+              *prev_file = strdup(logfile);
+              if(*prev_file == NULL){
+                   T2Error("Insufficient memory available to allocate duplicate string %s\n", logfile);
+               }
+           }
         }
-
         // Process
         if(NULL != pchead) {
             if(0 == strcmp(logfile, "top_log.txt")) {
@@ -563,7 +557,7 @@ char *strSplit(char *str, char *delim) {
  *
  * @return Returns status of operation.
  */
-int getDType(char *filename, MarkerType mType, DType_t *dtype) {
+void getDType(char *filename, MarkerType mType, DType_t *dtype) {
     if (mType != MTYPE_COUNTER) {
         *dtype = STR;
     }else if(0 == strcmp(filename, "top_log.txt") || 0 == strcmp(filename, "<message_bus>")) {
@@ -581,7 +575,6 @@ static int parseMarkerList(char* profileName, Vector* vMarkerList, Vector* grepR
 
     T2Debug("%s ++in \n", __FUNCTION__);
 
-    char line[MAXLINE];
     char *filename = NULL, *prevfile = NULL;
     int pcIndex = 0;
     GList *pchead = NULL, *rdkec_head = NULL;
@@ -638,7 +631,10 @@ static int parseMarkerList(char* profileName, Vector* vMarkerList, Vector* grepR
             is_skip_param = 1;
 
         if(NULL == filename) {
-            filename = malloc(strlen(temp_file) + 1);
+            filename = strdup(temp_file);
+            if(filename == NULL){
+                   T2Error("Insufficient memory available to allocate duplicate string %s\n", temp_file);
+             }
             pchead = NULL;
             if(is_skip_param == 0 && (0 == insertPCNode(&pchead, temp_pattern, temp_header, dtype, 0, NULL))) {
                 pcIndex = 1;
@@ -649,23 +645,17 @@ static int parseMarkerList(char* profileName, Vector* vMarkerList, Vector* grepR
                     pcIndex++;
                 }
             }else {
-                char *tmp = NULL;
                 processPattern(&prevfile, filename, &rdkec_head, pchead, pcIndex, grepResultList, gsProfile->logFileSeekMap);
                 pchead = NULL;
-                tmp = realloc(filename, strlen(temp_file) + 1);
-                if(NULL != tmp) {
-                    filename = tmp;
-                }else {
-                    free(filename);
-                    filename = NULL;
+                free(filename);
+                filename = strdup(temp_file);
+                if(filename == NULL){
+                   T2Error("Insufficient memory available to allocate duplicate string %s\n", temp_file);
                 }
                 if(is_skip_param == 0 && (0 == insertPCNode(&pchead, temp_pattern, temp_header, dtype, 0, NULL))) {
                     pcIndex = 1;
                 }
             }
-        }
-        if(NULL != filename) {
-            strcpy(filename, temp_file);
         }
     }  // End of adding list to node
 
@@ -772,3 +762,4 @@ void freeGResult(void *data)
 
 /** @} */
 /** @} */
+

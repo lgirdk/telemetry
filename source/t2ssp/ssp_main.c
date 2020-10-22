@@ -79,14 +79,7 @@ int  cmd_dispatch(int  command)
 {
     char                            CName[256];
 
-    if ( g_Subsystem[0] != 0 )
-    {
-        _ansc_sprintf(CName, "%s%s", g_Subsystem, gpT2StartCfg->ComponentId);
-    }
-    else
-    {
-        _ansc_sprintf(CName, "%s", gpT2StartCfg->ComponentId);
-    }
+    _ansc_snprintf(CName, sizeof(CName), "%s%s", g_Subsystem, gpT2StartCfg->ComponentId);
 
     ssp_T2Mbi_MessageBusEngage
         ( 
@@ -137,11 +130,6 @@ char *getComponentId()
 
 int initTR181_dm()
 {
-    ANSC_STATUS                     returnStatus       = ANSC_STATUS_SUCCESS;
-    int                             cmdChar            = 0;
-    BOOL                            bRunAsDaemon       = TRUE;
-    int                             idx                = 0;
-    char                            cmd[1024]          = {0};
     FILE                           *fd                 = NULL;
     DmErr_t                         err;
     char                            *subSys            = NULL;

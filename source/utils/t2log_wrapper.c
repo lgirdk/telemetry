@@ -58,7 +58,6 @@ void T2Log(unsigned int level, const char *msg, ...)
             if(pTempChar !=NULL)
             {
                 free(pTempChar);
-                pTempChar = NULL;
             }
         }
     }

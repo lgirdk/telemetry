@@ -36,7 +36,7 @@ typedef struct _Param
     bool reportEmptyParam;
     char* paramType;
     char* name;
-    char* alias;
+    const char* alias;
 }Param;
 
 typedef struct _StaticParam

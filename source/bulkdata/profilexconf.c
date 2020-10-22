@@ -127,7 +127,7 @@ static T2ERROR initJSONReportXconf(cJSON** jsonObj, cJSON **valArray)
     return T2ERROR_SUCCESS;
 }
 
-static void CollectAndReportXconf(void* data)
+static void* CollectAndReportXconf(void* data)
 {
     ProfileXConf* profile = singleProfile;
 
@@ -152,7 +152,7 @@ static void CollectAndReportXconf(void* data)
             T2Error("Failed to initialize JSON Report\n");
             profile->reportInProgress = false;
             pthread_detach(pthread_self());
-            return;
+            return NULL;
         }
         else
         {
@@ -186,7 +186,7 @@ static void CollectAndReportXconf(void* data)
             {
                 T2Error("Unable to generate report for : %s\n", profile->name);
                 profile->reportInProgress = false;
-                return;
+                return NULL;
             }
             long size = strlen(jsonReport);
             T2Info("cJSON Report = %s\n", jsonReport);
@@ -206,7 +206,7 @@ static void CollectAndReportXconf(void* data)
                 profile->reportInProgress = false;
                 pthread_detach(pthread_self());
                 T2Debug("%s --out\n", __FUNCTION__);
-                return;
+                return NULL;
             }
             else
             {
@@ -260,6 +260,7 @@ static void CollectAndReportXconf(void* data)
     profile->reportInProgress = false;
     pthread_detach(pthread_self());
     T2Debug("%s --out\n", __FUNCTION__);
+    return NULL;
 }
 
 T2ERROR ProfileXConf_init()

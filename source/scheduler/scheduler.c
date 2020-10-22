@@ -47,7 +47,6 @@ void freeSchedulerProfile(void *data)
         pthread_cond_destroy(&schProfile->tCond);
         pthread_detach(schProfile->tId);
         free(schProfile);
-        schProfile = NULL;
     }
 }
 
@@ -245,7 +244,7 @@ void uninitScheduler()
 
 T2ERROR registerProfileWithScheduler(const char* profileName, unsigned int timeInterval, unsigned int activationTimeout, bool repeat)
 {
-    T2ERROR ret = T2ERROR_FAILURE;
+    T2ERROR ret;
     T2Debug("%s ++in : profile - %s \n", __FUNCTION__,profileName);
     if(timeoutNotificationCb == NULL)
     {

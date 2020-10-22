@@ -60,14 +60,13 @@ static T2ERROR CCSPInterface_Init()
     return T2ERROR_SUCCESS;
 }
 
-static int findDestComponent(const char *paramName, char **destCompName, char **destPath)
+static int findDestComponent(char *paramName, char **destCompName, char **destPath)
 {
-    int ret = -1, size =0;
+    int ret, size =0;
     char dst_pathname_cr[256] = {0};
     componentStruct_t **ppComponents = NULL;
     T2Debug("%s ++in for paramName : %s\n", __FUNCTION__, paramName);
-    sprintf(dst_pathname_cr, "%s%s", "eRT.", CCSP_DBUS_INTERFACE_CR);
-
+    snprintf(dst_pathname_cr, sizeof(dst_pathname_cr), "eRT.%s", CCSP_DBUS_INTERFACE_CR);
     ret = CcspBaseIf_discComponentSupportingNamespace(bus_handle, dst_pathname_cr, paramName, "", &ppComponents, &size);
     if ( ret == CCSP_SUCCESS && size >= 1)
     {
@@ -178,7 +177,7 @@ T2ERROR getParameterNames(const char *objName, parameterInfoStruct_t ***paramNam
         destCompPath = NULL;
     }
     T2Debug("%s --out \n", __FUNCTION__);
-    return T2ERROR_SUCCESS;
+    return ret;
 }
 
 void freeParamInfoSt(parameterInfoStruct_t **paramInfoSt, int paramNamesLength)

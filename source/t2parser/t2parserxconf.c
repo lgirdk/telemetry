@@ -146,7 +146,8 @@ T2ERROR processConfigurationXConf(char* configData, ProfileXConf **localProfile)
 
     T2Debug("%s ++in\n", __FUNCTION__);
 
-    T2ERROR ret = 0;
+    T2ERROR ret = T2ERROR_SUCCESS;
+    int marker_count =0;
     T2Debug("config data = %s\n", configData);
     cJSON *json_root = cJSON_Parse(configData);
     cJSON *telemetry_data = cJSON_GetObjectItem(json_root, "urn:settings:TelemetryProfile");
@@ -157,7 +158,10 @@ T2ERROR processConfigurationXConf(char* configData, ProfileXConf **localProfile)
     cJSON *jschedule = cJSON_GetObjectItem(telemetry_data, "schedule");
 
     cJSON *profileData = cJSON_GetObjectItem(telemetry_data, "telemetryProfile");
-    int marker_count = cJSON_GetArraySize(profileData);
+    if(profileData != NULL)
+    {
+       marker_count = cJSON_GetArraySize(profileData);
+    }
 //    if(jprofileID)
 //        T2Debug("profile id = %s\n", jprofileID->valuestring);
     if(jprofileName)

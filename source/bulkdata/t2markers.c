@@ -50,9 +50,7 @@ static void freeT2Marker(void *data)
         free(t2Marker->markerName);
         Vector_Destroy(t2Marker->profileList, free);
         free(t2Marker);
-        t2Marker = NULL;
         free(element);
-        element = NULL;
     }
 }
 

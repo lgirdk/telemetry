@@ -32,7 +32,6 @@ void freeParam(void *data)
         if(param->paramType)
             free(param->paramType);
         free(param);
-        param = NULL;
     }
 }
 
@@ -49,7 +48,6 @@ void freeStaticParam(void *data)
             free(sparam->value);
 
         free(sparam);
-        sparam = NULL;
     }
 }
 
@@ -69,7 +67,6 @@ void freeEMarker(void *data)
         if(eMarker->mType == MTYPE_ABSOLUTE && eMarker->u.markerValue)
             free(eMarker->u.markerValue);
         free(eMarker);
-        eMarker = NULL;
     }
 }
 
@@ -90,6 +87,5 @@ void freeGMarker(void *data)
         if(gMarker->mType == MTYPE_ABSOLUTE && gMarker->u.markerValue)
             free(gMarker->u.markerValue);
         free(gMarker);
-        gMarker = NULL;
     }
 }

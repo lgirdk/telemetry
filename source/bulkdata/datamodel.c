@@ -65,6 +65,7 @@ static void *process_rp_thread(void *data)
         pthread_mutex_unlock(&rpMutex);
     }
     T2Debug("%s --out\n", __FUNCTION__);
+    return NULL;
 }
 
 static void *process_msg_thread(void *data)
@@ -84,6 +85,7 @@ static void *process_msg_thread(void *data)
         }
         pthread_mutex_unlock(&rpMsgMutex);
     }
+    return NULL;
 }
 
 /* Description:
@@ -155,6 +157,8 @@ T2ERROR datamodel_MsgpackProcessProfile(char *str , int strSize)
     }
     else
     {
+       free(msgpack->msgpack_blob);
+       free(msgpack);
        T2Error("Datamodel not initialized, dropping request \n");
     }
     pthread_mutex_unlock(&rpMsgMutex);
@@ -189,8 +193,9 @@ T2ERROR datamodel_init(void)
     pthread_mutex_init(&rpMsgMutex, NULL);
     pthread_cond_init(&rpCond, NULL);
     pthread_cond_init(&msg_Cond, NULL);
-
+    pthread_mutex_lock(&rpMutex);
     stopProcessing = false;
+    pthread_mutex_unlock(&rpMutex);
     pthread_create(&rpThread, NULL, process_rp_thread, (void *)NULL);
     pthread_create(&rpMsgThread, NULL, process_msg_thread, (void *)NULL);
 

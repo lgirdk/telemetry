@@ -113,7 +113,7 @@ static T2ERROR addGrepMarkersToMap () {
         char *grepFile = (char*) strSplit(NULL, DELIMITER);
         char *useProperty = (char*) strSplit(NULL, DELIMITER);
         char *skipIntervalStr = (char*) strSplit(NULL, DELIMITER);
-        int skipInterval, is_skip_param;
+        int skipInterval;
         if(NULL == grepFile || NULL == grepPattern || NULL == header || NULL == skipIntervalStr || NULL == useProperty)
             continue;
 
@@ -190,7 +190,9 @@ static T2ERROR saveDcaGrepResults() {
             T2Error("%s: profileName missing for grep result \n", __FUNCTION__);
         }
         fclose(profileFp);
-        remove(TELEMETRY_GREP_PROFILE_NAME);
+        if(remove(TELEMETRY_GREP_PROFILE_NAME) != 0){
+            T2Error("Cannot remove the file %s\n",TELEMETRY_GREP_PROFILE_NAME);
+        }
     }
 
     if (NULL != profileName) {
@@ -216,7 +218,9 @@ static T2ERROR saveDcaGrepResults() {
         T2Info("No data from dcaUtils getDCAResults \n");
     }
 
-    remove(TELEMTERY_LOG_GREP_RESULT);
+    if(remove(TELEMTERY_LOG_GREP_RESULT) != 0){
+        T2Error("Cannot remove the file %s\n",TELEMTERY_LOG_GREP_RESULT);
+    }
     FILE* dcaLogGrepResult = NULL;
     dcaLogGrepResult = fopen(TELEMTERY_LOG_GREP_RESULT, "w+");
     if(dcaLogGrepResult != NULL) {
@@ -241,24 +245,33 @@ static char *getProfileName() {
     T2Debug("++in %s\n", __FUNCTION__);
 
     char *name = NULL;
-    FILE *profileFp = fopen(TELEMETRY_GREP_PROFILE_NAME, "r");
+    int profileFp = open(TELEMETRY_GREP_PROFILE_NAME, O_RDONLY);
     struct stat filestat;
-    if (profileFp == NULL) {
+    if (profileFp == -1) {
         T2Error("%s: File open error %s\n", __FUNCTION__, TELEMETRY_GREP_PROFILE_NAME);
         return NULL;
     }
 
-    int status = stat(TELEMETRY_GREP_PROFILE_NAME, &filestat);
+    int status = fstat(profileFp, &filestat);
     if(status == 0 && filestat.st_size > 0) {
         name = (char *)malloc((filestat.st_size + 1) * sizeof(char));
         if (name) {
-            fread(name, sizeof(char), filestat.st_size, profileFp);
+            if(read(profileFp, name, filestat.st_size)  == -1){
+                close(profileFp);
+                free(name);
+                if(remove(TELEMETRY_GREP_PROFILE_NAME) != 0){
+                     T2Error("Cannot remove the file %s\n", TELEMETRY_GREP_PROFILE_NAME);
+                }
+                T2Debug("--out %s\n", __FUNCTION__);
+                return NULL;
+            }
             name[filestat.st_size] = '\0';
         }
     }
-    fclose(profileFp);
-    remove(TELEMETRY_GREP_PROFILE_NAME);
-
+    close(profileFp);
+    if(remove(TELEMETRY_GREP_PROFILE_NAME) != 0){
+       T2Error("Cannot remove the file %s\n", TELEMETRY_GREP_PROFILE_NAME);
+    }
     T2Debug("--out %s\n", __FUNCTION__);
     return name;
 }
@@ -301,7 +314,9 @@ static int processEventType(char *eventType) {
         }
     }else if(strncasecmp(eventType, DEL_T2_CACHE_FILE, MAX_EVENT_TYPE_BUFFER) == 0) { //On ATOM
         T2Info("%s Remove t2 cache file from interchip received\n", eventType);
-        remove(T2_CACHE_FILE);
+        if(remove(T2_CACHE_FILE) != 0){
+          T2Error("Cannot remove the file %s\n",T2_CACHE_FILE);
+        }
     }else {
         // Unknown event type
         T2Info("Unknown event %s !!!! Ignore and return \n", eventType);
@@ -329,7 +344,7 @@ int listenForInterProcessorChipEvents(int notifyfd, int watchfd) {
 
     int ret = -1;
     char buffer[sizeof(struct inotify_event) + MAX_EVENT_TYPE_BUFFER + 1] = { '0' };
-    const struct inotify_event * event_ptr;
+    struct inotify_event * event_ptr;
     char absEventFilePath[MAX_EVENT_TYPE_BUFFER] = { '0' };
 
     size_t count = read(notifyfd, buffer, sizeof(buffer));
@@ -348,7 +363,9 @@ int listenForInterProcessorChipEvents(int notifyfd, int watchfd) {
                 snprintf(absEventFilePath, MAX_EVENT_TYPE_BUFFER, "%s/%s", DIRECTORY_TO_MONITOR, event_ptr->name);
                 processEventType(event_ptr->name);
                 T2Debug("Clear off the event file = %s for next events \n", absEventFilePath);
-                remove(absEventFilePath);
+                if(remove(absEventFilePath) != 0){
+                    T2Error("Cannot remove the file %s\n",absEventFilePath);
+                }
             }else {
                 T2Debug("Event file name is null \n");
             }
@@ -366,7 +383,7 @@ int listenForInterProcessorChipEvents(int notifyfd, int watchfd) {
 int execNotifier(char *eventType) {
     T2Debug("++in execNotifier with eventType =  %s  \n", eventType);
     char command[128] = { '0' };
-    sprintf(command, "%s %s", NOTIFY_HELPER_UTIL, eventType);
+    snprintf(command, sizeof(command),"%s %s", NOTIFY_HELPER_UTIL, eventType);
     T2Debug("--out execNotifier, exec command is %s \n", command);
     // Use secure system call if the userstory is ready across platforms
     return system(command);
@@ -376,8 +393,8 @@ int interchipDaemonStart( ) {
 
     T2Debug("++in interchipDaemonStart \n");
     // Open up inotify listener for available result file notification .
-    int notifyfd = -1;
-    int watchfd = -1;
+    int notifyfd;
+    int watchfd;
     int ret = -1 ;
     notifyfd = inotify_init();
 

@@ -28,7 +28,7 @@
 #include "msgpack.h"
 
 
-static char * getProfileParameter(Profile * profile, char *ref) {
+static char * getProfileParameter(Profile * profile, const char *ref) {
     char *pValue = "NULL";
     char *pName = strrchr(ref, '.') + 1;
 
@@ -58,7 +58,7 @@ static char * getProfileParameter(Profile * profile, char *ref) {
 
 static T2ERROR addhttpURIreqParameter(Profile *profile, const char* Hname, const char* Href) {
     T2Debug("%s ++in\n", __FUNCTION__);
-    HTTPReqParam *httpreqparam = (HTTPReqParam *) malloc(sizeof(Param));
+    HTTPReqParam *httpreqparam = (HTTPReqParam *) malloc(sizeof(HTTPReqParam));
     if(!httpreqparam) {
         T2Error("failed to allocate memory \n");
         return T2ERROR_FAILURE;
@@ -148,7 +148,10 @@ static T2ERROR addParameter(Profile *profile, const char* name, const char* ref,
         }
         gMarker->markerName = strdup(name);
         gMarker->searchString = strdup(ref);
-        gMarker->logFile = strdup(fileName);
+        if(fileName)
+             gMarker->logFile = strdup(fileName);
+        else
+             gMarker->logFile = NULL;
         gMarker->paramType = strdup(ptype);
         gMarker->reportEmptyParam = ReportEmpty;
 
@@ -176,11 +179,10 @@ static T2ERROR addParameter(Profile *profile, const char* name, const char* ref,
 T2ERROR processConfiguration(char** configData, char *profileName, char* profileHash, Profile **localProfile) {
     T2Debug("%s ++in\n", __FUNCTION__);
     //REPORTPROFILE CJson PARSING
-    T2ERROR ret = 0;
+    T2ERROR ret = T2ERROR_SUCCESS;
     int ThisProfileParameter_count = 0;
     cJSON *json_root = cJSON_Parse(*configData);
 
-    cJSON *jprofileName = cJSON_GetObjectItem(json_root, "Name");
     cJSON *jprofileHash = cJSON_GetObjectItem(json_root, "Hash");
     if(jprofileHash == NULL) {
         jprofileHash = cJSON_GetObjectItem(json_root, "VersionHash");
@@ -572,6 +574,7 @@ void msgpack_print(msgpack_object *obj, char *obj_name)
 	    break;
 	case MSGPACK_OBJECT_ARRAY:
 	    T2Debug("%s size: %d\n", obj_name, obj->via.array.size);
+            break;
 	case MSGPACK_OBJECT_MAP:
 	    T2Debug("%s size: %d\n", obj_name, obj->via.map.size);
 	    break;
@@ -841,6 +844,12 @@ T2ERROR processMsgPackConfiguration(msgpack_object *profiles_array_map, Profile 
 	    logfile = msgpack_strdup(Parameter_logFile_str);
 
 	}
+        else {
+            T2Error("%s Unknown parameter type %s \n", __FUNCTION__, paramtype);
+            free(paramtype);
+            free(use);
+            continue;
+        }
 	ret = addParameter(profile, header, content, logfile, skipFrequency, paramtype, use, reportEmpty);
 	/* Add Multiple Report Profile Parameter */
 	if(T2ERROR_SUCCESS != ret) {

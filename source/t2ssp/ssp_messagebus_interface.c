@@ -88,13 +88,13 @@ ssp_T2Mbi_MessageBusEngage
     )
 {
     ANSC_STATUS                 returnStatus       = ANSC_STATUS_SUCCESS;
-    CCSP_Base_Func_CB           cb                 = {0};
     
     char PsmName[256];
 
     if ( ! component_id || ! path )
     {
         CcspTraceError((" !!! ssp_T2Mbi_MessageBusEngage: component_id or path is NULL !!!\n"));
+        return ANSC_STATUS_FAILURE;
     }
 
     if (bus_handle == NULL)
@@ -118,14 +118,7 @@ ssp_T2Mbi_MessageBusEngage
         }
     }
 
-    if ( g_Subsystem[0] != 0 )
-    {
-        _ansc_sprintf(PsmName, "%s%s", g_Subsystem, CCSP_DBUS_PSM);
-    }
-    else
-    {
-        AnscCopyString(PsmName, CCSP_DBUS_PSM);
-    }
+    _ansc_snprintf(PsmName, sizeof(PsmName), "%s%s", g_Subsystem,CCSP_DBUS_PSM);
 
     /* Wait for PSM */
     waitConditionReady(bus_handle, PsmName, CCSP_DBUS_PATH_PSM, component_id);
@@ -225,7 +218,7 @@ ssp_T2Mbi_Initialize
     
     printf("In %s()\n", __FUNCTION__);
     
-    return ( returnStatus == ANSC_STATUS_SUCCESS ) ? 0 : 1;
+    return 0;
 }
 
 int
@@ -238,7 +231,7 @@ ssp_T2Mbi_Finalize
 
     printf("In %s()\n", __FUNCTION__);
 
-    return ( returnStatus == ANSC_STATUS_SUCCESS ) ? 0 : 1;
+    return 0;
 }
 
 
@@ -265,6 +258,6 @@ ssp_T2Mbi_FreeResources
 
     printf("In %s()\n", __FUNCTION__);
 
-    return ( returnStatus == ANSC_STATUS_SUCCESS ) ? 0 : 1;
+    return 0;
 }
 

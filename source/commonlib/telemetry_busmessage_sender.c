@@ -243,6 +243,7 @@ static bool initRFC( ) {
             }
             getParamStatus = true;
             status = true;
+            free(paramValue);
         }else {
             status = false;
         }
@@ -491,7 +492,7 @@ void t2_uninit(void) {
 
 T2ERROR t2_event_s(char* marker, char* value) {
 
-    int ret = -1;
+    int ret;
     T2ERROR retStatus = T2ERROR_FAILURE ;
 
     pthread_mutex_lock(&sMutex);
@@ -516,7 +517,7 @@ T2ERROR t2_event_s(char* marker, char* value) {
 
 T2ERROR t2_event_f(char* marker, double value) {
 
-    int ret = -1;
+    int ret;
     T2ERROR retStatus = T2ERROR_FAILURE ;
 
      pthread_mutex_lock(&fMutex);
@@ -543,7 +544,7 @@ T2ERROR t2_event_f(char* marker, double value) {
 
 T2ERROR t2_event_d(char* marker, int value) {
 
-    int ret = -1;
+    int ret;
     T2ERROR retStatus = T2ERROR_FAILURE ;
 
      pthread_mutex_lock(&dMutex);

@@ -63,7 +63,7 @@ void ReportProfiles_Interrupt()
     T2Debug("%s --out\n", __FUNCTION__);
 }
 
-void ReportProfiles_TimeoutCb(const char* profileName, bool isClearSeekMap)
+void ReportProfiles_TimeoutCb(char* profileName, bool isClearSeekMap)
 {
     T2Info("%s ++in\n", __FUNCTION__);
 
@@ -76,7 +76,7 @@ void ReportProfiles_TimeoutCb(const char* profileName, bool isClearSeekMap)
     T2Info("%s --out\n", __FUNCTION__);
 }
 
-void ReportProfiles_ActivationTimeoutCb(const char* profileName)
+void ReportProfiles_ActivationTimeoutCb(char* profileName)
 {
     T2Info("%s ++in\n", __FUNCTION__);
 
@@ -111,7 +111,7 @@ void ReportProfiles_ActivationTimeoutCb(const char* profileName)
     T2Info("%s --out\n", __FUNCTION__);
 }
 
-T2ERROR ReportProfiles_storeMarkerEvent(const char *profileName, T2Event *eventInfo) {
+T2ERROR ReportProfiles_storeMarkerEvent(char *profileName, T2Event *eventInfo) {
     T2Debug("%s ++in\n", __FUNCTION__);
 
     if(ProfileXConf_isNameEqual(profileName)) {
@@ -237,7 +237,7 @@ T2ERROR initReportProfiles()
     if(T2ERROR_SUCCESS == getParameterValue(T2_VERSION_DATAMODEL_PARAM, &t2Version) && !strcmp(t2Version, "2.0.1")) {
         T2Debug("T2 Version = %s\n", t2Version);
         initProfileList();
-
+        free(t2Version);
         // Init datamodel processing thread
         if (T2ERROR_SUCCESS == datamodel_init())
         {
@@ -319,7 +319,6 @@ static void freeProfilesHashMap(void *data) {
         if (element->data)
             free(element->data);
         free(element);
-        element = NULL;
     }
     T2Debug("%s --out\n", __FUNCTION__);
 }
@@ -508,19 +507,17 @@ void ReportProfiles_ProcessReportProfilesBlob(cJSON *profiles_root) {
     }
     hash_map_destroy(receivedProfileHashMap, freeReportProfileHashMap);
     hash_map_destroy(profileHashMap, freeProfilesHashMap);
-    receivedProfileHashMap = NULL;
-    profileHashMap = NULL;
     T2Debug("%s --out\n", __FUNCTION__);
     return;
 }
 
 pErr Process_Telemetry_WebConfigRequest(void *Data)
 {
-     T2Info("FILE:%s\t FUNCTION:%d\t LINE:%d\n", __FILE__, __FUNCTION__, __LINE__);
+     T2Info("FILE:%s\t FUNCTION:%s\t LINE:%d\n", __FILE__, __FUNCTION__, __LINE__);
      pErr execRetVal=NULL;
      execRetVal = (pErr ) malloc (sizeof(Err));
      memset(execRetVal,0,(sizeof(Err)));
-     T2Info("FILE:%s\t FUNCTION:%d\t LINE:%d Execution in Handler, excuted \n", __FILE__, __FUNCTION__, __LINE__);
+     T2Info("FILE:%s\t FUNCTION:%s\t LINE:%d Execution in Handler, excuted \n", __FILE__, __FUNCTION__, __LINE__);
      int retval=__ReportProfiles_ProcessReportProfilesMsgPackBlob(Data);
      if(retval == T2ERROR_SUCCESS)
      {
@@ -567,22 +564,23 @@ void ReportProfiles_ProcessReportProfilesMsgPackBlob(char *msgpack_blob , int ms
     msgpack_object *profiles_root;
     msgpack_object *profilesArray;
 
+    msgpack_object *subdoc_name, *transaction_id, *version;
+    execData *execDataPf = NULL ;
     msgpack_unpacked_init(&result);
     ret = msgpack_unpack_next(&result, msgpack_blob, msgpack_blob_size, &off);
     if (ret != MSGPACK_UNPACK_SUCCESS) {
 	T2Error("The data in the buf is invalid format.\n");
-	return;
+        goto ERROR_RETURN;
     }
     profiles_root =  &result.data;
     if(profiles_root == NULL) {
         T2Error("Profile profiles_root is null . Unable to ReportProfiles_ProcessReportProfilesBlob \n");
-        T2Debug("%s --out\n", __FUNCTION__);
-        return;
+        goto ERROR_RETURN;
     }
 
-    msgpack_object *subdoc_name = msgpack_get_map_value(profiles_root, "subdoc_name");
-    msgpack_object *transaction_id = msgpack_get_map_value(profiles_root, "transaction_id");
-    msgpack_object *version = msgpack_get_map_value(profiles_root, "version");
+    subdoc_name = msgpack_get_map_value(profiles_root, "subdoc_name");
+    transaction_id = msgpack_get_map_value(profiles_root, "transaction_id");
+    version = msgpack_get_map_value(profiles_root, "version");
 
     msgpack_print(subdoc_name, msgpack_get_obj_name(subdoc_name));
     msgpack_print(transaction_id, msgpack_get_obj_name(transaction_id));
@@ -593,11 +591,8 @@ void ReportProfiles_ProcessReportProfilesMsgPackBlob(char *msgpack_blob , int ms
 
     if (NULL == subdoc_name && NULL == transaction_id && NULL == version) {
         /* dmcli flow */
-	__ReportProfiles_ProcessReportProfilesMsgPackBlob((void *)msgpack);
-        msgpack_unpacked_destroy(&result);
-	__msgpack_free_blob((void *)msgpack);
-        T2Debug("%s --out\n", __FUNCTION__);
-        return;
+        __ReportProfiles_ProcessReportProfilesMsgPackBlob((void *)msgpack);
+        goto ERROR_RETURN;
     }
     /* webconfig flow */
     subdoc_version=(uint64_t)version->via.u64;
@@ -605,14 +600,10 @@ void ReportProfiles_ProcessReportProfilesMsgPackBlob(char *msgpack_blob , int ms
     T2Debug("subdocversion is %llu transac_id in integer is %u"
             " entry_count is %d \n",subdoc_version,transac_id,entry_count);
 
-    execData *execDataPf = NULL ;
     execDataPf = (execData*) malloc (sizeof(execData));
     if ( NULL == execDataPf ) {
         T2Error("execData memory allocation failed\n");
-        msgpack_unpacked_destroy(&result);
-	__msgpack_free_blob((void *)msgpack);
-        T2Debug("%s --out\n", __FUNCTION__);
-        return;
+        goto ERROR_RETURN;
     }
     memset(execDataPf, 0, sizeof(execData));
     strncpy(execDataPf->subdoc_name,"telemetry",sizeof(execDataPf->subdoc_name)-1);
@@ -625,15 +616,16 @@ void ReportProfiles_ProcessReportProfilesMsgPackBlob(char *msgpack_blob , int ms
     execDataPf->rollbackFunc = NULL;
     execDataPf->freeResources = msgpack_free_blob;
     T2Debug("subdocversion is %d transac_id in integer is %d entry_count is %d subdoc_name is %s"
-            " calcTimeout is %d\n",execDataPf->version,execDataPf->txid,execDataPf->numOfEntries,
+            " calcTimeout is %p\n",execDataPf->version,execDataPf->txid,execDataPf->numOfEntries,
             execDataPf->subdoc_name,execDataPf->calcTimeout);
 
     PushBlobRequest(execDataPf);
     T2Debug("PushBlobRequest complete\n");
-
-    msgpack_unpacked_destroy(&result);
-    T2Debug("%s --out\n", __FUNCTION__);
-    return;
+ERROR_RETURN:
+           msgpack_unpacked_destroy(&result);
+           __msgpack_free_blob((void *)msgpack);
+           T2Debug("%s --out\n", __FUNCTION__);
+           return;
 }
 
 int __ReportProfiles_ProcessReportProfilesMsgPackBlob(void *msgpack)
@@ -646,7 +638,7 @@ int __ReportProfiles_ProcessReportProfilesMsgPackBlob(void *msgpack)
     size_t off = 0;
     msgpack_unpack_return ret;
 
-    int profiles_count;
+    int profiles_count = 0;
     msgpack_object *profiles_root;
     msgpack_object *profilesArray;
 

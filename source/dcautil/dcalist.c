@@ -63,18 +63,12 @@ int insertPCNode(GList **pch, char *pattern, char *header, DType_t dtype, int co
   new = (pcdata_t *) malloc(sizeof(*new));
   if (NULL != new) {
     if (pattern != NULL) {
-      new->pattern = (char *) malloc(strlen(pattern) + 1);
-      if (NULL != new->pattern) {
-        strcpy(new->pattern, pattern);
-      }
+      new->pattern = strdup(pattern);
     } else {
       new->pattern = NULL;
     }
     if (header != NULL) {
-      new->header = (char *) malloc(strlen(header) + 1);
-      if (NULL != new->header) {
-        strcpy(new->header, header);
-      }
+      new->header = strdup(header);
     } else {
       new->header = NULL;
     }
@@ -84,10 +78,7 @@ int insertPCNode(GList **pch, char *pattern, char *header, DType_t dtype, int co
       new->count = count;
     } else if (dtype == STR) {
       if (NULL != data) {
-        new->data = (char *) malloc(strlen(data) + 1);
-        if (NULL != new->data) {
-          strcpy(new->data, data);
-        }
+        new->data = strdup(data);
       } else {
         new->data = NULL;
       }
@@ -111,13 +102,10 @@ int insertPCNode(GList **pch, char *pattern, char *header, DType_t dtype, int co
 gint comparePattern(gconstpointer np, gconstpointer sp)
 {
   pcdata_t *tmp = (pcdata_t *)np;
-  if (tmp && tmp->pattern)
-  {
-    if (NULL != strstr(sp, tmp->pattern))
-      return 0;
-    else
-      return -1;
-  }
+  if (tmp && tmp->pattern && NULL != strstr(sp, tmp->pattern)) {
+        return 0;
+    }
+  return -1;
 }
 
 /**

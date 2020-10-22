@@ -57,7 +57,6 @@
  **********************************************************************/
 
 ANSC_HANDLE CosaTelemetryCreate( VOID) {
-    ANSC_STATUS returnStatus = ANSC_STATUS_SUCCESS;
     PCOSA_DATAMODEL_TELEMETRY pMyObject = (PCOSA_DATAMODEL_TELEMETRY) NULL;
 
     pMyObject = (PCOSA_DATAMODEL_TELEMETRY) AnscAllocateMemory(sizeof(COSA_DATAMODEL_TELEMETRY));

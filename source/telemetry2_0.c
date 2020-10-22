@@ -134,7 +134,7 @@ int tele_web_config_init()
 
 T2ERROR initTelemetry()
 {
-    int ret = T2ERROR_FAILURE;
+    T2ERROR ret = T2ERROR_FAILURE;
     T2Debug("%s ++in\n",__FUNCTION__);
 
     if(T2ERROR_SUCCESS == initReportProfiles())

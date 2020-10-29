@@ -21,6 +21,7 @@
 #define _CURLINTERFACE_H_
 
 #include <curl/curl.h>
+#include <openssl/ssl.h>
 #include "telemetry2_0.h"
 #include "vector.h"
 
@@ -36,8 +37,16 @@
 #define HEADER_ACCEPT       "Accept: application/json"
 #define HEADER_CONTENTTYPE  "Content-type: application/json"
 
+#define SERVER_CA_CERT "/etc/cacert.pem"
+
+#define DEVICE_CERT "cm_cert.cer"
+#define MANUFACTURER_CERT "mfg_cert.cer"
+#define PRIVATE_KEY "cm_key_prv.bin"
+
 T2ERROR sendReportOverHTTP(char *httpUrl, char* payload);
 
 T2ERROR sendCachedReportsOverHTTP(char *httpUrl, Vector *reportList);
+
+T2ERROR addCertificatesToHTTPHeader(CURL *curl);
 
 #endif /* _CURLINTERFACE_H_ */

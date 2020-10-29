@@ -33,6 +33,7 @@ libxconfclient_la_CPPFLAGS = -fPIC \
                              -I${top_srcdir}/source \
                              -I${top_srcdir}/source/bulkdata \
                              -I${top_srcdir}/source/reportgen \
+                             -I${top_srcdir}/source/protocol/http \
                              -I${top_srcdir}/source/ccspinterface \
                              -I${top_srcdir}/source/t2parser \
                              -I${top_srcdir}/source/utils

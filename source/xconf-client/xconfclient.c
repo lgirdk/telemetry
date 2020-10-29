@@ -41,6 +41,7 @@
 #include "persistence.h"
 #include "telemetry2_0.h"
 #include "busInterface.h"
+#include "curlinterface.h"
 #ifdef LIBRDKCERTSEL_BUILD
 #include "rdkcertselector.h"
 #define FILESCHEME "file://"
@@ -48,6 +49,7 @@
 #ifdef LIBRDKCONFIG_BUILD
 #include "rdkconfig.h"
 #endif
+
 #define RFC_RETRY_TIMEOUT 60
 #define XCONF_RETRY_TIMEOUT 180
 #define MAX_XCONF_RETRY_COUNT 5
@@ -580,6 +582,10 @@ static T2ERROR doHttpGet(char* httpsUrl, char **data) {
             if(code != CURLE_OK) {
                 T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
             }
+
+            /* Load server ca, device certificate and private key to curl object */
+            addCertificatesToHTTPHeader(curl);
+
 #if defined(ENABLE_RDKB_SUPPORT) && !defined(_WNXL11BWL_PRODUCT_REQ_)
 
 #if defined(WAN_FAILOVER_SUPPORTED) || defined(FEATURE_RDKB_CONFIGURABLE_WAN_INTERFACE)

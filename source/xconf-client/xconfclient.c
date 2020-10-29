@@ -33,6 +33,7 @@
 #include "vector.h"
 #include "persistence.h"
 #include "telemetry2_0.h"
+#include "curlinterface.h"
 
 #define RFC_RETRY_TIMEOUT 60
 #define XCONF_RETRY_TIMEOUT 180
@@ -288,6 +289,10 @@ static T2ERROR doHttpGet(char* httpsUrl, char **data) {
         if(code != CURLE_OK){
            T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
         }
+
+        /* Load server ca, device certificate and private key to curl object */
+        addCertificatesToHTTPHeader(curl);
+
         // Set interface and addr type
  /* For now, Let curl start hopping between v4/v6 address like it is there for legacy dca till STBIT-1511 gets resolved.*/
  /*

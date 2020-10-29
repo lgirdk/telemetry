@@ -42,6 +42,7 @@
 #include "persistence.h"
 #include "telemetry2_0.h"
 #include "busInterface.h"
+#include "curlinterface.h"
 
 #define RFC_RETRY_TIMEOUT 60
 #define XCONF_RETRY_TIMEOUT 180
@@ -531,6 +532,9 @@ static T2ERROR doHttpGet(char* httpsUrl, char **data) {
                     goto status_return;
                 }
             }
+
+            /* Load server ca, device certificate and private key to curl object */
+            addCertificatesToHTTPHeader(curl);
 
 #if defined(ENABLE_RDKB_SUPPORT) && !defined(_WNXL11BWL_PRODUCT_REQ_)
 

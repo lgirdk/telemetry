@@ -30,6 +30,7 @@ libxconfclient_la_CPPFLAGS = -fPIC -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/ccsp
                                 -I${top_srcdir}/source/reportgen \
                                 -I${top_srcdir}/source/ccspinterface \
                                 -I${top_srcdir}/source/t2parser \
-                                -I${top_srcdir}/source/utils
+                                -I${top_srcdir}/source/utils \
+                                -I${top_srcdir}/source/protocol/http
 
 libxconfclient_la_DEPENDENCIES = ${top_builddir}/source/ccspinterface/libccspinterface.la ${top_builddir}/source/t2parser/libt2parser.la

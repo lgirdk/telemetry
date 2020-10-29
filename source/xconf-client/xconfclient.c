@@ -41,9 +41,11 @@
 #include "persistence.h"
 #include "telemetry2_0.h"
 #include "busInterface.h"
+#include "curlinterface.h"
 #ifdef LIBRDKCONFIG_BUILD
 #include "rdkconfig.h"
 #endif
+
 #define RFC_RETRY_TIMEOUT 60
 #define XCONF_RETRY_TIMEOUT 180
 #define MAX_XCONF_RETRY_COUNT 5
@@ -549,6 +551,9 @@ static T2ERROR doHttpGet(char* httpsUrl, char **data) {
                     goto status_return;
                 }
             }
+
+            /* Load server ca, device certificate and private key to curl object */
+            addCertificatesToHTTPHeader(curl);
 
 #if defined(ENABLE_RDKB_SUPPORT) && !defined(_WNXL11BWL_PRODUCT_REQ_)
 

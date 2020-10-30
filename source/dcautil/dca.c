@@ -397,6 +397,7 @@ static int handleRDKErrCodes(GList **rdkec_head, char *line) {
     char err_code[20] = { 0 }, rdkec[20] = { 0 };
     pcdata_t *tnode = NULL;
 
+    getErrorCode(line, err_code);
     int len = strlen(err_code);
     if(strcmp(err_code, "") != 0) {
         snprintf(rdkec, RDK_EC_MAXLEN+len, "RDK-%s", err_code);

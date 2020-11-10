@@ -958,6 +958,16 @@ static void* getUpdatedConfigurationThread(void *data)
                         configFetch = T2ERROR_SUCCESS;
                     }
 
+                    /* Set a cronjob for auto downloading DCMresponse.txt file */
+                    if (T2ERROR_SUCCESS == ProfileXConf_setCronForAutoDownload())
+                    {
+                        T2Info("cronjob for auto downloading DCMresponse.txt file is set as %s\n", profile->autoDownloadInterval);
+                    }
+                    else
+                    {
+                        T2Error("Failed to set cronjob for auto downloading DCMresponse.txt file\n");
+                    }
+
                     // Touch a file to indicate script based supplementary services to proceed with configuration
                     FILE *fp = NULL ;
                     fp = fopen(PROCESS_CONFIG_COMPLETE_FLAG, "w+");

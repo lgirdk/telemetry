@@ -51,6 +51,7 @@ typedef struct _ProfileXConf
     char* name;
     char* protocol;
     char* encodingType;
+    char* autoDownloadInterval;
     unsigned int reportingInterval;
     unsigned int timeRef;
     unsigned int paramNumOfEntries;
@@ -73,6 +74,7 @@ void    ProfileXConf_updateMarkerComponentMap();
 void    ProfileXConf_notifyTimeout(bool isClearSeekMap);
 T2ERROR ProfileXConf_storeMarkerEvent(T2Event *eventInfo);
 char*   ProfileXconf_getName();
+T2ERROR ProfileXConf_setCronForAutoDownload();
 
 
 #endif /* _PROFILE_H_ */

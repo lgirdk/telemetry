@@ -35,6 +35,9 @@
 #define SPLITMARKER_SUFFIX  "_split"
 #define ACCUMULATE_MARKER_SUFFIX  "_accum"
 
+#define SCHEDULE_CRON_SIZE  15
+#define DEFAULT_MAXRANDOMDELAY "300"
+
 #define XCONF_END_POINT_PARAMETER "Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.TelemetryEndpoint.URL"
 #define MAX_END_POINT_LEN 128
 
@@ -193,6 +196,89 @@ T2ERROR processConfigurationXConf(char* configData, ProfileXConf **localProfile)
 
     profile->t2HTTPDest->URL = strdup(juploadUrl->valuestring);
     profile->encodingType = strdup("JSON");
+
+    /* Parse daily schedule interval and calculate the final schedule cron time */
+    /* default value is "0 3 * * *" */
+    cJSON *jdownloadStartTime = cJSON_GetObjectItem(json_root, "urn:settings:DCMSettings:DownloadConfig:StartTime");
+    cJSON *jdownloadMaxRandomDelay = cJSON_GetObjectItem(json_root, "urn:settings:DCMSettings:DownloadConfig:MaxRandomDelay");
+
+    char *jstatTime = NULL, *jmaxdelay = NULL;
+    int startMinute = 0, finalHour = 0, finalMinute = 0, jmaxDelayInt = 0, random_number = 0;
+    int startHour = 3;
+
+    if(jdownloadStartTime != NULL)
+    {
+        if(jdownloadMaxRandomDelay != NULL)
+        {
+            jmaxdelay = strdup(jdownloadMaxRandomDelay->valuestring);
+        }
+        else
+        {
+            /* default MaxRandomDelay value is 300 ie. 5 hours */
+            jmaxdelay = strdup(DEFAULT_MAXRANDOMDELAY);
+        }
+
+        /* need to seed the generator to generate a different random number every time */
+        srand(time(NULL));
+        random_number = rand();
+        jmaxDelayInt = atoi(jmaxdelay);
+
+        /* If MaxRandomDelay is specified as 0 in DCMResponse file then make it as 300 */
+        if( jmaxDelayInt == 0 )
+        {
+            jmaxDelayInt = 300;
+        }
+
+        jmaxDelayInt = random_number % jmaxDelayInt;
+
+        jstatTime = strdup(jdownloadStartTime->valuestring);
+        if(jstatTime)
+        {
+            if(strlen(jstatTime) >= 5 )
+            {
+                /* split the time into hour and minute ex: "01:00" */
+                jstatTime[2] = '\0';
+                startHour = atoi(jstatTime);
+                startMinute = atoi(&jstatTime[3]);
+            }
+        }
+
+        /* If startHour is specified as 0 in DCMResponse file then make it as 3 */
+        if(startHour == 0)
+        {
+            startHour = 3;
+        }
+        finalMinute = startMinute + jmaxDelayInt;
+        finalHour = startHour;
+
+        if(finalMinute >= 60)
+        {
+            finalHour = finalHour + ( finalMinute / 60 );
+            finalMinute = finalMinute % 60;
+        }
+
+        if(finalHour >= 24)
+        {
+            finalHour = finalHour % 24;
+        }
+    }
+    else
+    {
+        finalHour = 3;
+    }
+
+    if(jstatTime)
+        free(jstatTime);
+    if(jmaxdelay)
+        free(jmaxdelay);
+
+    char* scheduleInterval = malloc(SCHEDULE_CRON_SIZE);
+    if(scheduleInterval)
+    {
+        snprintf(scheduleInterval, SCHEDULE_CRON_SIZE, "%d %d * * *", finalMinute, finalHour);
+        profile->autoDownloadInterval = strdup(scheduleInterval);
+        free(scheduleInterval);
+    }
 
     Vector_Create(&profile->paramList);
     Vector_Create(&profile->eMarkerList);

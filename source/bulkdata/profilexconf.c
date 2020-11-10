@@ -65,6 +65,8 @@ static void freeProfileXConf()
             free(singleProfile->protocol);
         if(singleProfile->encodingType)
             free(singleProfile->encodingType);
+        if(singleProfile->autoDownloadInterval)
+            free(singleProfile->autoDownloadInterval);
         if(singleProfile->t2HTTPDest)
         {
             free(singleProfile->t2HTTPDest->URL);
@@ -264,6 +266,42 @@ static void* CollectAndReportXconf(void* data)
     return NULL;
 }
 
+T2ERROR ProfileXConf_setCronForAutoDownload()
+{
+    T2Debug("%s ++in\n", __FUNCTION__);
+
+    T2ERROR ret = T2ERROR_FAILURE;
+    char command[80];
+
+    pthread_mutex_lock(&plMutex);
+
+    if(singleProfile)
+    {
+        if(singleProfile->autoDownloadInterval)
+        {
+            /* Remove telemetry2_0(autodownload_dcmconfig.sh) job if already exists */
+            system("crontab -l | grep -v autodownload_dcmconfig.sh | crontab -");
+            /* Crate a cronjob with new schedule interval. */
+            snprintf(command, sizeof(command), "(crontab -l ; echo \"%s /lib/rdk/autodownload_dcmconfig.sh\") | crontab -", singleProfile->autoDownloadInterval);
+            system(command);
+            ret = T2ERROR_SUCCESS;
+        }
+        else
+        {
+            T2Error("Cronstring is empty in this profile. So can't set the cronjob for auto downloading DCMresponse.txt file\n");
+        }
+    }
+    else
+    {
+        T2Error("Pofile is not initialized. So can't set the cronjob for auto downloading DCMresponse.txt file\n");
+    }
+
+    pthread_mutex_unlock(&plMutex);
+
+    T2Debug("%s --out\n", __FUNCTION__);
+    return ret;
+}
+
 T2ERROR ProfileXConf_init()
 {
     T2Debug("%s ++in\n", __FUNCTION__);
@@ -298,6 +336,16 @@ T2ERROR ProfileXConf_init()
               else
               {
                   T2Error("Failed to set new profile: %s\n", profile->name);
+              }
+
+              /* Set a cronjob for auto downloading DCMresponse.txt file */
+              if (T2ERROR_SUCCESS == ProfileXConf_setCronForAutoDownload())
+              {
+                  T2Info("cronjob for auto downloading DCMresponse.txt file is set as %s\n", profile->autoDownloadInterval);
+              }
+              else
+              {
+                  T2Error("Failed to set cronjob for auto downloading DCMresponse.txt file\n");
               }
           }
         }

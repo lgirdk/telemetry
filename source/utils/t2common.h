@@ -126,4 +126,7 @@ int compareLogFileNames(const void *g1, const void *g2);
 
 bool getDevicePropertyData(const char *dev_prop_name, char *out_data, unsigned int buff_size);
 
+int telemetry_syscfg_get (char *temp, char *buf, int buf_size);
+int telemetry_syscfg_set (char *temp, char *buf);
+
 #endif /* _T2COMMON_H_ */

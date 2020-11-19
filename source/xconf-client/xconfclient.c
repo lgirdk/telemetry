@@ -43,6 +43,7 @@
 #include "telemetry2_0.h"
 #include "busInterface.h"
 #include "curlinterface.h"
+#include "t2common.h"
 
 #define RFC_RETRY_TIMEOUT 60
 #define XCONF_RETRY_TIMEOUT 180
@@ -745,12 +746,12 @@ static T2ERROR getRemoteConfigURL(char **configURL) {
 
     if (T2ERROR_SUCCESS == getParameterValue(TR181_CONFIG_URL, &paramVal)) {
         if (NULL != paramVal) {
-            if ((strlen(paramVal) > 8) && (0 == strncmp(paramVal,"https://", 8))) {  // Enforcing https for new endpoints
+            if ((strlen(paramVal) > 8) && ((memcmp(paramVal, "http://", 7) == 0) || (memcmp(paramVal, "https://", 8) == 0))) {  // Allow both http and https for new endpoints
                 T2Info("Setting config URL base location to : %s\n", paramVal);
                 *configURL = paramVal;
                 ret = T2ERROR_SUCCESS ;
             } else {
-                T2Error("URL doesn't start with https or is invalid !!! URL value received : %s .\n", paramVal);
+                T2Error("URL doesn't start with http or https !!! URL value received : %s .\n", paramVal);
                 free(paramVal);
             }
         } else {
@@ -774,34 +775,39 @@ static void* getUpdatedConfigurationThread(void *data)
     char *configURL = NULL;
     char *configData = NULL;
     stopFetchRemoteConfiguration = false ;
+    char buf[12];
+    int maxAttempts = -1, attemptInterval = -1;
+    int isValidUrl = 1;
 
-    while(!stopFetchRemoteConfiguration && T2ERROR_SUCCESS != getRemoteConfigURL(&configURL))
+    if (telemetry_syscfg_get("dcm_retry_maxAttempts", buf, sizeof(buf)) == 0)
     {
-        pthread_mutex_lock(&xcMutex);
-
-        memset(&_ts, 0, sizeof(struct timespec));
-        memset(&_now, 0, sizeof(struct timespec));
-        clock_gettime(CLOCK_REALTIME, &_now);
-        _ts.tv_sec = _now.tv_sec + RFC_RETRY_TIMEOUT;
-
-        T2Info("Waiting for %d sec before trying getRemoteConfigURL\n", RFC_RETRY_TIMEOUT);
-        n = pthread_cond_timedwait(&xcCond, &xcMutex, &_ts);
-        if(n == ETIMEDOUT)
-        {
-            T2Info("TIMEDOUT -- trying fetchConfigURLs again\n");
-        }
-        else if (n == 0)
-        {
-            T2Error("XConfClient Interrupted\n");
-        }
-        else
-        {
-            T2Error("ERROR inside startXConfClientThread for timedwait");
-        }
-        pthread_mutex_unlock(&xcMutex);
+        maxAttempts = atoi(buf);
+    }
+    if (telemetry_syscfg_get("dcm_retry_attemptInterval", buf, sizeof(buf)) == 0)
+    {
+        attemptInterval = atoi(buf);
     }
 
-    while(!stopFetchRemoteConfiguration)
+    /* dcm_retry_maxAttempts and dcm_retry_attemptInterval can't be zero in syscfg db.
+    If syscfg_get fails then assign default values. */
+    if(maxAttempts <= 0)
+    {
+        maxAttempts = 3;
+        T2Info("syscfg_get failed for dcm_retry_maxAttempts. Setting maxAttempts to default value(%d)\n", maxAttempts);
+    }
+    if(attemptInterval <= 0)
+    {
+        attemptInterval = 60;
+        T2Info("syscfg_get failed for dcm_retry_attemptInterval. Setting attemptInterval to default value(%d)\n", attemptInterval);
+    }
+
+    if(T2ERROR_SUCCESS != getRemoteConfigURL(&configURL))
+    {
+        isValidUrl = 0;
+        T2Error("Config Url is empty or Invalid!!!\n");
+    }
+
+    while(!stopFetchRemoteConfiguration && isValidUrl)
     {
         T2ERROR ret = fetchRemoteConfiguration(configURL, &configData);
         if(ret == T2ERROR_SUCCESS)
@@ -874,20 +880,20 @@ static void* getUpdatedConfigurationThread(void *data)
                 configData = NULL ;
             }
             xConfRetryCount++;
-            if(xConfRetryCount >= MAX_XCONF_RETRY_COUNT)
+            if(xConfRetryCount >= maxAttempts)
             {
-                T2Error("Reached max xconf retry counts : %d, Using saved profile if exists until next reboot\n", MAX_XCONF_RETRY_COUNT);
-                xConfRetryCount = 0;
+                T2Error("Reached max xconf retry counts : %d, Using saved profile if exists until next reboot\n", maxAttempts);
+                xConfRetryCount = 0; // xConfRetryCount is global. So reset it.
                 break;
             }
-            T2Info("Waiting for %d sec before trying fetchRemoteConfiguration, No.of tries : %d\n", XCONF_RETRY_TIMEOUT, xConfRetryCount);
+            T2Info("Waiting for %d sec before trying fetchRemoteConfiguration, No.of tries : %d\n", attemptInterval, xConfRetryCount);
 
             pthread_mutex_lock(&xcMutex);
 
             memset(&_ts, 0, sizeof(struct timespec));
             memset(&_now, 0, sizeof(struct timespec));
             clock_gettime(CLOCK_REALTIME, &_now);
-            _ts.tv_sec = _now.tv_sec + XCONF_RETRY_TIMEOUT;
+            _ts.tv_sec = _now.tv_sec + attemptInterval;
 
             n = pthread_cond_timedwait(&xcCond, &xcMutex, &_ts);
             if(n == ETIMEDOUT)

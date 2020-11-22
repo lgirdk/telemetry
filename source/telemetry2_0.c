@@ -50,6 +50,7 @@
 #include "interChipHelper.h"
 #endif
 #include "t2eventreceiver.h"
+#include "t2common.h"
 
 #ifdef INCLUDE_BREAKPAD
 #ifndef ENABLE_RDKC_SUPPORT
@@ -317,6 +318,19 @@ static void t2DaemonHelperModeInit( ) {
 }
 #endif
 
+static int checkTelemetryStatus (void)
+{
+    char buf[6];
+
+    if ((telemetry_syscfg_get("telemetry_enable", buf, sizeof(buf)) == 0) &&
+        (strcmp(buf, "true") == 0))
+    {
+        return 0;
+    }
+
+    return -1;
+}
+
 static int checkAnotherTelemetryInstance (void)
 {
     int fd;
@@ -346,6 +360,13 @@ int main(int argc, char* argv[])
     pid_t process_id = 0;
     pid_t sid = 0;
     LOGInit();
+
+    /* Check whether telemetry is enabled */
+    if (checkTelemetryStatus() != 0)
+    {
+        T2Info("Telemetry is disabled. Existing!!!\n");
+        return 0;
+    }
 
     /* Abort if another instance of telemetry2_0 is already running */
     if (checkAnotherTelemetryInstance())

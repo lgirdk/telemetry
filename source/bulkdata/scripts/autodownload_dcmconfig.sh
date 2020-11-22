@@ -18,13 +18,12 @@
 
 T2_0_BIN="telemetry2_0"
 
-#TO DO: Once we ported enable dml, uncomment the following
 
 # Download DCMResponse.txt file only if telemetry is enabled.
-# telemetryStatus=`syscfg get telemetry_enable`
-# if [ "$telemetryStatus" != "true" ]; then
-#   exit 0
-# fi
+TELEMETRY_STATUS=`syscfg get telemetry_enable`
+if [ "${TELEMETRY_STATUS}" != "true" ]; then
+  exit 0
+fi
 
 T2_0_BIN_PID=`pidof $T2_0_BIN`
 

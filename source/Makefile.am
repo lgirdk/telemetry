@@ -48,7 +48,7 @@ telemetry2_0_CPPFLAGS = -fPIC -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/dbus-1.0 
                                 -I${top_srcdir}/source/xconf-client \
                                 -I${top_srcdir}/source/interChipHelper \
                                 -I${top_srcdir}/source/t2ssp
-telemetry2_0_LDFLAGS = -lrdkloggers -lccsp_common -lcjson -lwebconfig_framework
+telemetry2_0_LDFLAGS = -lrdkloggers -lccsp_common -lsyscfg -lcjson -lwebconfig_framework
 telemetry2_0_LDADD = ${top_builddir}/source/utils/libutils.la ${top_builddir}/source/dcautil/libdcautil.la \
                   ${top_builddir}/source/bulkdata/libbulkdata.la ${top_builddir}/source/ccspinterface/libccspinterface.la \
                   ${top_builddir}/source/reportgen/libreportgen.la ${top_builddir}/source/scheduler/libscheduler.la \

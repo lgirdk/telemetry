@@ -53,6 +53,7 @@
 #ifdef INCLUDE_BREAKPAD
 #include "breakpad_wrapper.h"
 #endif
+#include "syscfg/syscfg.h"
 
 #define MAX_PARAMETERNAME_LEN    512
 /*Define signals properly to make sure they don't get overide anywhere*/
@@ -289,6 +290,19 @@ static void t2DaemonHelperModeInit( ) {
 }
 #endif //End of  _COSA_INTEL_USG_ATOM_
 
+static int checkTelemetryStatus (void)
+{
+    char buf[6];
+
+    if ((syscfg_get(NULL, "telemetry_enable", buf, sizeof(buf)) == 0) &&
+        (strcmp(buf, "true") == 0))
+    {
+        return 0;
+    }
+
+    return -1;
+}
+
 static int checkAnotherTelemetryInstance (void)
 {
     int fd;
@@ -318,6 +332,13 @@ int main(int argc, char* argv[])
     pid_t process_id = 0;
     pid_t sid = 0;
     LOGInit();
+
+    /* Check whether telemetry is enabled */
+    if (checkTelemetryStatus() != 0)
+    {
+        T2Info("Telemetry is disabled. Existing!!!\n");
+        return 0;
+    }
 
     /* Abort if another instance of telemetry2_0 is already running */
     if (checkAnotherTelemetryInstance())

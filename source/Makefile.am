@@ -58,7 +58,7 @@ if ENABLE_DEVICE_EXTENDER
 telemetry2_0_LDFLAGS+= -lwebconfig_framework
 endif
 if ENABLE_CCSP_SUPPORT
-telemetry2_0_LDFLAGS+=-lccsp_common -lwebconfig_framework
+telemetry2_0_LDFLAGS+= -lsyscfg -lccsp_common -lwebconfig_framework
 telemetry2_0_SOURCES += t2ssp/ssp_main.c t2ssp/ssp_action.c t2ssp/ssp_messagebus_interface.c t2ssp/dm_pack_datamodel.c
 telemetry2_0_CPPFLAGS += -I${top_srcdir}/source/t2ssp \
                                 -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/ccsp

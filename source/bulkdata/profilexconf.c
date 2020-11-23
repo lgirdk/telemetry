@@ -801,58 +801,73 @@ T2ERROR ProfileXConf_storeMarkerEvent(T2Event *eventInfo)
         return T2ERROR_FAILURE;
     }
 
-    int eventIndex = 0;
-    EventMarker *lookupEvent = NULL;
-    for(; eventIndex < Vector_Size(singleProfile->eMarkerList); eventIndex++)
+    /* If a marker starts with EVT then add all occurrence of it in the report */
+    if(strncmp(eventInfo->name, "EVT_", 4) == 0)
     {
-        EventMarker *tempEventMarker = (EventMarker *)Vector_At(singleProfile->eMarkerList, eventIndex);
-        if(!strcmp(tempEventMarker->markerName, eventInfo->name))
-        {
-            lookupEvent = tempEventMarker;
-            break;
-        }
-    }
-    int arraySize = 0;
-    if(lookupEvent != NULL)
-    {
-        switch(lookupEvent->mType)
-        {
-            case MTYPE_XCONF_COUNTER:
-                lookupEvent->u.count++;
-                T2Debug("Increment marker count to : %d\n", lookupEvent->u.count);
-                break;
-
-            case MTYPE_XCONF_ACCUMULATE:
-                T2Debug("Marker type is ACCUMULATE Event Value : %s\n",eventInfo->value);
-                arraySize = Vector_Size(lookupEvent->u.accumulatedValues);
-                T2Debug("Current array size : %d \n", arraySize);
-                if( arraySize < MAX_ACCUMULATE){
-                    Vector_PushBack(lookupEvent->u.accumulatedValues, strdup(eventInfo->value));
-                    T2Debug("Sucessfully added value into vector New Size : %d\n", ++arraySize);
-                } else if ( arraySize == MAX_ACCUMULATE ){
-                    T2Warning("Max size of the array has been reached appending warning message : %s\n", MAX_ACCUMULATE_MSG);
-                    Vector_PushBack(lookupEvent->u.accumulatedValues, strdup(MAX_ACCUMULATE_MSG));
-                    T2Debug("Sucessfully added warning message into vector New Size : %d\n", ++arraySize);
-                } else{
-                    T2Warning("Max size of the array has been reached Ignore New Value\n");
-                }
-                break;
-
-            case MTYPE_XCONF_ABSOLUTE:
-            default:
-                if(lookupEvent->u.markerValue)
-                    free(lookupEvent->u.markerValue);
-                lookupEvent->u.markerValue = strdup(eventInfo->value);
-                T2Debug("New marker value saved : %s\n", lookupEvent->u.markerValue);
-                break;
-        }
+        EventMarker *eMarker = (EventMarker *)malloc(sizeof(EventMarker));
+        memset(eMarker, 0, sizeof(EventMarker));
+        eMarker->markerName = strdup(eventInfo->name);
+        eMarker->compName = NULL;
+        eMarker->mType = MTYPE_XCONF_ABSOLUTE;
+        eMarker->u.markerValue = strdup(eventInfo->value);
+        eMarker->skipFreq = 0;
+        Vector_PushBack(singleProfile->eMarkerList, eMarker);
     }
     else
     {
-        T2Error("Event name : %s value : %s\n", eventInfo->name, eventInfo->value);
-        T2Error("Event doens't match any marker information, shouldn't come here\n");
-        pthread_mutex_unlock(&plMutex);
-        return T2ERROR_FAILURE;
+        int eventIndex = 0;
+        EventMarker *lookupEvent = NULL;
+        for(; eventIndex < Vector_Size(singleProfile->eMarkerList); eventIndex++)
+        {
+            EventMarker *tempEventMarker = (EventMarker *)Vector_At(singleProfile->eMarkerList, eventIndex);
+            if(!strcmp(tempEventMarker->markerName, eventInfo->name))
+            {
+                lookupEvent = tempEventMarker;
+                break;
+            }
+        }
+        int arraySize = 0;
+        if(lookupEvent != NULL)
+        {
+            switch(lookupEvent->mType)
+            {
+                case MTYPE_XCONF_COUNTER:
+                    lookupEvent->u.count++;
+                    T2Debug("Increment marker count to : %d\n", lookupEvent->u.count);
+                    break;
+
+                case MTYPE_XCONF_ACCUMULATE:
+                    T2Debug("Marker type is ACCUMULATE Event Value : %s\n",eventInfo->value);
+                    arraySize = Vector_Size(lookupEvent->u.accumulatedValues);
+                    T2Debug("Current array size : %d \n", arraySize);
+                    if( arraySize < MAX_ACCUMULATE){
+                        Vector_PushBack(lookupEvent->u.accumulatedValues, strdup(eventInfo->value));
+                        T2Debug("Sucessfully added value into vector New Size : %d\n", ++arraySize);
+                    } else if ( arraySize == MAX_ACCUMULATE ){
+                        T2Warning("Max size of the array has been reached appending warning message : %s\n", MAX_ACCUMULATE_MSG);
+                        Vector_PushBack(lookupEvent->u.accumulatedValues, strdup(MAX_ACCUMULATE_MSG));
+                        T2Debug("Sucessfully added warning message into vector New Size : %d\n", ++arraySize);
+                    } else{
+                        T2Warning("Max size of the array has been reached Ignore New Value\n");
+                    }
+                    break;
+
+                case MTYPE_XCONF_ABSOLUTE:
+                default:
+                    if(lookupEvent->u.markerValue)
+                        free(lookupEvent->u.markerValue);
+                    lookupEvent->u.markerValue = strdup(eventInfo->value);
+                    T2Debug("New marker value saved : %s\n", lookupEvent->u.markerValue);
+                    break;
+            }
+        }
+        else
+        {
+            T2Error("Event name : %s value : %s\n", eventInfo->name, eventInfo->value);
+            T2Error("Event doens't match any marker information, shouldn't come here\n");
+            pthread_mutex_unlock(&plMutex);
+            return T2ERROR_FAILURE;
+        }
     }
 
     pthread_mutex_unlock(&plMutex);

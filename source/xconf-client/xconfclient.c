@@ -48,6 +48,7 @@
 #define MAX_XCONF_RETRY_COUNT 5
 #define IFINTERFACE      "erouter0"
 #define XCONF_CONFIG_FILE  "DCMresponse.txt"
+#define DEFAULT_CONFIG_FILE  "/usr/ccsp/telemetry/DCMresponse.txt"
 #define PROCESS_CONFIG_COMPLETE_FLAG "/tmp/t2DcmComplete"
 #define HTTP_RESPONSE_FILE "/tmp/httpOutput.txt"
 
@@ -789,6 +790,73 @@ static T2ERROR getRemoteConfigURL(char **configURL) {
     return ret; 
 }
 
+static T2ERROR loadDefaultConfFile (void)
+{
+    T2Debug("%s ++in\n", __FUNCTION__);
+
+    T2ERROR res = T2ERROR_FAILURE;
+    char *configData = NULL;
+    long fsize = 0;
+    size_t bytes_count = 0;
+    ProfileXConf *profile = 0;
+
+    FILE *fptr = fopen(DEFAULT_CONFIG_FILE, "r");
+    if(fptr)
+    {
+        fseek(fptr, 0, SEEK_END);
+        fsize = ftell(fptr);
+        fseek(fptr, 0, SEEK_SET);
+        configData = malloc(fsize + 1);
+
+        if (configData)
+        {
+            bytes_count = fread(configData, 1, fsize, fptr);
+            if (bytes_count != 0)
+            {
+                configData[fsize] = '\0';
+                if(T2ERROR_SUCCESS == processConfigurationXConf(configData, &profile))
+                {
+                    if(T2ERROR_SUCCESS != saveConfigToFile(XCONFPROFILE_PERSISTENCE_PATH, XCONF_CONFIG_FILE, configData))
+                    {
+                        T2Error("Unable to save the default profile : %s to disk\n", profile->name);
+                    }
+                    else
+                    {
+                        T2Info("Successfully saved the default profile to nvram: %s\n", profile->name);
+                    }
+
+                    T2Debug("Set default profile : %s\n", profile->name);
+                    if(T2ERROR_SUCCESS != ReportProfiles_setProfileXConf(profile))
+                    {
+                        T2Error("Failed to set default profile : %s\n", profile->name);
+                    }
+                    else
+                    {
+                        /* Set a cronjob for auto downloading DCMresponse.txt file */
+                        if (T2ERROR_SUCCESS == ProfileXConf_setCronForAutoDownload())
+                        {
+                            T2Info("cronjob for auto downloading DCMresponse.txt file is set as %s\n", profile->autoDownloadInterval);
+                        }
+                        else
+                        {
+                            T2Error("Failed to set cronjob for auto downloading DCMresponse.txt file\n");
+                        }
+                        res = T2ERROR_SUCCESS;
+                        T2Info("Successfully set default profile : %s\n", profile->name);
+                    }
+                }
+            }
+
+            free(configData);
+        }
+
+        fclose(fptr);
+    }
+
+    T2Debug("%s --out\n", __FUNCTION__);
+    return res;
+}
+
 static void* getUpdatedConfigurationThread(void *data)
 {
     T2ERROR configFetch = T2ERROR_FAILURE;
@@ -954,7 +1022,11 @@ static void* getUpdatedConfigurationThread(void *data)
     }  // End of config fetch while
     if(configFetch == T2ERROR_FAILURE && !ProfileXConf_isSet())
     {
-        T2Error("Failed to fetch updated configuration and no saved configurations on disk for XCONF, uninitializing  the process\n");
+        T2Warning("Failed to fetch updated configuration and no saved configurations on disk for XCONF, Using the default configuration file from disk.\n");
+        if(loadDefaultConfFile() != T2ERROR_SUCCESS)
+        {
+            T2Error("ERROR: Unable to load the default config file!!!\n");
+        }
     }
 
     if(configURL)

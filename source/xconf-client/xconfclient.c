@@ -485,6 +485,10 @@ static T2ERROR doHttpGet(char* httpsUrl, char **data) {
     char *pCertURI = NULL;
     char *pEngine=NULL;
 #endif
+    char buf[256];
+    char current_time[20];
+    int Timestamp_Status;
+    char errbuf[CURL_ERROR_SIZE];
     char *pCertFile = NULL;
     char *pPasswd = NULL;
 #ifdef LIBRDKCONFIG_BUILD
@@ -584,6 +588,10 @@ static T2ERROR doHttpGet(char* httpsUrl, char **data) {
             if(code != CURLE_OK) {
                 T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
             }
+            code = curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, errbuf);
+            if(code != CURLE_OK){
+                T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
+            }
 
             /* Load server ca, device certificate and private key to curl object */
             addCertificatesToHTTPHeader(curl);
@@ -673,10 +681,59 @@ static T2ERROR doHttpGet(char* httpsUrl, char **data) {
                   curl_code = curl_easy_perform(curl);
             }
             curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
+            snprintf(buf,sizeof(buf),"%d",http_code);
+            if (telemetry_syscfg_set("dcm_httpStatus", buf) == 0)
+            {
+               T2Info("dcm_httpStatus set successfully\n");
+            }
+            if (http_code == 200)
+            {
+               telemetry_syscfg_set("dcm_httpStatusString", "OK");
+            }
+            else
+            {
+               telemetry_syscfg_set("dcm_httpStatusString", errbuf);
+            }
+
+            Timestamp_Status = getcurrenttime(current_time, sizeof(current_time));
+            if (Timestamp_Status != 0)
+            {
+               T2Error("Failed to fetch current dcm_lastAttemptTimestamp\n");
+               telemetry_syscfg_set("dcm_lastAttemptTimestamp", "");
+            }
+            else
+            {
+               if (telemetry_syscfg_set("dcm_lastAttemptTimestamp", current_time) == 0)
+               {
+                  T2Info("dcm_lastAttemptTimestamp set successfully\n");
+               }
+               else
+               {
+                  T2Error("Failed to set dcm_lastAttemptTimestamp\n");
+               }
+            }
 
             if(http_code == 200 && curl_code == CURLE_OK) {
                 T2Info("%s:%d, T2:Telemetry XCONF communication success\n", __func__, __LINE__);
                 size_t len = strlen(httpResponse->data);
+
+                Timestamp_Status = getcurrenttime(current_time, sizeof(current_time));
+                if (Timestamp_Status != 0)
+                {
+                   T2Error("Failed to fetch current dcm_lastSuccessTimestamp\n");
+                   telemetry_syscfg_set("dcm_lastSuccessTimestamp", "");
+                }
+                else
+                {
+                   if (telemetry_syscfg_set("dcm_lastSuccessTimestamp", current_time) == 0)
+                   {
+                      T2Info("dcm_lastSuccessTimestamp set successfully \n");
+                   }
+                   else
+                   {
+                      T2Error("Failed to set dcm_lastSuccessTimestamp \n");
+                   }
+                }
 
                 // Share data with parent
                 close(sharedPipeFdDataLen[0]);

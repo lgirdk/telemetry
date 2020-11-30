@@ -44,6 +44,7 @@
 #include "busInterface.h"
 #include "curlinterface.h"
 #include "syscfg/syscfg.h"
+#include "t2commonutils.h"
 
 #define RFC_RETRY_TIMEOUT 60
 #define XCONF_RETRY_TIMEOUT 180
@@ -402,6 +403,10 @@ static T2ERROR doHttpGet(char* httpsUrl, char **data) {
     CURLcode code = CURLE_OK;
     long http_code = 0;
     CURLcode curl_code = CURLE_OK;
+    char buf[256];
+    char current_time[20];
+    int Timestamp_Status;
+    char errbuf[CURL_ERROR_SIZE];
 
     char *pCertFile = NULL;
     char *pPasswd = NULL;
@@ -499,6 +504,10 @@ static T2ERROR doHttpGet(char* httpsUrl, char **data) {
             if(code != CURLE_OK) {
                 T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
             }
+            code = curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, errbuf);
+            if(code != CURLE_OK){
+                T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
+            }
 
             if(mtls_enable == true) {
                 if(T2ERROR_SUCCESS == getMtlsCerts(&pCertFile, &pPasswd)) {
@@ -570,10 +579,59 @@ static T2ERROR doHttpGet(char* httpsUrl, char **data) {
 
             curl_code = curl_easy_perform(curl);
             curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
+            snprintf(buf,sizeof(buf),"%d",http_code);
+            if (syscfg_set(NULL, "dcm_httpStatus", buf) == 0) 
+            {
+               T2Info("dcm_httpStatus set successfully\n");
+            }
+            if (http_code == 200)
+            {
+               syscfg_set(NULL, "dcm_httpStatusString", "OK");
+            }
+            else
+            {
+               syscfg_set(NULL, "dcm_httpStatusString", errbuf);
+            }
+
+            Timestamp_Status = getcurrenttime(current_time, sizeof(current_time));
+            if (Timestamp_Status != 0)
+            {
+               T2Error("Failed to fetch current dcm_lastAttemptTimestamp\n");
+               syscfg_set(NULL, "dcm_lastAttemptTimestamp", "");
+            }
+            else
+            {
+               if (syscfg_set(NULL, "dcm_lastAttemptTimestamp", current_time) == 0)
+               {
+                  T2Info("dcm_lastAttemptTimestamp set successfully\n");
+               }
+               else
+               {
+                  T2Error("Failed to set dcm_lastAttemptTimestamp\n");
+               }
+            }
 
             if(http_code == 200 && curl_code == CURLE_OK) {
                 T2Info("%s:%d, T2:Telemetry XCONF communication success\n", __func__, __LINE__);
                 size_t len = strlen(httpResponse->data);
+
+                Timestamp_Status = getcurrenttime(current_time, sizeof(current_time));
+                if (Timestamp_Status != 0)
+                {
+                   T2Error("Failed to fetch current dcm_lastSuccessTimestamp\n");
+                   syscfg_set(NULL, "dcm_lastSuccessTimestamp", "");
+                }
+                else
+                {
+                   if (syscfg_set(NULL, "dcm_lastSuccessTimestamp", current_time) == 0)
+                   {
+                      T2Info("dcm_lastSuccessTimestamp set successfully \n");
+                   }
+                   else
+                   {
+                      T2Error("Failed to set dcm_lastSuccessTimestamp \n");
+                   }
+                }
 
                 // Share data with parent
                 close(sharedPipeFdDataLen[0]);

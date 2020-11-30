@@ -19,6 +19,8 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
+
 #include "t2common.h"
 #include "t2log_wrapper.h"
 
@@ -228,5 +230,33 @@ int telemetry_syscfg_set (char *temp, char *buf)
     }
 
     return ret;
+}
+
+int getcurrenttime (char *current_time_string, int timestampparams)
+{
+    time_t current_time;
+    struct tm *c_time_string;
+
+    /* Obtain current time */
+    current_time = time(NULL);
+    if (current_time == ((time_t)-1))
+    {
+        T2Error("Failed to obtain the current time\n");
+        current_time_string = NULL;
+        return 1;
+    }
+
+    /* Convert to local time format. */
+    c_time_string = localtime(&current_time);
+    if (c_time_string == NULL)
+    {
+        T2Error("Failure to obtain the current time\n");
+        current_time_string = NULL;
+        return 1;
+    }
+
+    strftime(current_time_string, timestampparams, "%Y-%m-%d %H:%M:%S", c_time_string);
+
+    return 0;
 }
 

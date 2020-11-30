@@ -179,6 +179,7 @@ T2ERROR processConfigurationXConf(char* configData, ProfileXConf **localProfile)
         return T2ERROR_FAILURE;
     }
 
+    telemetry_syscfg_set("UploadRepositoryURL",juploadUrl->valuestring);
     int reportIntervalInSec = getScheduleInSeconds(jschedule->valuestring);
 
     T2Info("Received profile name : %s with interval of : %d secs and upload url : %s \n", jprofileName->valuestring,

@@ -20,7 +20,7 @@ AM_CFLAGS =
 
 lib_LTLIBRARIES = libutils.la
 
-libutils_la_SOURCES = vector.c t2collection.c t2log_wrapper.c t2MtlsUtils.c
+libutils_la_SOURCES = vector.c t2collection.c t2log_wrapper.c t2MtlsUtils.c t2commonutils.c
 libutils_la_LDFLAGS = -shared -fPIC -lrdkloggers
 if IS_LIBSYSWRAPPER_ENABLED
 libutils_la_CFLAGS = $(LIBSYSWRAPPER_FLAG)

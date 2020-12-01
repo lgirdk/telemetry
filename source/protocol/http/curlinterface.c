@@ -32,6 +32,7 @@
 #include "reportprofiles.h"
 #include "t2MtlsUtils.h"
 #include "t2log_wrapper.h"
+#include "t2commonutils.h"
 
 static pthread_once_t curlFileMutexOnce = PTHREAD_ONCE_INIT;
 static pthread_mutex_t curlFileMutex;
@@ -305,6 +306,10 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char* payload)
     T2ERROR ret = T2ERROR_FAILURE;
     long http_code;
     struct curl_slist *headerList = NULL;
+    char buf[256];
+    char current_time[20];
+    int Timestamp_Status;
+    char errbuf[CURL_ERROR_SIZE];
     char *pCertFile = NULL ;
     char *pKeyFile = NULL ;
 
@@ -336,8 +341,37 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char* payload)
         fp = fopen(CURL_OUTPUT_FILE, "wb");
         if (fp) {
             curl_easy_setopt(curl, CURLOPT_WRITEDATA, fp);
+            curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, errbuf);
             res = curl_easy_perform(curl);
             curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
+            snprintf(buf,sizeof(buf),"%d",res);
+            if (syscfg_set(NULL, "upload_httpStatus", buf) == 0)
+            {
+                T2Info("upload_httpStatus set successfully\n");
+            }
+            snprintf(buf,sizeof(buf),"%s",errbuf);
+            if (syscfg_set(NULL, "upload_httpStatusString", buf) == 0)
+            {
+               T2Info("upload_httpStatusString set successfully\n");
+            }
+            Timestamp_Status = getcurrenttime(current_time, sizeof(current_time));
+            if (Timestamp_Status != 0)
+            {
+                T2Error("Failed to fetch current upload_lastAttemptTimestamp\n");
+                syscfg_set(NULL, "upload_lastAttemptTimestamp", "");
+            }
+            else
+            {
+                if (syscfg_set(NULL, "upload_lastAttemptTimestamp", current_time) == 0)
+                {
+                    T2Info("upload_lastAttemptTimestamp set successfully\n");
+                }
+                else
+                {
+                    T2Error("Failed to set upload_lastAttemptTimestamp\n");
+                }
+            }
+
             if (res != CURLE_OK)
             {
                 fprintf(stderr, "curl failed: %s\n", curl_easy_strerror(res));
@@ -345,6 +379,24 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char* payload)
             }
             else
             {
+                Timestamp_Status = getcurrenttime(current_time, sizeof(current_time));
+                if (Timestamp_Status != 0)
+                {
+                    T2Error("Failed to fetch current upload_lastSuccessTimestamp\n");
+                    syscfg_set(NULL, "upload_lastSuccessTimestamp", "");
+                }
+                else
+                {
+                    if (syscfg_set(NULL, "upload_lastSuccessTimestamp", current_time) == 0)
+                    {
+                       T2Info("upload_lastSuccessTimestamp set successfully \n");
+                    }
+                    else
+                    {
+                       T2Error("Failed to set upload_lastSuccessTimestamp \n");
+                    }
+                 }
+
                 T2Info("Report Sent Successfully over HTTP : %ld\n", http_code);
                 ret = T2ERROR_SUCCESS;
             }

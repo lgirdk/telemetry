@@ -36,6 +36,7 @@
 #include "reportprofiles.h"
 #include "t2MtlsUtils.h"
 #include "t2log_wrapper.h"
+#include "t2common.h"
 #include "busInterface.h"
 #ifdef LIBRDKCERTSEL_BUILD
 #include "rdkcertselector.h"
@@ -382,6 +383,10 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid) {
     char *pCertURI = NULL;
     char *pEngine=NULL;
 #endif
+    char buf[256];
+    char current_time[20];
+    int Timestamp_Status;
+    char errbuf[CURL_ERROR_SIZE];
     char *pCertFile = NULL;
     char *pKeyFile = NULL;
 #ifdef LIBRDKCONFIG_BUILD
@@ -528,13 +533,66 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid) {
                             // This might not be working we need to review this
                             childCurlResponse.curlSetopCode = code;
                         }
+                        curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, errbuf);
                         curl_code = curl_easy_perform(curl);
                         curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
+
+                        snprintf(buf,sizeof(buf),"%d",http_code);
+                        if (telemetry_syscfg_set("upload_httpStatus", buf) == 0)
+                        {
+                            T2Info("upload_httpStatus set successfully\n");
+                        }
+                        if (http_code == 200)
+                        {
+                            telemetry_syscfg_set("upload_httpStatusString", "OK");
+                        }
+                        else
+                        {
+                            telemetry_syscfg_set("upload_httpStatusString", errbuf);
+                        }
+                        Timestamp_Status = getcurrenttime(current_time, sizeof(current_time));
+                        if (Timestamp_Status != 0)
+                        {
+                            T2Error("Failed to fetch current upload_lastAttemptTimestamp\n");
+                            telemetry_syscfg_set("upload_lastAttemptTimestamp", "");
+                        }
+                        else
+                        {
+                            if (telemetry_syscfg_set("upload_lastAttemptTimestamp", current_time) == 0)
+                            {
+                                T2Info("upload_lastAttemptTimestamp set successfully\n");
+                            }
+                            else
+                            {
+                                T2Error("Failed to set upload_lastAttemptTimestamp\n");
+                            }
+                        }
+
                         if(curl_code != CURLE_OK || http_code != 200) {
                             fprintf(stderr, "curl failed: %s\n", curl_easy_strerror(curl_code));
                             childCurlResponse.lineNumber = __LINE__;
                         }else {
                             childCurlResponse.lineNumber = __LINE__;
+
+                            Timestamp_Status = getcurrenttime(current_time, sizeof(current_time));
+                            if (Timestamp_Status != 0)
+                            {
+                                T2Error("Failed to fetch current upload_lastSuccessTimestamp\n");
+                                telemetry_syscfg_set("upload_lastSuccessTimestamp", "");
+                            }
+                            else
+                            {
+                                if (telemetry_syscfg_set("upload_lastSuccessTimestamp", current_time) == 0)
+                                {
+                                    T2Info("upload_lastSuccessTimestamp set successfully \n");
+                                }
+                                else
+                                {
+                                    T2Error("Failed to set upload_lastSuccessTimestamp \n");
+                                }
+                            }
+                            T2Info("Report Sent Successfully over HTTP : %ld\n", http_code);
+                            ret = T2ERROR_SUCCESS;
                         }
                         childCurlResponse.curlResponse = curl_code;
                         childCurlResponse.http_code = http_code;

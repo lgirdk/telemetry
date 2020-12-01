@@ -44,6 +44,7 @@
 #include "busInterface.h"
 #include "curlinterface.h"
 #include "syscfg/syscfg.h"
+#include "t2commonutils.h"
 
 #define RFC_RETRY_TIMEOUT 60
 #define XCONF_RETRY_TIMEOUT 180
@@ -385,30 +386,6 @@ static size_t httpGetCallBack(void *response, size_t len, size_t nmemb,
     httpResponse->data[httpResponse->size] = 0;
 
     return realsize;
-}
-
-static int  getcurrenttime(char* current_time_string,int timestampparams)
-{
-    time_t current_time;
-    struct tm* c_time_string;
-    /* Obtain current time. */
-    current_time = time(NULL);
-    if (current_time == ((time_t)-1))
-    {
-        T2Error("Failed to obtain the current time\n");
-        current_time_string=NULL;
-        return 1;
-    }
-    /* Convert to local time format. */
-    c_time_string = localtime(&current_time);
-    if (c_time_string == NULL)
-    {
-        T2Error("Failure to obtain the current time\n");
-        current_time_string=NULL;
-        return 1;
-    }
-    strftime(current_time_string, timestampparams, "%Y-%m-%d %H:%M:%S", c_time_string);
-    return 0;
 }
 
 static T2ERROR doHttpGet(char* httpsUrl, char **data) {

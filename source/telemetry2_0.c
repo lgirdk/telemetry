@@ -29,6 +29,9 @@
 #include <signal.h>
 #include <curl/curl.h>
 #include <execinfo.h>
+#include <errno.h>
+#include <sys/file.h>
+#include <fcntl.h>
 #ifdef DUAL_CORE_XB3
 #include <sys/inotify.h>
 #endif
@@ -361,6 +364,41 @@ static int checkTelemetryStatus (void)
     return res;
 }
 
+static int checkAnotherTelemetryInstance()
+{
+    T2Debug("%s ++in\n",__FUNCTION__);
+
+    int res = 0;
+    int pid_file = open("/tmp/telemetry2_0.pid", O_CREAT | O_RDWR, 0666);
+    if(pid_file != -1)
+    {
+        int rc = flock(pid_file, LOCK_EX | LOCK_NB);
+        if (rc)
+        {
+            if (EWOULDBLOCK == errno)
+            {
+                T2Error("Another instance of telemetry2_0 is running. so exiting....\n");
+                res = 1;
+            }
+            else
+            {
+                T2Error("flock returned an error other than EWOULDBLOCK. Proceeding futher..\n");
+            }
+        }
+        else
+        {
+            T2Info("First instance of telemetry2_0 process\n");
+        }
+    }
+    else
+    {
+        T2Error("File open failed in func - %s\n",__FUNCTION__);
+    }
+
+    T2Debug("%s --out\n",__FUNCTION__);
+    return res;
+}
+
 int main(int argc, char* argv[])
 {
     pid_t process_id = 0;
@@ -373,6 +411,12 @@ int main(int argc, char* argv[])
     {
         T2Info("Telemetry is disabled. Existing!!!\n");
         return 0;
+    }
+
+    /* Check another instance of telemetry2_0 is running in background */
+    if(checkAnotherTelemetryInstance())
+    {
+        return 1;
     }
 
     printf("Starting Telemetry 2.0 Process\n");

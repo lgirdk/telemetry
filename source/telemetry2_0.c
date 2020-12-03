@@ -24,6 +24,9 @@
 #include <fcntl.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/file.h>
+#include <fcntl.h>
+#include <errno.h>
 #include <string.h>
 #include <pthread.h>
 #include <signal.h>
@@ -296,11 +299,41 @@ static void t2DaemonHelperModeInit( ) {
 }
 #endif //End of  _COSA_INTEL_USG_ATOM_
 
+static int checkAnotherTelemetryInstance (void)
+{
+    int fd;
+
+    fd = open("/var/run/telemetry2_0.lock", O_CREAT | O_RDWR, 0666);
+
+    if (fd == -1)
+    {
+        T2Error("Failed to open lock file\n");
+        return 0;
+    }
+
+    if (flock(fd, LOCK_EX | LOCK_NB) != 0)
+    {
+        T2Error("Failed to acquire lock file\n");
+        close(fd);
+        return 1;
+    }
+
+    /* OK to proceed (lock will be released and file descriptor will be closed on exit) */
+
+    return 0;
+}
+
 int main(int argc, char* argv[])
 {
     pid_t process_id = 0;
     pid_t sid = 0;
     LOGInit();
+
+    /* Abort if another instance of telemetry2_0 is already running */
+    if (checkAnotherTelemetryInstance())
+    {
+        return 1;
+    }
 
     T2Info("Starting Telemetry 2.0 Process\n");
 

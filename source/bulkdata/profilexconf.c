@@ -35,6 +35,7 @@
 #include "vector.h"
 #include "dcautil.h"
 #include "t2parserxconf.h"
+#include "t2common.h"
 
 #define T2REPORT_HEADER "T2"
 #define T2REPORT_HEADERVAL  "1.0"
@@ -285,6 +286,8 @@ static void* CollectAndReportXconf(void* data)
         }
         if(profile->protocol != NULL && strcmp(profile->protocol, "HTTP") == 0)
         {
+           char buf[12];
+
            // If a terminate is initiated, do not attempt to upload report
            if(isAbortTriggered) {
                T2Info("On-demand report upload has been aborted. Skip report upload \n");
@@ -317,9 +320,19 @@ static void* CollectAndReportXconf(void* data)
               T2Info("Report Cached, No. of reportes cached = %lu\n", (unsigned long)Vector_Size(profile->cachedReportList));
               // Save messages from cache to a file in persistent location.
               saveCachedReportToPersistenceFolder(profile->name, profile->cachedReportList);
+
+              snprintf(buf,sizeof(buf),"%d",Vector_Size(profile->cachedReportList));
+              telemetry_syscfg_set("upload_attemptCount", buf);
+           }
+           else if(ret == T2ERROR_SUCCESS)
+           {
+               snprintf(buf,sizeof(buf),"%d",Vector_Size(profile->cachedReportList)+1);
+               telemetry_syscfg_set("upload_attemptCount", buf);
            }
            else if(profile->cachedReportList != NULL && Vector_Size(profile->cachedReportList) > 0)
            {
+               snprintf(buf,sizeof(buf),"%d",Vector_Size(profile->cachedReportList)+1);
+               telemetry_syscfg_set("upload_attemptCount", buf);
                T2Info("Trying to send  %lu cached reports\n", (unsigned long)Vector_Size(profile->cachedReportList));
                ret = sendCachedReportsOverHTTP(profile->t2HTTPDest->URL, profile->cachedReportList);
                if(ret == T2ERROR_SUCCESS){

@@ -35,6 +35,7 @@
 #include "vector.h"
 #include "dcautil.h"
 #include "t2parserxconf.h"
+#include "t2common.h"
 
 #define T2REPORT_HEADER "T2"
 #define T2REPORT_HEADERVAL  "1.0"
@@ -178,6 +179,8 @@ static T2ERROR initJSONReportXconf(cJSON** jsonObj, cJSON **valArray)
 
 static void* CollectAndReportXconf(void* data)
 {
+    static int upload_attemptCount;
+
     pthread_mutex_lock(&plMutex);
     ProfileXConf* profile = singleProfile;
     if(profile == NULL){
@@ -292,6 +295,8 @@ static void* CollectAndReportXconf(void* data)
             }
             if(profile->protocol != NULL && strcmp(profile->protocol, "HTTP") == 0)
             {
+                char buf[12];
+
             // If a terminate is initiated, do not attempt to upload report
                 if(isAbortTriggered) {
                     T2Info("On-demand report upload has been aborted. Skip report upload \n");
@@ -322,8 +327,15 @@ static void* CollectAndReportXconf(void* data)
                     T2Info("Report Cached, No. of reportes cached = %lu\n", (unsigned long)Vector_Size(profile->cachedReportList));
                     // Save messages from cache to a file in persistent location.
                     saveCachedReportToPersistenceFolder(profile->name, profile->cachedReportList);
+
+                    upload_attemptCount++;
                 }
-                else if(profile->cachedReportList != NULL && Vector_Size(profile->cachedReportList) > 0)
+                else
+                {
+                    upload_attemptCount = 0;
+                }
+
+                if(profile->cachedReportList != NULL && Vector_Size(profile->cachedReportList) > 0)
                 {
                     T2Info("Trying to send  %lu cached reports\n", (unsigned long)Vector_Size(profile->cachedReportList));
                     ret = sendCachedReportsOverHTTP(profile->t2HTTPDest->URL, profile->cachedReportList);
@@ -332,6 +344,9 @@ static void* CollectAndReportXconf(void* data)
                         removeProfileFromDisk(CACHED_MESSAGE_PATH, profile->name);
                     }
                 }
+
+                snprintf(buf, sizeof(buf), "%d", upload_attemptCount);
+                telemetry_syscfg_set("upload_attemptCount", buf);
             }
             else
             {

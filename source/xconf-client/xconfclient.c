@@ -846,6 +846,11 @@ static void* getUpdatedConfigurationThread(void *data)
                 configData = NULL ;
             }
             xConfRetryCount++;
+            snprintf(buf,sizeof(buf),"%d",xConfRetryCount);
+            if (syscfg_set(NULL, "dcm_attemptCount", buf) != 0)
+            {
+                T2Error("dcm_attemptCount set failed\n");
+            }
             if(xConfRetryCount >= maxAttempts)
             {
                 xConfRetryCount = 0; // xConfRetryCount is global. So reset it.

@@ -228,6 +228,8 @@ static void* CollectAndReportXconf(void* data)
 
                     if(ret == T2ERROR_FAILURE)
                     {
+                        char buf[12];
+
                         if(Vector_Size(profile->cachedReportList) == MAX_CACHED_REPORTS)
                         {
                             T2Debug("Max Cached Reports Limit Reached, Overwriting third recent report\n");
@@ -238,6 +240,11 @@ static void* CollectAndReportXconf(void* data)
                         Vector_PushBack(profile->cachedReportList, strdup(jsonReport));
 
                         T2Info("Report Cached, No. of reportes cached = %d\n", Vector_Size(profile->cachedReportList));
+                        snprintf(buf,sizeof(buf),"%d",Vector_Size(profile->cachedReportList));
+                        if(syscfg_set(NULL, "upload_attemptCount", buf) != 0)
+                        {
+                            T2Error("Failed to set upload attempt count\n");
+                        }
                     }
                     else if(Vector_Size(profile->cachedReportList) > 0)
                     {

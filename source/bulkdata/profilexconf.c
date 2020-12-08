@@ -229,6 +229,8 @@ static void* CollectAndReportXconf(void* data)
         }
         if(strcmp(profile->protocol, "HTTP") == 0)
         {
+           char buf[12];
+
            ret = sendReportOverHTTP(profile->t2HTTPDest->URL, jsonReport);
 
            if(ret == T2ERROR_FAILURE)
@@ -243,9 +245,22 @@ static void* CollectAndReportXconf(void* data)
               Vector_PushBack(profile->cachedReportList, strdup(jsonReport));
 
               T2Info("Report Cached, No. of reportes cached = %lu\n", (unsigned long)Vector_Size(profile->cachedReportList));
+
+              snprintf(buf,sizeof(buf),"%d",Vector_Size(profile->cachedReportList));
+              if(syscfg_set(NULL, "upload_attemptCount", buf) != 0)
+              {
+                  T2Error("Failed to set upload attempt count\n");
+              }
+           }
+           else if(ret == T2ERROR_SUCCESS)
+           {
+               snprintf(buf,sizeof(buf),"%d",Vector_Size(profile->cachedReportList)+1);
+               syscfg_set(NULL, "upload_attemptCount", buf);
            }
            else if(Vector_Size(profile->cachedReportList) > 0)
            {
+               snprintf(buf,sizeof(buf),"%d",Vector_Size(profile->cachedReportList)+1);
+               syscfg_set(NULL, "upload_attemptCount", buf);
                T2Info("Trying to send  %lu cached reports\n", (unsigned long)Vector_Size(profile->cachedReportList));
                ret = sendCachedReportsOverHTTP(profile->t2HTTPDest->URL, profile->cachedReportList);
            }

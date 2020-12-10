@@ -20,6 +20,8 @@
 #include <stdio.h>
 #include <telemetry_busmessage_sender.h>
 
+#define COMP_NAME "telemetry_client"
+
 int main(int argc, char *argv[]) {
     t2_init(COMP_NAME);
 	t2_event_s(argv[1], argv[2]);

@@ -31,9 +31,6 @@ extern "C" {
 #endif
 
 #include "telemetry2_0.h"
-#define MESSAGE_DELIMITER "<#=#>"
-#define DELIMITER_LEN 5
-#define COMP_NAME "telemetry_client"
 
 /*
  * NAME        : t2_init

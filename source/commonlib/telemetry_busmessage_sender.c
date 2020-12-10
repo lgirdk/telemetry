@@ -38,6 +38,8 @@
 #include "telemetry2_0.h"
 #include "telemetry_busmessage_internal.h"
 
+#define MESSAGE_DELIMITER "<#=#>"
+
 #define MAX_CACHED_EVENTS_LIMIT 50
 #define T2_COMPONENT_READY    "/tmp/.t2ReadyToReceiveEvents"
 #define T2_SCRIPT_EVENT_COMPONENT "telemetry_client"
@@ -331,7 +333,7 @@ int filtered_event_send(const char* data, char *markerName) {
     }
 #if defined(CCSP_SUPPORT_ENABLED)
     else {
-        int eventDataLen = strlen(markerName) + strlen(data) + DELIMITER_LEN + 1;
+        int eventDataLen = strlen(markerName) + strlen(data) + strlen(MESSAGE_DELIMITER) + 1;
         char* buffer = (char*) malloc(eventDataLen * sizeof(char));
         if(buffer) {
             snprintf(buffer, eventDataLen, "%s%s%s", markerName, MESSAGE_DELIMITER, data);
@@ -470,7 +472,7 @@ static int report_or_cache_data(char* telemetry_data, char* markerName) {
     pthread_mutex_lock(&eventMutex);
     if(isCachingRequired()) {
         EVENT_DEBUG("Caching the event : %s \n", telemetry_data);
-        int eventDataLen = strlen(markerName) + strlen(telemetry_data) + DELIMITER_LEN + 1;
+        int eventDataLen = strlen(markerName) + strlen(telemetry_data) + strlen(MESSAGE_DELIMITER) + 1;
         char* buffer = (char*) malloc(eventDataLen * sizeof(char));
         if(buffer) {
             // Caching format needs to be same for operation between rbus/dbus modes across reboots

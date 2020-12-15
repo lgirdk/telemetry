@@ -32,6 +32,7 @@
 #include "persistence.h"
 #include "vector.h"
 #include "dcautil.h"
+#include "t2parserxconf.h"
 
 #define T2REPORT_HEADER "T2"
 #define T2REPORT_HEADERVAL  "1.0"
@@ -214,7 +215,7 @@ static void* CollectAndReportXconf(void* data)
             {
                 if(size > DEFAULT_MAX_REPORT_SIZE)
                 {
-                    T2Warning("Report size is exceeding the max limit : %ld\n", DEFAULT_MAX_REPORT_SIZE);
+                    T2Warning("Report size is exceeding the max limit : %d\n", DEFAULT_MAX_REPORT_SIZE);
                 }
                 if(strcmp(profile->protocol, "HTTP") == 0)
                 {

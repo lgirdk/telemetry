@@ -27,12 +27,15 @@
 #include "t2log_wrapper.h"
 #include "vector.h"
 #include "t2common.h"
+#include "ssp_global.h"
 
 static void *bus_handle = NULL;
 
 static T2ERROR ccspGetParameterValues(const char **paramNames, const int paramNamesCount, parameterValStruct_t ***valStructs, int *valSize);
 
+#if 0
 static T2ERROR getParameterNames(const char *objName, parameterInfoStruct_t ***paramNamesSt, int *paramNamesLength);
+#endif
 
 void freeParamInfoSt(parameterInfoStruct_t **paramNamesSt, int paramNamesLength);
 
@@ -49,7 +52,7 @@ static T2ERROR CCSPInterface_Init()
     if (componentId == NULL)
         componentId = strdup(CCSP_COMPONENT_ID);
 
-    int ret = CCSP_Message_Bus_Init(componentId, pCfg, &bus_handle, Ansc_AllocateMemory_Callback, Ansc_FreeMemory_Callback);
+    int ret = CCSP_Message_Bus_Init(componentId, pCfg, &bus_handle, (CCSP_MESSAGE_BUS_MALLOC)Ansc_AllocateMemory_Callback, Ansc_FreeMemory_Callback);
     free(componentId);
 
     if (ret == -1)
@@ -106,10 +109,10 @@ T2ERROR ccspGetParameterValues(const char **paramNames, const int paramNamesCoun
         T2Error("paramNames is NULL or paramNamesCount <= 0 - returning\n");
         return T2ERROR_INVALID_ARGS;
     }
-    if(CCSP_SUCCESS == findDestComponent(paramNames[0], &destCompName, &destCompPath))
+    if(CCSP_SUCCESS == findDestComponent((char*)paramNames[0], &destCompName, &destCompPath))
     {
         T2Debug("Calling CcspBaseIf_getParameterValues for : %s, paramCount : %d Destination name : %s and path %s\n", paramNames[0], paramNamesCount, destCompName, destCompPath);
-        int ret = CcspBaseIf_getParameterValues(bus_handle, destCompName, destCompPath, paramNames, paramNamesCount, valSize, valStructs);
+        int ret = CcspBaseIf_getParameterValues(bus_handle, destCompName, destCompPath, (char**)paramNames, paramNamesCount, valSize, valStructs);
         if (ret != CCSP_SUCCESS)
         {
             T2Error("CcspBaseIf_getParameterValues failed for : %s with ret = %d\n", paramNames[0], ret);
@@ -139,6 +142,7 @@ T2ERROR ccspGetParameterValues(const char **paramNames, const int paramNamesCoun
     return retErrCode;
 }
 
+#if 0
 T2ERROR getParameterNames(const char *objName, parameterInfoStruct_t ***paramNamesSt, int *paramNamesLength)
 {
     T2ERROR ret = T2ERROR_FAILURE;
@@ -154,9 +158,9 @@ T2ERROR getParameterNames(const char *objName, parameterInfoStruct_t ***paramNam
         T2Error("Invalid objectName, doesn't end with a wildcard '.'\n");
         return T2ERROR_INVALID_ARGS;
     }
-    if(CCSP_SUCCESS == findDestComponent(objName, &destCompName, &destCompPath))
+    if(CCSP_SUCCESS == findDestComponent((char*)objName, &destCompName, &destCompPath))
     {
-        if ( CCSP_SUCCESS != CcspBaseIf_getParameterNames(bus_handle, destCompName, destCompPath, objName, 1, paramNamesLength, paramNamesSt))
+        if ( CCSP_SUCCESS != CcspBaseIf_getParameterNames(bus_handle, destCompName, destCompPath, (char*)objName, 1, paramNamesLength, paramNamesSt))
         {
             T2Error("CcspBaseIf_getParameterValues failed for : %s\n", objName);
         }
@@ -180,6 +184,7 @@ T2ERROR getParameterNames(const char *objName, parameterInfoStruct_t ***paramNam
     T2Debug("%s --out \n", __FUNCTION__);
     return ret;
 }
+#endif
 
 void freeParamInfoSt(parameterInfoStruct_t **paramInfoSt, int paramNamesLength)
 {
@@ -203,7 +208,7 @@ T2ERROR getCCSPParamVal(const char* paramName, char **paramValue)
     }
 
     paramNames[0] = strdup(paramName);
-    if(T2ERROR_SUCCESS != ccspGetParameterValues(paramNames, 1, &valStructs, &valSize))
+    if(T2ERROR_SUCCESS != ccspGetParameterValues((const char**)paramNames, 1, &valStructs, &valSize))
     {
         T2Error("Unable to get %s\n", paramName);
         return T2ERROR_FAILURE;
@@ -241,7 +246,7 @@ Vector* getCCSPProfileParamValues(Vector *paramList) {
         int iterate = 0;
         profileValues *profVals = (profileValues *) malloc(sizeof(profileValues));
         paramNames[0] = strdup(((Param *) Vector_At(paramList, i))->alias);
-        if(T2ERROR_SUCCESS != ccspGetParameterValues(paramNames, 1, &ccspParamValues, &paramValCount)) {
+        if(T2ERROR_SUCCESS != ccspGetParameterValues((const char**)paramNames, 1, &ccspParamValues, &paramValCount)) {
             T2Error("Failed to retrieve param : %s\n", paramNames[0]);
             paramValCount = 0;
         }else {

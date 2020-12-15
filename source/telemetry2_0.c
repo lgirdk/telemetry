@@ -16,6 +16,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
 */
+#ifdef __GNUC__
+#ifndef _BUILD_ANDROID
+#include <execinfo.h>
+#endif
+#endif
 
 #include "telemetry2_0.h"
 
@@ -249,7 +254,6 @@ int main(int argc, char* argv[])
 {
     pid_t process_id = 0;
     pid_t sid = 0;
-    int ret = 0;
     LOGInit();
 
     printf("Starting Telemetry 2.0 Process\n");

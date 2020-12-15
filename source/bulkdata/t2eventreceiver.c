@@ -28,6 +28,8 @@
 #include "profile.h"
 #include "t2log_wrapper.h"
 #include "busInterface.h"
+#include "dca.h"
+#include "interChipHelper.h"
 
 #define T2EVENTQUEUE_MAX_LIMIT 100
 #define MESSAGE_DELIMITER "<#=#>"
@@ -40,6 +42,8 @@ static pthread_t erThread;
 static pthread_mutex_t erMutex;
 static pthread_cond_t erCond;
 static pthread_mutex_t sTDMutex;
+
+T2ERROR ReportProfiles_storeMarkerEvent(char *profileName, T2Event *eventInfo);
 
 void freeT2Event(void *data)
 {

@@ -81,8 +81,10 @@ T2ERROR getRbusParameterVal(const char* paramName, char **paramValue) {
     rbusValue_t paramValue_t;
     rbusValueType_t rbusValueType ;
     char *stringValue = NULL;
+#if 0
     rbusSetOptions_t opts;
     opts.commit = true;
+#endif
 
     if(!bus_handle && T2ERROR_SUCCESS != rBusInterface_Init()) {
         return T2ERROR_FAILURE;
@@ -113,7 +115,6 @@ T2ERROR getRbusParameterVal(const char* paramName, char **paramValue) {
 Vector* getRbusProfileParamValues(Vector *paramList) {
     T2Debug("%s ++in\n", __FUNCTION__);
     unsigned int i = 0;
-    rbusError_t ret = RBUS_ERROR_SUCCESS;
     Vector *profileValueList = NULL;
     Vector_Create(&profileValueList);
 
@@ -131,10 +132,10 @@ Vector* getRbusProfileParamValues(Vector *paramList) {
         int paramValCount = 0;
         int iterate = 0;
         profileValues* profVals = (profileValues *) malloc(sizeof(profileValues));
-        char *param = ((Param *) Vector_At(paramList, i))->alias ;
+        char *param = (char*)((Param *) Vector_At(paramList, i))->alias ;
         paramNames[0] = strdup(param);
         T2Debug("Calling rbus_getExt for %s \n", paramNames[0]);
-        if(RBUS_ERROR_SUCCESS != rbus_getExt(bus_handle, 1, paramNames, &paramValCount, &rbusPropertyValues)) {
+        if(RBUS_ERROR_SUCCESS != rbus_getExt(bus_handle, 1, (const char **)paramNames, &paramValCount, &rbusPropertyValues)) {
             T2Error("Failed to retrieve param : %s\n", paramNames[0]);
             paramValCount = 0 ;
         } else {
@@ -165,7 +166,7 @@ Vector* getRbusProfileParamValues(Vector *paramList) {
                         rbusValue_t value = rbusProperty_GetValue(nextProperty);
                         paramValues[iterate] = (tr181ValStruct_t*) malloc(sizeof(tr181ValStruct_t));
                         if(paramValues[iterate]) {
-                            stringValue = rbusProperty_GetName(nextProperty);
+                            stringValue = (char*)rbusProperty_GetName(nextProperty);
                             paramValues[iterate]->parameterName = strdup(stringValue);
                             paramValues[iterate]->parameterValue = rbusValue_ToString(value, NULL, 0);
                         }
@@ -207,7 +208,7 @@ rbusError_t eventSubHandler(rbusHandle_t handle, rbusEventSubAction_t action, co
  * This eliminates avoids the need for sending data with fixed delimiters
  * comapred to CCSP way of eventing .
  */
-rbusError_t t2PropertyDataSetHandler(rbusHandle_t handle, rbusProperty_t prop, rbusSetOptions_t* opts) {
+rbusError_t t2PropertyDataSetHandler(rbusHandle_t handle, rbusProperty_t prop, rbusSetHandlerOptions_t* opts) {
 
     T2Debug("%s ++in\n", __FUNCTION__);
     (void) handle;
@@ -234,7 +235,7 @@ rbusError_t t2PropertyDataSetHandler(rbusHandle_t handle, rbusProperty_t prop, r
         if(type_t == RBUS_PROPERTY) {
             T2Debug("Received property type as value \n");
             rbusProperty_t objProperty = rbusValue_GetProperty(paramValue_t);
-            char *eventName = rbusProperty_GetName(objProperty);
+            char *eventName = (char*)rbusProperty_GetName(objProperty);
             if(eventName) {
                 T2Debug("Event name is %s \n", eventName);
                 rbusValue_t value = rbusProperty_GetValue(objProperty);
@@ -329,18 +330,15 @@ rbusError_t t2PropertyDataSetHandler(rbusHandle_t handle, rbusProperty_t prop, r
  *    Returns list of events associated a component that needs to be notified to
  *    t2.0 in the form of single row multi instance rbus object
  */
-rbusError_t t2PropertyDataGetHandler(rbusHandle_t handle, rbusProperty_t property) {
+rbusError_t t2PropertyDataGetHandler(rbusHandle_t handle, rbusProperty_t property, rbusGetHandlerOptions_t* opts) {
 
     T2Debug("%s ++in\n", __FUNCTION__);
     (void) handle;
+    (void) opts;
     char const* propertyName;
-    char* componentName;
+    char* componentName = NULL;
     Vector* eventMarkerListForComponent = NULL;
-    char **eventMarkerList = NULL;
     int length = 0;
-
-    rbusError_t ret = RBUS_ERROR_SUCCESS;
-
 
     propertyName = strdup(rbusProperty_GetName(property));
     if(propertyName) {
@@ -389,7 +387,7 @@ rbusError_t t2PropertyDataGetHandler(rbusHandle_t handle, rbusProperty_t propert
         rbusObject_t object;
         rbusProperty_t propertyList = NULL;
 
-        getMarkerListCallBack(componentName, &eventMarkerListForComponent);
+        getMarkerListCallBack(componentName, (void**)&eventMarkerListForComponent);
         length = Vector_Size(eventMarkerListForComponent);
 
         // START : create LL of rbusProperty_t object
@@ -438,7 +436,7 @@ rbusError_t t2PropertyDataGetHandler(rbusHandle_t handle, rbusProperty_t propert
     }
 
     if(propertyName) {
-        free(propertyName);
+        free((char*)propertyName);
         propertyName = NULL;
     }
 
@@ -461,8 +459,8 @@ T2ERROR registerRbusT2EventListener(TelemetryEventCallback eventCB)
      * Register data elements with rbus for EVENTS and Profile Updates.
      */
     rbusDataElement_t dataElements[2] = {
-        {T2_EVENT_PARAM, RBUS_ELEMENT_TYPE_PROPERTY, {NULL, t2PropertyDataSetHandler, NULL, NULL}},
-        {T2_PROFILE_UPDATED_NOTIFY, RBUS_ELEMENT_TYPE_EVENT, {NULL, NULL, NULL, eventSubHandler}}
+        {T2_EVENT_PARAM, RBUS_ELEMENT_TYPE_PROPERTY, {NULL, t2PropertyDataSetHandler, NULL, NULL, NULL, NULL}},
+        {T2_PROFILE_UPDATED_NOTIFY, RBUS_ELEMENT_TYPE_EVENT, {NULL, NULL, NULL, NULL, (rbusEventSubHandler_t)eventSubHandler, NULL}}
     };
     ret = rbus_regDataElements(bus_handle, 2, dataElements);
     if(ret != RBUS_ERROR_SUCCESS)
@@ -507,7 +505,7 @@ T2ERROR regDEforCompEventList(const char* componentName, T2EventMarkerListCallba
         return T2ERROR_FAILURE;
     }
 
-    rbusDataElement_t dataElements[1] = { { deNameSpace, RBUS_ELEMENT_TYPE_PROPERTY, { t2PropertyDataGetHandler, NULL, NULL, NULL } } };
+    rbusDataElement_t dataElements[1] = { { deNameSpace, RBUS_ELEMENT_TYPE_PROPERTY, { t2PropertyDataGetHandler, NULL, NULL, NULL,NULL, NULL } } };
     ret = rbus_regDataElements(bus_handle, 1, dataElements);
     if(ret == RBUS_ERROR_SUCCESS) {
         T2Debug("Registered data element %s with bus \n ", deNameSpace);
@@ -551,8 +549,7 @@ void unregisterDEforCompEventList(){
     T2Debug("compTr181ParamMap has %d components registered \n", count);
     if(count > 0) {
         rbusDataElement_t dataElements[count];
-        rbusCallbackTable_t cbTable = { t2PropertyDataGetHandler, NULL, NULL, NULL };
-        char* compName = (char*) hash_map_get_first(compTr181ParamMap);
+        rbusCallbackTable_t cbTable = { t2PropertyDataGetHandler, NULL, NULL, NULL, NULL, NULL };
         for( i = 0; i < count; ++i ) {
             char *dataElementName = hash_map_lookupKey(compTr181ParamMap, i);
             if(dataElementName) {
@@ -594,8 +591,8 @@ T2ERROR regDEforProfileDataModel(dataModelCallBack dmCallBackHandler,  dataModel
     }
 
     rbusDataElement_t dataElements[NUM_PROFILE_ELEMENTS] = {
-        {deNameSpace, RBUS_ELEMENT_TYPE_PROPERTY, {t2PropertyDataGetHandler, t2PropertyDataSetHandler, NULL, NULL}},
-        {deMsgPck, RBUS_ELEMENT_TYPE_PROPERTY, {t2PropertyDataGetHandler, t2PropertyDataSetHandler, NULL, NULL}}
+        {deNameSpace, RBUS_ELEMENT_TYPE_PROPERTY, {t2PropertyDataGetHandler, t2PropertyDataSetHandler, NULL, NULL, NULL, NULL}},
+        {deMsgPck, RBUS_ELEMENT_TYPE_PROPERTY, {t2PropertyDataGetHandler, t2PropertyDataSetHandler, NULL, NULL, NULL, NULL}}
     };
     ret = rbus_regDataElements(bus_handle, NUM_PROFILE_ELEMENTS, dataElements);
     if(ret == RBUS_ERROR_SUCCESS) {

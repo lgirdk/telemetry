@@ -63,6 +63,7 @@
  **********************************************************************/
 
 #include "plugin_main_apis.h"
+#include "cosa_telemetry_internal.h"
 
 COSAGetInterfaceByNameProc         g_GetInterfaceByName;
 COSAGetHandleProc                  g_GetMessageBusHandle;

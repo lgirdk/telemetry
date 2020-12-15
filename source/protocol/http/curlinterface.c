@@ -44,6 +44,7 @@ static void sendOverHTTPInit(){
 	pthread_mutex_init(&curlFileMutex, NULL);
 }
 
+#if defined(ENABLE_RDKB_SUPPORT)
 static ADDRESS_TYPE getAddressType(const char *cif) {
     struct ifaddrs *ifap, *ifa;
     ADDRESS_TYPE addressType = ADDR_UNKNOWN;
@@ -64,6 +65,7 @@ static ADDRESS_TYPE getAddressType(const char *cif) {
     freeifaddrs(ifap);
     return addressType;
 }
+#endif
 
 static size_t writeToFile(void *ptr, size_t size, size_t nmemb, void *stream) {
     size_t written = fwrite(ptr, size, nmemb, (FILE *) stream);

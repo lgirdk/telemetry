@@ -204,11 +204,9 @@ int getProcUsage(char *processName, Vector* grepResultList) {
 int getProcPidStat(int pid, procinfo * pinfo) {
     T2Debug("%s ++in \n", __FUNCTION__);
     char szFileName[CMD_LEN], szStatStr[2048], *s, *t;
-    FILE *fp;
-    struct stat st;
     int ppid, fd, pgrp, session, tty, tpgid, counter, priority, starttime, signal, blocked, sigignore, sigcatch, j;
     char exName[CMD_LEN], state;
-    unsigned euid, egid;
+    //unsigned euid, egid;
     unsigned int flags, minflt, cminflt, majflt, cmajflt, timeout, itrealvalue, vsize, rlim, startcode, endcode, startstack, kstkesp, kstkeip, wchan;
 
     if(NULL == pinfo) {
@@ -223,12 +221,12 @@ int getProcPidStat(int pid, procinfo * pinfo) {
         return 0;
     }
 
-    if(-1 != fstat(fd, &st)) {
+    /* if(-1 != fstat(fd, &st)) {
         euid = st.st_uid;
         egid = st.st_gid;
     }else {
         euid = egid = -1;
-    }
+    } */
 
 
     if((j = read(fd, szStatStr, 2047)) == -1) {

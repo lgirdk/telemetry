@@ -80,5 +80,6 @@
 
 #define  ANSC_TRACE_MODULE_ID                       ANSC_TRACE_ID_SSP
 
+char *getComponentId();
 
 #endif

@@ -39,6 +39,8 @@
 #include "datamodel.h"
 #include "msgpack.h"
 #include "busInterface.h"
+#include "t2parser.h"
+#include "interChipHelper.h"
 
 //Including Webconfig Framework For Telemetry 2.0 As part of RDKB-28897
 #define SUBDOC_COUNT    1
@@ -62,8 +64,6 @@ pthread_mutex_t rpMutex = PTHREAD_MUTEX_INITIALIZER;
 uint32_t getTelemetryBlobVersion(char* subdoc)
 {
     T2Debug("Inside getTelemetryBlobVersion subdoc %s \n",subdoc);
-    char *subdoc_ver = NULL;
-    char  buff[72] = {0};
     uint32_t version = 0;
     FILE *file = NULL;
     file = fopen(WEBCONFIG_BLOB_VERSION,  "r+");
@@ -85,7 +85,6 @@ uint32_t getTelemetryBlobVersion(char* subdoc)
 int setTelemetryBlobVersion(char* subdoc,uint32_t version)
 {
     T2Debug("Inside setTelemetryBlobVersion subdoc %s version %u \n",subdoc,version);
-    int loc_version=version;
     FILE* file  = NULL;
     file = fopen(WEBCONFIG_BLOB_VERSION,"w+");
     if(file != NULL)
@@ -319,7 +318,7 @@ T2ERROR initReportProfiles()
     bulkdata.maxNoOfParamReferences = MAX_PARAM_REFERENCES;
     bulkdata.maxReportSize = DEFAULT_MAX_REPORT_SIZE;
 
-    initScheduler(ReportProfiles_TimeoutCb, ReportProfiles_ActivationTimeoutCb);
+    initScheduler((TimeoutNotificationCB)ReportProfiles_TimeoutCb, (ActivationTimeoutCB)ReportProfiles_ActivationTimeoutCb);
     initT2MarkerComponentMap();
     T2ER_Init();
 
@@ -668,9 +667,11 @@ void __msgpack_free_blob(void *user_data)
 
 void ReportProfiles_ProcessReportProfilesMsgPackBlob(char *msgpack_blob , int msgpack_blob_size)
 {
+#if defined(FEATURE_SUPPORT_WEBCONFIG)
     uint64_t subdoc_version=0;
     uint16_t transac_id=0;
     int entry_count=0;
+#endif
     struct __msgpack__ *msgpack = malloc(sizeof(struct __msgpack__));
     if (NULL == msgpack) {
         T2Error("Insufficient memory at Line %d on %s \n", __LINE__, __FILE__);
@@ -684,9 +685,9 @@ void ReportProfiles_ProcessReportProfilesMsgPackBlob(char *msgpack_blob , int ms
     size_t off = 0;
     msgpack_unpack_return ret;
 
-    int profiles_count;
+    // int profiles_count;
     msgpack_object *profiles_root;
-    msgpack_object *profilesArray;
+    // msgpack_object *profilesArray;
 
     msgpack_object *subdoc_name, *transaction_id, *version;
 
@@ -716,8 +717,8 @@ void ReportProfiles_ProcessReportProfilesMsgPackBlob(char *msgpack_blob , int ms
     msgpack_print(transaction_id, msgpack_get_obj_name(transaction_id));
     msgpack_print(version, msgpack_get_obj_name(version));
 
-    profilesArray = msgpack_get_map_value(profiles_root, "profiles");
-    MSGPACK_GET_ARRAY_SIZE(profilesArray, profiles_count);
+    // profilesArray = msgpack_get_map_value(profiles_root, "profiles");
+    // MSGPACK_GET_ARRAY_SIZE(profilesArray, profiles_count);
 
     if (NULL == subdoc_name && NULL == transaction_id && NULL == version) {
         /* dmcli flow */

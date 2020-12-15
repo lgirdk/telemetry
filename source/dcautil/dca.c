@@ -691,7 +691,6 @@ static int parseMarkerList(char* profileName, Vector* vMarkerList, Vector* grepR
 int getDCAResultsInJson(char* profileName, void* markerList, cJSON** grepResultList) {
 
     T2Debug("%s ++in \n", __FUNCTION__);
-    Vector* vecMarkerList = (Vector*) markerList;
     int rc = -1;
 
     /*
@@ -750,10 +749,10 @@ void freeGResult(void *data)
     {
         GrepResult *grepResult = (GrepResult *) data;
         if(grepResult->markerName)
-            free(grepResult->markerName);
+            free((char*)grepResult->markerName);
 
         if(grepResult->markerValue)
-            free(grepResult->markerValue);
+            free((char*)grepResult->markerValue);
 
         free(grepResult);
         grepResult = NULL;

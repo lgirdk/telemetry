@@ -28,7 +28,7 @@ void freeParam(void *data)
         if(param->name)
             free(param->name);
         if(param->alias)
-            free(param->alias);
+            free((char*)param->alias);
         if(param->paramType)
             free(param->paramType);
         free(param);

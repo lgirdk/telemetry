@@ -122,7 +122,6 @@ char *getComponentId()
 
 int initTR181_dm()
 {
-    FILE                           *fd                 = NULL;
     DmErr_t                         err;
     char                            *subSys            = NULL;
 

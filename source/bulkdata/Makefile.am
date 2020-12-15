@@ -33,6 +33,7 @@ libbulkdata_la_CPPFLAGS = -fPIC -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/dbus-1.
                                 -I${top_srcdir}/source/scheduler \
                                 -I${top_srcdir}/include \
                                 -I${top_srcdir}/source/ccspinterface \
+                                -I${top_srcdir}/source/t2parser \
                                 -I${top_srcdir}/source/interChipHelper \
                                 -I${top_srcdir}/source/xconf-client
 if ENABLE_CCSP_SUPPORT

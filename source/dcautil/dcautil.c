@@ -182,9 +182,9 @@ T2ERROR saveGrepConfig(char *name, Vector* grepMarkerList) {
 T2ERROR
 getGrepResults (char *profileName, Vector *markerList, Vector **grepResultList, bool isClearSeekMap) {
     T2Debug("%s ++in\n", __FUNCTION__);
-    cJSON* dcaResultObj = NULL;
-
+    
 	#ifdef  _COSA_INTEL_XB3_ARM_  // Get the grep results from atom in case of XB3 platforms
+        cJSON* dcaResultObj = NULL;
         // Notify atom and wait for results from atom
         getInterChipDCAResult(profileName, &dcaResultObj, isClearSeekMap);
         //  dcaResultObj can be populated from the search result file from atom  !!!! Rest of the code remains unchanged !!!

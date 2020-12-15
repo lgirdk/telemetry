@@ -74,6 +74,14 @@ extern  BOOL                g_bActive;
 extern  char                g_Subsystem[32];
 extern  PCOMPONENT_COMMON_DM g_pComponent_Common_Dm;
 
+BOOLEAN waitConditionReady
+    (
+        void*                           hMBusHandle,
+        const char*                     dst_component_id,
+        char*                           dbus_path,
+        char*                           src_component_id
+    );
+
 int ssp_T2Mbi_GetHealth ( )
 {
     return g_pComponent_Common_Dm->Health;
@@ -106,7 +114,7 @@ ssp_T2Mbi_MessageBusEngage
              component_id,
              config_file,
              &bus_handle,
-             Ansc_AllocateMemory_Callback,       /* mallocfc, use default */
+             (CCSP_MESSAGE_BUS_MALLOC)Ansc_AllocateMemory_Callback,       /* mallocfc, use default */
              Ansc_FreeMemory_Callback            /* freefc,   use default */
             );
 
@@ -214,8 +222,6 @@ ssp_T2Mbi_Initialize
         void * user_data
     )
 {
-    ANSC_STATUS             returnStatus    = ANSC_STATUS_SUCCESS;
-    
     printf("In %s()\n", __FUNCTION__);
     
     return 0;
@@ -227,8 +233,6 @@ ssp_T2Mbi_Finalize
         void * user_data
     )
 {
-    ANSC_STATUS             returnStatus    = ANSC_STATUS_SUCCESS;
-
     printf("In %s()\n", __FUNCTION__);
 
     return 0;
@@ -254,8 +258,6 @@ ssp_T2Mbi_FreeResources
         void * user_data
     )
 {
-    ANSC_STATUS             returnStatus    = ANSC_STATUS_SUCCESS;
-
     printf("In %s()\n", __FUNCTION__);
 
     return 0;

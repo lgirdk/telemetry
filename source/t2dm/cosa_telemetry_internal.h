@@ -68,7 +68,7 @@
     /* duplication of the base object class content */                      \
     COSA_BASE_CONTENT                                                       \
     char       *JsonBlob;                                                   \
-    char       *MsgpackBlob;                                                \ 
+    char       *MsgpackBlob;                                                \
 
 typedef struct _COSA_DATAMODEL_TELEMETRY {
     COSA_DATAMODEL_TELEMETRY_CLASS_CONTENT

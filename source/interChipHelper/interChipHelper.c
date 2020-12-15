@@ -39,6 +39,8 @@
 #include "t2log_wrapper.h"
 #include "vector.h"
 #include "t2common.h"
+#include "dca.h"
+#include "legacyutils.h"
 
 #define LOOP_SLEEP 100
 
@@ -47,7 +49,6 @@ static bool isEnabled = true;
 static Vector *grepMarkerList;
 static hash_map_t *grepMarkerListMap = NULL;
 static bool bGrepMarkerMapInitialized = false;
-static bool isGrepListInitialized = false ;
 
 T2ERROR initGrepMarkerMap() {
     T2Debug("++in %s \n", __FUNCTION__);
@@ -177,7 +178,6 @@ static T2ERROR saveDcaGrepResults() {
     char *profileName = NULL;
     bool isClearSeekMap = false;
     cJSON* dcaResultObj = NULL;
-    Vector *vgrepResult = NULL;
     FILE *profileFp = fopen(TELEMETRY_GREP_PROFILE_NAME, "r");
     if (profileFp) {
         if (NULL != fgets(line, MAX_LINE_LEN, profileFp)) {

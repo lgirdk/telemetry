@@ -42,7 +42,9 @@ T2ERROR fetchLocalConfigs(const char* path, Vector *configList)
         char command[256] = {'\0'};
         snprintf(command, sizeof(command), "mkdir %s", path);
         T2Debug("Executing command : %s\n", command);
-        system(command);
+        if (system(command) != 0) {
+            T2Error("%s,%d: Failed to make directory : %s  \n", __FUNCTION__ , __LINE__, path);
+        }
 
         return T2ERROR_FAILURE;
     }
@@ -78,7 +80,7 @@ T2ERROR fetchLocalConfigs(const char* path, Vector *configList)
             config->configData[filestat.st_size] = '\0';
 
             if(read_size != filestat.st_size)
-                T2Error("read size = %d filestat.st_size = %d\n", read_size, filestat.st_size);
+                T2Error("read size = %d filestat.st_size = %lu\n", read_size, filestat.st_size);
             close(fp);
             Vector_PushBack(configList, config);
 
@@ -152,7 +154,9 @@ void clearPersistenceFolder(const char* path)
 
     snprintf(command, sizeof(command), "rm -f %s*", path);
     T2Debug("Executing command : %s\n", command);
-    system(command);
+    if (system(command) != 0) {
+        T2Error("%s,%d: %s command failed\n", __FUNCTION__ , __LINE__, command);
+    }
 
     T2Debug("%s --out\n", __FUNCTION__);
 }
@@ -164,7 +168,10 @@ void removeProfileFromDisk(const char* path, const char* fileName)
 
     snprintf(command, sizeof(command), "rm -f %s%s", path, fileName);
     T2Debug("Executing command : %s\n", command);
-    system(command);
+    if (system(command) != 0) {
+        T2Error("%s,%d: %s command failed\n", __FUNCTION__ , __LINE__, command);
+    }
+
 
     T2Debug("%s --out\n", __FUNCTION__);
 }

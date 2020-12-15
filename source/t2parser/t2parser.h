@@ -26,8 +26,22 @@
 #include <cjson/cJSON.h>
 #include "telemetry2_0.h"
 #include "profile.h"
+#include "msgpack.h"
 
 T2ERROR processConfiguration(char** configData, char* profileName, char* profileHash, Profile **localProfile);
 
+msgpack_object *msgpack_get_map_value(msgpack_object *obj, char *key);
+
+msgpack_object *msgpack_get_array_element(msgpack_object *obj, int index);
+
+char *msgpack_strdup(msgpack_object *obj);
+
+void msgpack_print(msgpack_object *obj, char *obj_name);
+
+int msgpack_strcmp(msgpack_object *obj, char *str);
+
+T2ERROR processMsgPackConfiguration(msgpack_object *profiles_array_map, Profile **profile_dp);
+
+T2ERROR MsgPackSaveConfig(const char* path, const char *fileName, const char *msgpack_blob, size_t blob_size);
 
 #endif /* _T2PARSER_H_ */

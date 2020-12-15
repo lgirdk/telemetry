@@ -25,7 +25,6 @@
 #include "xconfclient.h"
 #include "reportprofiles.h"
 #include "t2log_wrapper.h"
-#include "msgpack.h"
 
 static const int MAX_STATIC_PROP_VAL_LEN = 128 ;
 

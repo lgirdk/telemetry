@@ -96,7 +96,7 @@ COSA_Init(ULONG uMaxVersionSupported, void* hCosaPlugInfo /* PCOSA_PLUGIN_INFO p
     }
 
     /* Get Message Bus Handle */
-    g_GetMessageBusHandle = (PFN_CCSPCCDM_APPLY_CHANGES) pPlugInfo->AcquireFunction("COSAGetMessageBusHandle");
+    g_GetMessageBusHandle = (COSAGetHandleProc) pPlugInfo->AcquireFunction("COSAGetMessageBusHandle");
     if(g_GetMessageBusHandle == NULL) {
         goto EXIT;
     }
@@ -112,7 +112,7 @@ COSA_Init(ULONG uMaxVersionSupported, void* hCosaPlugInfo /* PCOSA_PLUGIN_INFO p
     if(g_GetSubsystemPrefix != NULL) {
         char* tmpSubsystemPrefix;
 
-        if(tmpSubsystemPrefix = g_GetSubsystemPrefix(g_pDslhDmlAgent)) {
+        if((tmpSubsystemPrefix = g_GetSubsystemPrefix(g_pDslhDmlAgent))) {
             AnscCopyString(g_SubSysPrefix_Irep, tmpSubsystemPrefix);
         }
 

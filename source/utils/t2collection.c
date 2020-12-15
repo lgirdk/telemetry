@@ -358,6 +358,6 @@ void hash_map_clear(hash_map_t *map, queue_cleanup freeItem)
     }
     t2_queue_destroy(map->queue, freeItem);
 
-    realloc(map, sizeof(hash_map_t));
+    map = realloc(map, sizeof(hash_map_t));
     map->queue = t2_queue_create();
 }

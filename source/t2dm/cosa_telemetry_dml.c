@@ -140,7 +140,7 @@ BOOL Telemetry_SetParamStringValue(ANSC_HANDLE hInsContext, char* ParamName, cha
     if(AnscEqualString(ParamName, "ReportProfilesMsgPack", TRUE))
     {
         char *webConfigString  = NULL;
-        int stringSize = 0;
+        ULONG stringSize = 0;
 	if(pString != NULL)
 	{
  		webConfigString = AnscBase64Decode(pString, &stringSize);

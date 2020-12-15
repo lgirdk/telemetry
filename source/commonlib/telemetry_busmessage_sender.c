@@ -69,7 +69,7 @@ T2ERROR getParamValues(char **paramNames, const int paramNamesCount, parameterVa
         return T2ERROR_INVALID_ARGS;
     }
 
-    int ret = CcspBaseIf_getParameterValues(bus_handle, destCompName, destCompPath, paramNames,
+    int ret = CcspBaseIf_getParameterValues(bus_handle, destCompName, (char*)destCompPath, paramNames,
                                             paramNamesCount, valSize, valStructs);
     if (ret != CCSP_SUCCESS) {
         EVENT_ERROR("CcspBaseIf_getParameterValues failed for : %s with ret = %d\n", paramNames[0],
@@ -110,11 +110,10 @@ static void rBusInterface_Uninit( ) {
 static T2ERROR initMessageBus( ) {
     // EVENT_DEBUG("%s ++in\n", __FUNCTION__);
     T2ERROR status = T2ERROR_SUCCESS;
-    char* component_id = CCSP_FIXED_COMP_ID;
+    char* component_id = (char*)CCSP_FIXED_COMP_ID;
 #if defined(CCSP_SUPPORT_ENABLED)
-    char *pCfg = CCSP_MSG_BUS_CFG;
+    char *pCfg = (char*)CCSP_MSG_BUS_CFG;
 #endif
-    char *rbusSettings = NULL;
 
     if(RBUS_ENABLED == rbus_checkStatus())
     {
@@ -136,7 +135,7 @@ static T2ERROR initMessageBus( ) {
 #if defined(CCSP_SUPPORT_ENABLED) 
     else {
         int ret = 0 ;
-        ret = CCSP_Message_Bus_Init(component_id, pCfg, &bus_handle, Ansc_AllocateMemory_Callback, Ansc_FreeMemory_Callback);
+        ret = CCSP_Message_Bus_Init(component_id, pCfg, &bus_handle, (CCSP_MESSAGE_BUS_MALLOC)Ansc_AllocateMemory_Callback, Ansc_FreeMemory_Callback);
         if(ret == -1) {
             EVENT_ERROR("%s:%d, T2:initMessageBus failed\n", __func__, __LINE__);
             status = T2ERROR_FAILURE ;
@@ -155,8 +154,10 @@ static T2ERROR getRbusParameterVal(const char* paramName, char **paramValue) {
     rbusValue_t paramValue_t;
     rbusValueType_t rbusValueType ;
     char *stringValue = NULL;
+#if 0
     rbusSetOptions_t opts;
     opts.commit = true;
+#endif
 
     if(!bus_handle && T2ERROR_SUCCESS != initMessageBus()) {
         return T2ERROR_FAILURE;
@@ -201,7 +202,12 @@ static int cacheEventToFile(char* telemetry_data)
 {
 
         int fd;
-        struct flock fl = { F_WRLCK, SEEK_SET, 0,       0,     0 };
+        struct flock fl;
+        fl.l_type = F_WRLCK;
+        fl.l_whence = SEEK_SET;
+        fl.l_start = 0;
+        fl.l_len = 0;
+        fl.l_pid = 0;
         pthread_mutex_lock(&FileCacheMutex);
 
         if ((fd = open(T2_CACHE_LOCK_FILE, O_RDWR | O_CREAT, 0666)) == -1)
@@ -325,8 +331,6 @@ int filtered_event_send(const char* data, char *markerName) {
     }
 #if defined(CCSP_SUPPORT_ENABLED)
     else {
-        int markerNameLen = strlen(markerName);
-        int dataLen = strlen(data);
         int eventDataLen = strlen(markerName) + strlen(data) + DELIMITER_LEN + 1;
         char* buffer = (char*) malloc(eventDataLen * sizeof(char));
         if(buffer) {
@@ -352,12 +356,10 @@ int filtered_event_send(const char* data, char *markerName) {
 static T2ERROR doPopulateEventMarkerList( ) {
 
     T2ERROR status = T2ERROR_SUCCESS;
-    char deNameSpace[1][124] = { '\0' };
-    char *param = NULL;
+    char deNameSpace[1][124] = {{ '\0' }};
     if(!isRbusEnabled)
         return T2ERROR_SUCCESS;
 
-    int numProperties = 0;
     rbusError_t ret = RBUS_ERROR_SUCCESS;
     rbusValue_t paramValue_t;
 
@@ -397,7 +399,7 @@ static T2ERROR doPopulateEventMarkerList( ) {
         rbusProperty_t rbusPropertyList = rbusObject_GetProperties(objectValue);
         EVENT_DEBUG("\t rbus mode :  Update event map for component %s with below events : \n", componentName);
         while(NULL != rbusPropertyList) {
-            char* eventname = rbusProperty_GetName(rbusPropertyList);
+            const char* eventname = rbusProperty_GetName(rbusPropertyList);
             if(eventname && strlen(eventname) > 0) {
                 hash_map_put(eventMarkerMap, (void*) strdup(eventname), (void*) strdup(eventname));
             }
@@ -413,7 +415,7 @@ static T2ERROR doPopulateEventMarkerList( ) {
 }
 
 static void rbusEventReceiveHandler(rbusHandle_t handle, rbusEvent_t const* event, rbusEventSubscription_t* subscription) {
-    char* eventName = event->name;
+    const char* eventName = event->name;
     if(eventName) {
         if(0 == strcmp(eventName, T2_PROFILE_UPDATED_NOTIFY))
             doPopulateEventMarkerList();
@@ -456,8 +458,6 @@ static int report_or_cache_data(char* telemetry_data, char* markerName) {
     pthread_mutex_lock(&eventMutex);
     if(isCachingRequired()) {
         EVENT_DEBUG("Caching the event : %s \n", telemetry_data);
-        int markerNameLen = strlen(markerName);
-        int dataLen = strlen(telemetry_data);
         int eventDataLen = strlen(markerName) + strlen(telemetry_data) + DELIMITER_LEN + 1;
         char* buffer = (char*) malloc(eventDataLen * sizeof(char));
         if(buffer) {

@@ -28,4 +28,6 @@ int getDCAResultsInJson(char* profileName, void* vectorMarkerList, cJSON** grepR
 
 int getDCAResultsInVector(char* profileName, Vector* vectorMarkerList, Vector** grepResultList);
 
+char *strSplit(char *str, char *delim);
+
 #endif /* SRC_DCA_H_ */

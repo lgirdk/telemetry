@@ -89,6 +89,7 @@ static void freeGrepSeekProfile(GrepSeekProfile *gsProfile) {
     T2Debug("%s --out\n", __FUNCTION__);
 }
 
+#if 0
 static void freeProfileSeekHashMap(void *data) {
     T2Debug("%s ++in\n", __FUNCTION__);
     if (data != NULL) {
@@ -109,6 +110,7 @@ static void freeProfileSeekHashMap(void *data) {
     }
     T2Debug("%s --out\n", __FUNCTION__);
 }
+#endif
 
 void removeProfileFromSeekMap(char *profileName) {
     T2Debug("%s ++in\n", __FUNCTION__);
@@ -505,7 +507,7 @@ void initProperties(char *logpath, char *perspath) {
         char props[255] = { "" };
         while(fscanf(file, "%255s", props) != EOF) {
             char *property = NULL;
-            if(property = strstr(props, "DEVICE_TYPE=")) {
+            if((property = strstr(props, "DEVICE_TYPE="))) {
                 property = property + strlen("DEVICE_TYPE=");
                 DEVICE_TYPE = strdup(property);
                 break;

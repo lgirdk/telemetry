@@ -33,6 +33,7 @@
 #include "vector.h"
 #include "persistence.h"
 #include "telemetry2_0.h"
+#include "busInterface.h"
 
 #define RFC_RETRY_TIMEOUT 60
 #define XCONF_RETRY_TIMEOUT 180
@@ -50,6 +51,10 @@ static pthread_t xcrThread;
 static pthread_mutex_t xcMutex;
 static pthread_cond_t xcCond;
 
+T2ERROR ReportProfiles_deleteProfileXConf(ProfileXConf *profile);
+
+T2ERROR ReportProfiles_setProfileXConf(ProfileXConf *profile);
+
 typedef enum _IFADDRESS_TYPE
 {
     ADDR_UNKNOWN,
@@ -57,6 +62,7 @@ typedef enum _IFADDRESS_TYPE
     ADDR_IPV6
 }IFADDRESS_TYPE;
 
+#if 0
 static IFADDRESS_TYPE getAddressType(const char *cif) {
     struct ifaddrs *ifap, *ifa;
     IFADDRESS_TYPE addressType = 0;
@@ -77,7 +83,7 @@ static IFADDRESS_TYPE getAddressType(const char *cif) {
     freeifaddrs(ifap);
     return addressType;
 }
-
+#endif
 
 static T2ERROR getBuildType(char* buildType) {
     char fileContent[255] = { '\0' };

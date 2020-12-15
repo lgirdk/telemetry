@@ -32,6 +32,7 @@
 #include "persistence.h"
 #include "vector.h"
 #include "dcautil.h"
+#include "t2parser.h"
 
 static bool initialized = false;
 static Vector *profileList;
@@ -271,7 +272,7 @@ static void* CollectAndReport(void* data)
             T2Info("cJSON Report = %s\n", jsonReport);
             T2Info("Report Size = %ld\n", size);
             if(size > DEFAULT_MAX_REPORT_SIZE) {
-                T2Warning("Report size is exceeding the max limit : %ld\n", DEFAULT_MAX_REPORT_SIZE);
+                T2Warning("Report size is exceeding the max limit : %d\n", DEFAULT_MAX_REPORT_SIZE);
             }
             if(strcmp(profile->protocol, "HTTP") == 0) {
                 char *httpUrl = prepareHttpUrl(profile->t2HTTPDest); /* Append URL with http properties */
@@ -642,7 +643,7 @@ T2ERROR deleteProfile(const char *profileName)
     }
 
     if (Vector_Size(profile->gMarkerList) > 0)
-        removeGrepConfig(profileName);
+        removeGrepConfig((char*)profileName);
 
     T2Info("removing profile : %s from profile list\n", profile->name);
     Vector_RemoveItem(profileList, profile, freeProfile);

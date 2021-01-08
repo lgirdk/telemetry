@@ -569,12 +569,18 @@ void ReportProfiles_ProcessReportProfilesMsgPackBlob(char *msgpack_blob , int ms
     ret = msgpack_unpack_next(&result, msgpack_blob, msgpack_blob_size, &off);
     if (ret != MSGPACK_UNPACK_SUCCESS) {
 	T2Error("The data in the buf is invalid format.\n");
-        goto ERROR_RETURN;
+	__msgpack_free_blob((void *)msgpack);
+	msgpack_unpacked_destroy(&result);
+	T2Debug("%s --out\n", __FUNCTION__);
+	return;
     }
     profiles_root =  &result.data;
     if(profiles_root == NULL) {
         T2Error("Profile profiles_root is null . Unable to ReportProfiles_ProcessReportProfilesBlob \n");
-        goto ERROR_RETURN;
+	__msgpack_free_blob((void *)msgpack);
+	msgpack_unpacked_destroy(&result);
+	T2Debug("%s --out\n", __FUNCTION__);
+	return;
     }
 
     subdoc_name = msgpack_get_map_value(profiles_root, "subdoc_name");
@@ -591,7 +597,10 @@ void ReportProfiles_ProcessReportProfilesMsgPackBlob(char *msgpack_blob , int ms
     if (NULL == subdoc_name && NULL == transaction_id && NULL == version) {
         /* dmcli flow */
         __ReportProfiles_ProcessReportProfilesMsgPackBlob((void *)msgpack);
-        goto ERROR_RETURN;
+	__msgpack_free_blob((void *)msgpack);
+	msgpack_unpacked_destroy(&result);
+	T2Debug("%s --out\n", __FUNCTION__);
+	return;
     }
     /* webconfig flow */
     subdoc_version=(uint64_t)version->via.u64;
@@ -602,7 +611,10 @@ void ReportProfiles_ProcessReportProfilesMsgPackBlob(char *msgpack_blob , int ms
     execDataPf = (execData*) malloc (sizeof(execData));
     if ( NULL == execDataPf ) {
         T2Error("execData memory allocation failed\n");
-        goto ERROR_RETURN;
+	__msgpack_free_blob((void *)msgpack);
+	msgpack_unpacked_destroy(&result);
+	T2Debug("%s --out\n", __FUNCTION__);
+	return;
     }
     memset(execDataPf, 0, sizeof(execData));
     strncpy(execDataPf->subdoc_name,"telemetry",sizeof(execDataPf->subdoc_name)-1);
@@ -620,11 +632,9 @@ void ReportProfiles_ProcessReportProfilesMsgPackBlob(char *msgpack_blob , int ms
 
     PushBlobRequest(execDataPf);
     T2Debug("PushBlobRequest complete\n");
-ERROR_RETURN:
-           msgpack_unpacked_destroy(&result);
-           __msgpack_free_blob((void *)msgpack);
-           T2Debug("%s --out\n", __FUNCTION__);
-           return;
+    msgpack_unpacked_destroy(&result);
+    T2Debug("%s --out\n", __FUNCTION__);
+    return;
 }
 
 int __ReportProfiles_ProcessReportProfilesMsgPackBlob(void *msgpack)

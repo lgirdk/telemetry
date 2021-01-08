@@ -174,22 +174,6 @@ void queue_destroy(queue_t *q, queue_cleanup freeItem)
 	free(q);
 }
 
-int8_t hash_map_put(hash_map_t *map, char *key, void *data)
-{
-	hash_element_t *e;
-
-	e = (hash_element_t *)malloc(sizeof(hash_element_t));
-	if (e == NULL) {
-		return -1;
-	}
-
-	memset(e, 0, sizeof(hash_element_t));
-
-	e->key = key;
-	e->data = data;
-	return queue_push(map->queue, e);	
-}
-
 void *hash_map_get(hash_map_t *map, const char *key)
 {
 	uint32_t count, i;
@@ -203,7 +187,7 @@ void *hash_map_get(hash_map_t *map, const char *key)
 
 	for (i = 0; i < count; i++) {
 		e = queue_peek(map->queue, i);
-		if ((e != NULL) && (strncmp(e->key, key, strlen(key)) == 0)) {
+		if ((e != NULL) && (strncmp(e->key, key, MAX_KEY_LEN) == 0)) {
 			found = true;
 			break;
 		}
@@ -232,7 +216,7 @@ void *hash_map_remove(hash_map_t *map, const char *key)
     
     for (i = 0; i < count; i++) {
         e = queue_peek(map->queue, i);
-        if ((e != NULL) && (strncmp(e->key, key, strlen(key)) == 0)) {
+        if ((e != NULL) && (strncmp(e->key, key, MAX_KEY_LEN) == 0)) {
             found = true;
             break;
         }
@@ -251,6 +235,32 @@ void *hash_map_remove(hash_map_t *map, const char *key)
     
     return data;
     
+}
+
+int8_t hash_map_put(hash_map_t *map, char *key, void *data)
+{
+    hash_element_t *e;
+
+
+    // Hash map should support only unique keys. If previous entry exists, replace it.
+    if(hash_map_get(map,key)) {
+       void * data =  hash_map_remove(map, key);
+       if(data) {
+           free(data);
+           data = NULL ;
+       }
+    }
+
+    e = (hash_element_t *)malloc(sizeof(hash_element_t));
+    if (e == NULL) {
+        return -1;
+    }
+
+    memset(e, 0, sizeof(hash_element_t));
+
+    e->key = key;
+    e->data = data;
+    return queue_push(map->queue, e);
 }
 
 

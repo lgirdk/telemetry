@@ -23,6 +23,8 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+#define MAX_KEY_LEN 512
+
 typedef struct element {
     void *data;
     struct element *next;

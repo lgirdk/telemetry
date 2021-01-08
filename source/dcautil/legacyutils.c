@@ -197,7 +197,6 @@ T2ERROR updateLogSeek(hash_map_t *logSeekMap, char* logFileName) {
         long* val = (long *) malloc(sizeof(long));
         if(NULL != val) {
             *val = LAST_SEEK_VALUE ;
-            hash_map_remove(logSeekMap, logFileName);
             hash_map_put(logSeekMap, strdup(logFileName), val);
         } else {
             T2Warning("Unable to allocate memory for seek value pointer \n");

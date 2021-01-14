@@ -56,14 +56,6 @@
 #endif
 #include <mqueue.h>
 
-//Including Webconfig Framework For Telemetry 2.0 As part of RDKB-28897
-#include "webconfig_framework.h"
-#include "webconfig_err.h"
-
-//Used in check_component_crash to inform Webconfig about telemetry component crash
-#define TELEMETRY_INIT_FILE_BOOTUP "/tmp/telemetry_initialized_bootup"
-
-
 PDSLH_CPE_CONTROLLER_OBJECT     pDslhCpeController      = NULL;
 PCOMPONENT_COMMON_DM            g_pComponent_Common_Dm  = NULL;
 char                            g_Subsystem[32]         = {0};
@@ -168,13 +160,6 @@ int initTR181_dm()
         return -1;
     }
 
-//Informing Webconfig about telemetry component crash
-    check_component_crash(TELEMETRY_INIT_FILE_BOOTUP);
-
-//Touching TELEMETRY_INIT_FILE_BOOTUP during Bootup
-    system("touch /tmp/telemetry_initialized_bootup");
-    CcspTraceInfo((" %s Touched \n",TELEMETRY_INIT_FILE_BOOTUP));
-    CcspTraceInfo((" Executed sspMain Successfully\n"));
     return 0;
 }
 

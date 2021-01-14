@@ -27,4 +27,6 @@ T2ERROR datamodel_init(void);
 void datamodel_unInit(void);
 
 T2ERROR datamodel_processProfile(char *JsonBlob);
+
+T2ERROR datamodel_MsgpackProcessProfile(char *str , int strSize);
 #endif

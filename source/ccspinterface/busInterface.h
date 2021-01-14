@@ -52,6 +52,8 @@ typedef void (*T2EventMarkerListCallback)(const char* componentName, void **even
 
 typedef T2ERROR (*dataModelCallBack)(char* dataBlob);
 
+typedef T2ERROR (*dataModelMsgPckCallBack)(char *str , int strSize);
+
 bool isRbusEnabled();
 
 T2ERROR getParameterValue(const char* paramName, char **paramValue);
@@ -67,7 +69,7 @@ T2ERROR regDEforCompEventList(const char* componentName, T2EventMarkerListCallba
 
 void unregisterDEforCompEventList();
 
-T2ERROR regDEforProfileDataModel(dataModelCallBack dmCallBack);
+T2ERROR regDEforProfileDataModel(dataModelCallBack dmCallBack, dataModelMsgPckCallBack dmMsgPckCallBackHandler);
 
 T2ERROR publishEventsProfileUpdates() ;
 

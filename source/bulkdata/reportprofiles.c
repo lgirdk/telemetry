@@ -40,6 +40,14 @@
 #include "msgpack.h"
 #include "busInterface.h"
 
+//Including Webconfig Framework For Telemetry 2.0 As part of RDKB-28897
+#define SUBDOC_COUNT    1
+#define SUBDOC_NAME "telemetry"
+#define WEBCONFIG_BLOB_VERSION "/nvram/telemetry_webconfig_blob_version.txt"
+
+//Used in check_component_crash to inform Webconfig about telemetry component crash
+#define TELEMETRY_INIT_FILE_BOOTUP "/tmp/telemetry_initialized_bootup"
+
 #define MAX_PROFILENAMES_LENGTH 2048
 #define T2_VERSION_DATAMODEL_PARAM  "Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.Telemetry.Version"
 
@@ -48,6 +56,83 @@ static bool rpInitialized = false;
 static char *t2Version = NULL;
 
 pthread_mutex_t rpMutex = PTHREAD_MUTEX_INITIALIZER;
+
+
+#if defined(FEATURE_SUPPORT_WEBCONFIG)
+uint32_t getTelemetryBlobVersion(char* subdoc)
+{
+    T2Debug("Inside getTelemetryBlobVersion subdoc %s \n",subdoc);
+    char *subdoc_ver = NULL;
+    char  buff[72] = {0};
+    uint32_t version = 0;
+    FILE *file = NULL;
+    file = fopen(WEBCONFIG_BLOB_VERSION,  "r+");
+    if(file == NULL)
+    {
+    T2Debug("Failed to read from /nvram/telemetry_webconfig_blob_version.txt \n");
+    }
+    else
+    {
+    fscanf(file,"%u",&version);
+    T2Debug("Version of Telemetry blob is %u\n",version);
+    fclose(file);
+    return version;
+    }
+    return 0;
+}
+
+
+int setTelemetryBlobVersion(char* subdoc,uint32_t version)
+{
+    T2Debug("Inside setTelemetryBlobVersion subdoc %s version %u \n",subdoc,version);
+    int loc_version=version;
+    FILE* file  = NULL;
+    file = fopen(WEBCONFIG_BLOB_VERSION,"w+");
+    if(file != NULL)
+    {
+    fprintf(file, "%u", version);
+    T2Debug("New Version of Telemetry blob is %u\n",version);
+    fclose(file);
+    return 0;
+    }
+    else
+    {
+    T2Error("Failed to write into /nvram/telemetry_webconfig_blob_version \n");
+    }
+    return -1;
+}
+
+
+int tele_web_config_init()
+{
+
+    char *sub_docs[SUBDOC_COUNT+1]= {SUBDOC_NAME,(char *) 0 };
+    blobRegInfo *blobData = NULL,*blobDataPointer = NULL;
+    int i;
+
+    blobData = (blobRegInfo*) malloc(SUBDOC_COUNT * sizeof(blobRegInfo));
+    if (blobData == NULL) {
+        T2Error("%s: Malloc error\n",__FUNCTION__);
+        return -1;
+    }
+    memset(blobData, 0, SUBDOC_COUNT * sizeof(blobRegInfo));
+
+    blobDataPointer = blobData;
+    for (i=0 ;i < SUBDOC_COUNT; i++)
+    {
+        strncpy(blobDataPointer->subdoc_name, sub_docs[i], sizeof(blobDataPointer->subdoc_name)-1);
+        blobDataPointer++;
+    }
+    blobDataPointer = blobData;
+
+    getVersion versionGet = getTelemetryBlobVersion;
+    setVersion versionSet = setTelemetryBlobVersion;
+    T2Debug("Calling Call Back Function \n");
+    register_sub_docs(blobData,SUBDOC_COUNT,versionGet,versionSet);
+    T2Debug("Called register_sub_docs Succussfully \n");
+    return 0;
+}
+#endif // CCSP_SUPPORT_ENABLED
 
 void ReportProfiles_Interrupt()
 {
@@ -251,7 +336,11 @@ T2ERROR initReportProfiles()
 #endif
             {
                 T2Debug("Enabling datamodel for report profiles in RBUS mode \n");
-                regDEforProfileDataModel(datamodel_processProfile);
+                #if defined(FEATURE_SUPPORT_WEBCONFIG)
+                regDEforProfileDataModel(datamodel_processProfile, datamodel_MsgpackProcessProfile);
+                #else
+                regDEforProfileDataModel(datamodel_processProfile, NULL);
+                #endif
             }
 #if defined(CCSP_SUPPORT_ENABLED)
             else {
@@ -263,6 +352,27 @@ T2ERROR initReportProfiles()
                 }
             }
 #endif
+            // Message pack format is supported only for reportprofile which is activated only if version is set to 2.0.1
+            // Call webconfig init only when it is required and datamodel's have been initialized .
+            #if defined(FEATURE_SUPPORT_WEBCONFIG)
+            if(tele_web_config_init() !=0)
+            {
+                T2Error("Failed to intilize tele_web_config_init \n");
+            }
+            else
+            {
+                T2Debug("tele_web_config_init Successful\n");
+
+                //Informing Webconfig about telemetry component crash
+                check_component_crash(TELEMETRY_INIT_FILE_BOOTUP);
+
+                //Touching TELEMETRY_INIT_FILE_BOOTUP during Bootup
+                system("touch /tmp/telemetry_initialized_bootup");
+                T2Debug(" %s Touched \n",TELEMETRY_INIT_FILE_BOOTUP);
+            }
+            #endif
+            //Web Config Framework init ends
+
         }
         else
         {

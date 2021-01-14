@@ -32,6 +32,7 @@ extern "C" {
 #define T2_EVENT_PARAM "Telemetry.ReportProfiles.EventMarker"
 #define T2_PROFILE_UPDATED_NOTIFY "Telemetry.ReportProfiles.ProfilesUpdated"
 #define T2_REPORT_PROFILE_PARAM "Device.X_RDKCENTRAL-COM_T2.ReportProfiles"
+#define T2_REPORT_PROFILE_PARAM_MSG_PCK "Device.X_RDKCENTRAL-COM_T2.ReportProfilesMsgPack"
 
 #define INFINITE_TIMEOUT      (unsigned int)~0
 

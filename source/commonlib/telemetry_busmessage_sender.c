@@ -524,6 +524,9 @@ T2ERROR t2_event_s(char* marker, char* value) {
         pthread_mutex_unlock(&sMutex);
         return T2ERROR_SUCCESS;
     }
+    if( value[strlen(value)-1] == '\n' ){
+        value[strlen(value)-1] = '\0';
+    }
     ret = report_or_cache_data(value, marker);
     if(ret != -1) {
         retStatus = T2ERROR_SUCCESS;

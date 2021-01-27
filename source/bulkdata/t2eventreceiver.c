@@ -249,6 +249,7 @@ static T2ERROR flushCacheFromFile(void)
         T2Debug("%s ++in\n",__FUNCTION__);
         FILE *fp;
         char telemetry_data[255]="";
+        size_t data_len = 0 ;
 
 #ifdef  _COSA_INTEL_XB3_ARM_
         T2Debug("Copy cache file\n");
@@ -258,6 +259,10 @@ static T2ERROR flushCacheFromFile(void)
         if(fp){
                 while(fgets(telemetry_data, 255, (FILE*)fp) != NULL)
                 {
+                        data_len = strlen(telemetry_data);
+                        if(data_len > 0 && telemetry_data[data_len-1] == '\n' )
+                            telemetry_data[data_len-1] = '\0' ;
+
                         T2Debug("T2: Sending cache event : %s\n", telemetry_data);
                         T2ER_PushDataWithDelim(telemetry_data, NULL);
                         memset(telemetry_data, 0, sizeof(telemetry_data));

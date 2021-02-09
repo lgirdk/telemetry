@@ -551,16 +551,18 @@ static T2ERROR doHttpGet(char* httpsUrl, char **data) {
 
             curl_code = curl_easy_perform(curl);
             curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
-
-            snprintf(buf,sizeof(buf),"%d",curl_code);
+            snprintf(buf,sizeof(buf),"%d",http_code);
             if (syscfg_set(NULL, "dcm_httpStatus", buf) == 0) 
             {
                T2Info("dcm_httpStatus set successfully\n");
             }
-            snprintf(buf,sizeof(buf),"%s",errbuf);
-            if (syscfg_set(NULL, "dcm_httpStatusString", buf) == 0)
+            if (http_code == 200)
             {
-               T2Info("dcm_httpStatusString set successfully\n");
+               syscfg_set(NULL, "dcm_httpStatusString", "OK");
+            }
+            else
+            {
+               syscfg_set(NULL, "dcm_httpStatusString", errbuf);
             }
 
             Timestamp_Status = getcurrenttime(current_time, sizeof(current_time));

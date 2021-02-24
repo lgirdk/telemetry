@@ -324,7 +324,7 @@ T2ERROR initReportProfiles()
     T2ER_Init();
 
     ProfileXConf_init();
-    if(T2ERROR_SUCCESS == getParameterValue(T2_VERSION_DATAMODEL_PARAM, &t2Version) && !strcmp(t2Version, "2.0.1") ) {
+    if(T2ERROR_SUCCESS == getParameterValue(T2_VERSION_DATAMODEL_PARAM, &t2Version) && strcmp(t2Version, "2") !=0) {
         T2Debug("T2 Version = %s\n", t2Version);
         initProfileList();
         free(t2Version);
@@ -401,7 +401,7 @@ T2ERROR ReportProfiles_uninit( ) {
     destroyT2MarkerComponentMap();
     uninitScheduler();
 
-    if(t2Version && !strcmp(t2Version, "2.0.1")) {
+    if(t2Version && strcmp(t2Version, "2")) {
 #if defined(CCSP_SUPPORT_ENABLED)
         // Unregister TR-181 DM
         unInitTR181_dm();

@@ -37,5 +37,5 @@ libccspinterface_la_CPPFLAGS = -fPIC $(CPPFLAGS) -I${PKG_CONFIG_SYSROOT_DIR}$(in
                                 -I${top_srcdir}/include \
                                 -I${top_srcdir}/source/utils \
                                 -I${top_srcdir}/source/t2ssp \
-                                -I${top_srcdir}/source/bulkdata
-
+                                -I${top_srcdir}/source/bulkdata \
+                                -I${top_srcdir}/source/reportgen

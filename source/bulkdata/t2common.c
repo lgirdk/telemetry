@@ -89,3 +89,19 @@ void freeGMarker(void *data)
         free(gMarker);
     }
 }
+
+void freeTriggerCondition(void *data)
+{
+    if(data != NULL)
+    {
+        TriggerCondition *tCondition = (TriggerCondition *)data;
+        if(tCondition->type)
+            free(tCondition->type);
+        if(tCondition->oprator)
+            free(tCondition->oprator);
+        if(tCondition->reference)
+            free(tCondition->reference);
+        free(tCondition); 
+    }
+}
+

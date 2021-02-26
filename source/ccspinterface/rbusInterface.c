@@ -34,14 +34,14 @@
 #include "busInterface.h"
 #include "telemetry2_0.h"
 #include "t2log_wrapper.h"
-
+#include "profile.h"
 
 #define buffLen 1024
 #define maxParamLen 128
 
 #define NUM_PROFILE_ELEMENTS 2
 
-static rbusHandle_t bus_handle;
+static rbusHandle_t t2bus_handle;
 static TelemetryEventCallback eventCallBack;
 static T2EventMarkerListCallback getMarkerListCallBack;
 static dataModelCallBack dmProcessingCallBack;
@@ -51,17 +51,32 @@ static hash_map_t *compTr181ParamMap = NULL;
 
 static char* reportProfileVal = NULL ;
 static char* reportProfilemsgPckVal = NULL ;
+T2ERROR T2RbusConsumer(TriggerCondition *triggerCondition);
 
 bool isRbusInitialized( ) {
 
-    return bus_handle != NULL ? true : false;
+    return t2bus_handle != NULL ? true : false;
+}
+
+void logHandler(
+    rbusLogLevel level,
+    const char* file,
+    int line,
+    int threadId,
+    char* message)
+{
+  T2Debug("Rbus log: %s\n", message);
 }
 
 static T2ERROR rBusInterface_Init( ) {
     T2Debug("%s ++in\n", __FUNCTION__);
 
-    int ret = RBUS_ERROR_SUCCESS;
-    ret = rbus_open(&bus_handle, COMPONENT_NAME);
+    int ret = RBUS_ERROR_SUCCESS;   
+  
+    //rbus_setLogLevel(RBUS_LOG_DEBUG);
+    //rbus_registerLogHandler(logHandler);
+  
+    ret = rbus_open(&t2bus_handle, COMPONENT_NAME);
     if(ret != RBUS_ERROR_SUCCESS) {
         T2Error("%s:%d, init failed with error code %d \n", __func__, __LINE__, ret);
         return T2ERROR_FAILURE;
@@ -71,7 +86,7 @@ static T2ERROR rBusInterface_Init( ) {
 }
 
 static void rBusInterface_Uninit( ) {
-    rbus_close(bus_handle);
+    rbus_close(t2bus_handle);
 }
 
 T2ERROR getRbusParameterVal(const char* paramName, char **paramValue) {
@@ -86,11 +101,11 @@ T2ERROR getRbusParameterVal(const char* paramName, char **paramValue) {
     opts.commit = true;
 #endif
 
-    if(!bus_handle && T2ERROR_SUCCESS != rBusInterface_Init()) {
+    if(!t2bus_handle && T2ERROR_SUCCESS != rBusInterface_Init()) {
         return T2ERROR_FAILURE;
     }
 
-    ret = rbus_get(bus_handle, paramName, &paramValue_t);
+    ret = rbus_get(t2bus_handle, paramName, &paramValue_t);
     if(ret != RBUS_ERROR_SUCCESS) {
         T2Error("Unable to get %s\n", paramName);
         return T2ERROR_FAILURE;
@@ -118,7 +133,7 @@ Vector* getRbusProfileParamValues(Vector *paramList) {
     Vector *profileValueList = NULL;
     Vector_Create(&profileValueList);
 
-    if(!bus_handle && T2ERROR_SUCCESS != rBusInterface_Init()) {
+    if(!t2bus_handle && T2ERROR_SUCCESS != rBusInterface_Init()) {
     	Vector_Destroy(profileValueList, free);
         return NULL ;
     }
@@ -135,7 +150,7 @@ Vector* getRbusProfileParamValues(Vector *paramList) {
         char *param = (char*)((Param *) Vector_At(paramList, i))->alias ;
         paramNames[0] = strdup(param);
         T2Debug("Calling rbus_getExt for %s \n", paramNames[0]);
-        if(RBUS_ERROR_SUCCESS != rbus_getExt(bus_handle, 1, (const char **)paramNames, &paramValCount, &rbusPropertyValues)) {
+        if(RBUS_ERROR_SUCCESS != rbus_getExt(t2bus_handle, 1, (const char**)paramNames, &paramValCount, &rbusPropertyValues)) {
             T2Error("Failed to retrieve param : %s\n", paramNames[0]);
             paramValCount = 0 ;
         } else {
@@ -451,7 +466,7 @@ T2ERROR registerRbusT2EventListener(TelemetryEventCallback eventCB)
 
 	T2ERROR status = T2ERROR_SUCCESS;
 	rbusError_t ret = RBUS_ERROR_SUCCESS;
-    if(!bus_handle && T2ERROR_SUCCESS != rBusInterface_Init()) {
+    if(!t2bus_handle && T2ERROR_SUCCESS != rBusInterface_Init()) {
         return T2ERROR_FAILURE;
     }
 
@@ -462,7 +477,7 @@ T2ERROR registerRbusT2EventListener(TelemetryEventCallback eventCB)
         {T2_EVENT_PARAM, RBUS_ELEMENT_TYPE_PROPERTY, {NULL, t2PropertyDataSetHandler, NULL, NULL, NULL, NULL}},
         {T2_PROFILE_UPDATED_NOTIFY, RBUS_ELEMENT_TYPE_EVENT, {NULL, NULL, NULL, NULL, (rbusEventSubHandler_t)eventSubHandler, NULL}}
     };
-    ret = rbus_regDataElements(bus_handle, 2, dataElements);
+    ret = rbus_regDataElements(t2bus_handle, 2, dataElements);
     if(ret != RBUS_ERROR_SUCCESS)
     {
         T2Error("Failed to register T2 data elements with rbus. Error code : %d\n", ret);
@@ -476,7 +491,7 @@ T2ERROR registerRbusT2EventListener(TelemetryEventCallback eventCB)
 
 T2ERROR unregisterRbusT2EventListener()
 {
-    rbusEvent_Unsubscribe(bus_handle, T2_EVENT_PARAM);
+    rbusEvent_Unsubscribe(t2bus_handle, T2_EVENT_PARAM);
     rBusInterface_Uninit();
     return T2ERROR_SUCCESS;
 }
@@ -499,14 +514,14 @@ T2ERROR regDEforCompEventList(const char* componentName, T2EventMarkerListCallba
         compTr181ParamMap = hash_map_create();
 
     snprintf(deNameSpace, 124, "%s%s%s", T2_ROOT_PARAMETER, componentName, T2_EVENT_LIST_PARAM_SUFFIX);
-    if(!bus_handle && T2ERROR_SUCCESS != rBusInterface_Init()) {
+    if(!t2bus_handle && T2ERROR_SUCCESS != rBusInterface_Init()) {
         T2Error("%s Failed in getting bus handles \n", __FUNCTION__);
         T2Debug("%s --out\n", __FUNCTION__);
         return T2ERROR_FAILURE;
     }
 
     rbusDataElement_t dataElements[1] = { { deNameSpace, RBUS_ELEMENT_TYPE_PROPERTY, { t2PropertyDataGetHandler, NULL, NULL, NULL,NULL, NULL } } };
-    ret = rbus_regDataElements(bus_handle, 1, dataElements);
+    ret = rbus_regDataElements(t2bus_handle, 1, dataElements);
     if(ret == RBUS_ERROR_SUCCESS) {
         T2Debug("Registered data element %s with bus \n ", deNameSpace);
         hash_map_put(compTr181ParamMap, (void*) strdup(deNameSpace), (void*) strdup(componentName));
@@ -533,7 +548,7 @@ void unregisterDEforCompEventList(){
     int i = 0;
     T2Debug("%s ++in\n", __FUNCTION__);
 
-    if(!bus_handle && T2ERROR_SUCCESS != rBusInterface_Init()) {
+    if(!t2bus_handle && T2ERROR_SUCCESS != rBusInterface_Init()) {
         T2Error("%s Failed in getting bus handles \n", __FUNCTION__);
         T2Debug("%s --out\n", __FUNCTION__);
         return ;
@@ -559,7 +574,7 @@ void unregisterDEforCompEventList(){
                 dataElements[i].cbTable = cbTable;
             }
         }
-        if(RBUS_ERROR_SUCCESS != rbus_unregDataElements(bus_handle, count, dataElements)) {
+        if(RBUS_ERROR_SUCCESS != rbus_unregDataElements(t2bus_handle, count, dataElements)) {
             T2Error("Failed to unregister to dataelements");
         }
     }
@@ -584,7 +599,7 @@ T2ERROR regDEforProfileDataModel(dataModelCallBack dmCallBackHandler,  dataModel
 
     snprintf(deNameSpace, 124 , "%s", T2_REPORT_PROFILE_PARAM);
     snprintf(deMsgPck, 124 , "%s", T2_REPORT_PROFILE_PARAM_MSG_PCK);
-    if(!bus_handle && T2ERROR_SUCCESS != rBusInterface_Init()) {
+    if(!t2bus_handle && T2ERROR_SUCCESS != rBusInterface_Init()) {
         T2Error("%s Failed in getting bus handles \n", __FUNCTION__);
         T2Debug("%s --out\n", __FUNCTION__);
         return T2ERROR_FAILURE;
@@ -594,7 +609,7 @@ T2ERROR regDEforProfileDataModel(dataModelCallBack dmCallBackHandler,  dataModel
         {deNameSpace, RBUS_ELEMENT_TYPE_PROPERTY, {t2PropertyDataGetHandler, t2PropertyDataSetHandler, NULL, NULL, NULL, NULL}},
         {deMsgPck, RBUS_ELEMENT_TYPE_PROPERTY, {t2PropertyDataGetHandler, t2PropertyDataSetHandler, NULL, NULL, NULL, NULL}}
     };
-    ret = rbus_regDataElements(bus_handle, NUM_PROFILE_ELEMENTS, dataElements);
+    ret = rbus_regDataElements(t2bus_handle, NUM_PROFILE_ELEMENTS, dataElements);
     if(ret == RBUS_ERROR_SUCCESS) {
         T2Debug("Registered data element %s with bus \n ", deNameSpace);
     }else {
@@ -620,7 +635,7 @@ T2ERROR publishEventsProfileUpdates() {
     T2ERROR status = T2ERROR_SUCCESS;
     rbusError_t ret = RBUS_ERROR_SUCCESS;
 
-    if(!bus_handle && T2ERROR_SUCCESS != rBusInterface_Init()) {
+    if(!t2bus_handle && T2ERROR_SUCCESS != rBusInterface_Init()) {
         return T2ERROR_FAILURE;
     }
 
@@ -633,7 +648,7 @@ T2ERROR publishEventsProfileUpdates() {
     event.name = T2_PROFILE_UPDATED_NOTIFY;
     event.data = data;
     event.type = RBUS_EVENT_GENERAL;
-    ret = rbusEvent_Publish(bus_handle, &event);
+    ret = rbusEvent_Publish(t2bus_handle, &event);
     if(ret != RBUS_ERROR_SUCCESS) {
         T2Debug("provider: rbusEvent_Publish Event1 failed: %d\n", ret);
         status = T2ERROR_FAILURE;
@@ -644,3 +659,204 @@ T2ERROR publishEventsProfileUpdates() {
     return status;
     
 }
+
+void triggerCondtionReceiveHandler(
+    rbusHandle_t handle,
+    rbusEvent_t const* event,
+    rbusEventSubscription_t* subscription)
+{
+    (void)handle;
+
+    rbusValue_t newValue = rbusObject_GetValue(event->data, "value");
+    rbusValue_t oldValue = rbusObject_GetValue(event->data, "oldValue");
+    rbusValue_t filter = rbusObject_GetValue(event->data, "filter");
+
+    T2Debug("Consumer receiver event for param %s\n", event->name);
+
+    if(newValue){
+        T2Debug("  New Value: \n");
+    }
+    if(oldValue){
+        T2Debug("  Old Value: \n");
+    }
+
+    if(filter) {
+      T2Debug("Filter event\n");
+      if(rbusValue_GetBoolean(filter) == 1) {
+        triggerReportOnCondtion(event->name);
+      }
+    }
+    else {
+      T2Debug("ValueChange event\n");
+      triggerReportOnCondtion(event->name);
+    }  
+
+}
+
+T2ERROR rbusT2ConsumerReg(Vector *triggerConditionList)
+{
+    int j;
+    int ret = T2ERROR_SUCCESS;
+    int status = T2ERROR_SUCCESS;
+    T2Debug("--in %s \n", __FUNCTION__);
+
+        for( j = 0; j < triggerConditionList->count; j++ ) {
+                TriggerCondition *triggerCondition = ((TriggerCondition *) Vector_At(triggerConditionList, j));
+		if(triggerCondition){
+                    T2Debug("Adding to register consumer list \n");
+                    status = T2RbusConsumer(triggerCondition);
+		    if(status == T2ERROR_FAILURE)
+                         ret = T2ERROR_FAILURE;
+		    T2Debug("T2RbusConsumer return = %d\n", ret);
+		}    
+        }
+    return ret;
+}
+
+T2ERROR rbusT2ConsumerUnReg(Vector *triggerConditionList)
+{
+    int j,rc;
+    //char user_data[32] = {0};
+    T2Debug("%s ++in\n", __FUNCTION__);
+
+    if(!t2bus_handle && T2ERROR_SUCCESS != rBusInterface_Init()) {
+        T2Error("%s Failed in getting bus handles \n", __FUNCTION__);
+        T2Debug("%s --out\n", __FUNCTION__);
+        return T2ERROR_FAILURE;
+    }
+
+    for( j = 0; j < triggerConditionList->count; j++ ) {
+        TriggerCondition *triggerCondition = ((TriggerCondition *) Vector_At(triggerConditionList, j));
+        T2Debug("Adding %s to unregister list \n", triggerCondition->reference);
+        rbusFilter_RelationOperator_t filterOperator = RBUS_FILTER_OPERATOR_EQUAL;
+        rbusFilter_t filter;
+        rbusValue_t filterValue;
+        rbusEventSubscription_t subscription = {triggerCondition->reference, NULL, 0, 0, (void *)triggerCondtionReceiveHandler, NULL, NULL, NULL};
+
+        if(strcmp(triggerCondition->oprator,"lt") == 0)
+        {
+            filterOperator = RBUS_FILTER_OPERATOR_LESS_THAN;
+        }
+        if(strcmp(triggerCondition->oprator,"gt") == 0)
+        {
+            filterOperator = RBUS_FILTER_OPERATOR_GREATER_THAN;
+        }
+        if(strcmp(triggerCondition->oprator,"eq") == 0)
+        {
+            filterOperator = RBUS_FILTER_OPERATOR_EQUAL;
+        }
+        if(strcmp(triggerCondition->oprator,"any") == 0)
+        {
+            rc = rbusEvent_Unsubscribe(
+            t2bus_handle,
+            triggerCondition->reference);
+            if (rc != RBUS_ERROR_SUCCESS)
+            {
+                T2Debug("%s UnSubscribe failed\n",__FUNCTION__);
+            }
+        }
+        else
+        {
+            rbusValue_Init(&filterValue);
+            rbusValue_SetInt32(filterValue, triggerCondition->threshold);
+            rbusFilter_InitRelation(&filter, filterOperator, filterValue);
+            subscription.filter = filter;
+            rc = rbusEvent_UnsubscribeEx(t2bus_handle, &subscription, 1);
+            if (rc != RBUS_ERROR_SUCCESS)
+            {
+                T2Debug("%s UnSubscribeEx failed\n",__FUNCTION__);
+            }
+        }
+    }
+    return T2ERROR_SUCCESS;
+}
+
+T2ERROR T2RbusConsumer(TriggerCondition *triggerCondition)
+{
+    int rc = RBUS_ERROR_SUCCESS;
+    int ret = T2ERROR_SUCCESS;
+    char user_data[32] = {0};
+    //char componentName[] = "t2consumer";
+    T2Debug("--in %s\n", __FUNCTION__);
+    if(triggerCondition->isSubscribed == true){
+       T2Debug("%s already subscribed\n", triggerCondition->reference);
+       return T2ERROR_SUCCESS;
+    }    
+       
+    rbusFilter_RelationOperator_t filterOperator; 
+    rbusFilter_t filter;
+    rbusValue_t filterValue;
+    rbusEventSubscription_t subscription = {triggerCondition->reference, NULL, 0, 0, triggerCondtionReceiveHandler, NULL, NULL, NULL};
+      
+    if(strcmp(triggerCondition->oprator,"lt") == 0)
+    {
+       filterOperator = RBUS_FILTER_OPERATOR_LESS_THAN;
+    }
+    if(strcmp(triggerCondition->oprator,"gt") == 0)
+    {
+       filterOperator = RBUS_FILTER_OPERATOR_GREATER_THAN;
+    }
+    if(strcmp(triggerCondition->oprator,"eq") == 0)
+    {
+        filterOperator = RBUS_FILTER_OPERATOR_EQUAL;
+    }
+
+    if(!t2bus_handle && T2ERROR_SUCCESS != rBusInterface_Init()) {
+        T2Debug("Consumer: rbus_open failed: %d\n", rc);
+        return T2ERROR_FAILURE;
+    }
+    strcpy(user_data,"Not used");
+    if(strcmp(triggerCondition->oprator,"any") == 0)
+    {
+        T2Debug("filterOperator %s , threshold %d \n",triggerCondition->oprator, triggerCondition->threshold);
+        rc = rbusEvent_Subscribe(
+        t2bus_handle,
+        triggerCondition->reference,
+        triggerCondtionReceiveHandler,
+        user_data,
+        0);
+        if (rc != RBUS_ERROR_SUCCESS){
+            T2Error(" %s Subscribe failed\n",__FUNCTION__);
+	    ret = T2ERROR_FAILURE;
+        }
+	else{
+	    triggerCondition->isSubscribed = true;
+	}
+    }
+    else	
+    {
+        T2Debug("Ex filterOperator %s ( %d ) , threshold %d \n",triggerCondition->oprator, filterOperator, triggerCondition->threshold);
+        rbusValue_Init(&filterValue);
+        rbusValue_SetInt32(filterValue, triggerCondition->threshold);
+        rbusFilter_InitRelation(&filter, filterOperator, filterValue);
+        subscription.filter = filter;
+        rc = rbusEvent_SubscribeEx(t2bus_handle, &subscription, 1, 0);
+	if (rc != RBUS_ERROR_SUCCESS){
+            T2Error(" %s SubscribeEx failed\n",__FUNCTION__);
+	    ret = T2ERROR_FAILURE;
+        }
+	else{
+            triggerCondition->isSubscribed = true;
+	}
+        rbusValue_Release(filterValue);
+        rbusFilter_Release(filter);
+    }
+    return ret;
+}
+
+rbusError_t t2TriggerConditionGetHandler(rbusHandle_t handle, rbusProperty_t property, rbusGetHandlerOptions_t* opts)
+{
+    char const* name = rbusProperty_GetName(property);
+    (void)handle;
+    (void)opts;
+
+    T2Debug("Provider: Called get handler for [%s] \n", name);
+    static int32_t mydata = 0;
+    rbusValue_t value;
+    rbusValue_Init(&value);
+    rbusValue_SetInt32(value, mydata);
+    rbusProperty_SetValue(property, value);
+    rbusValue_Release(value);
+    return RBUS_ERROR_SUCCESS;
+}
+

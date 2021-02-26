@@ -27,6 +27,9 @@
 #include "t2log_wrapper.h"
 
 static const int MAX_STATIC_PROP_VAL_LEN = 128 ;
+char *msgpack_strdup(msgpack_object *obj);
+msgpack_object *msgpack_get_map_value(msgpack_object *obj, char *key);
+msgpack_object *msgpack_get_array_element(msgpack_object *obj, int index);
 
 
 static char * getProfileParameter(Profile * profile, const char *ref) {
@@ -193,6 +196,260 @@ static T2ERROR addParameter(Profile *profile, const char* name, const char* ref,
     return T2ERROR_SUCCESS;
 }
 
+T2ERROR addMsgPckTriggerCondition(Profile *profile, msgpack_object *value_map) {
+
+    msgpack_object *TriggerConditionArray;
+    msgpack_object *tcArrayMap;
+    msgpack_object *tcTypeStr;
+    msgpack_object *tcOperatorStr;
+    msgpack_object *tcReferenceStr;
+    msgpack_object *tcThresholdInt;
+    msgpack_object *tcMinThresholdDurationInt;
+    uint32_t TcArraySize = 0;
+    int i;
+
+    if((profile == NULL) || (value_map == NULL)){
+       T2Error("%s NULL value returning \n", __FUNCTION__);
+       return T2ERROR_FAILURE;
+    }
+    T2Debug("%s ++in\n", __FUNCTION__);
+
+    TriggerConditionArray = msgpack_get_map_value(value_map, "TriggerCondition");
+    MSGPACK_GET_ARRAY_SIZE(TriggerConditionArray, TcArraySize);
+
+    if(TcArraySize)
+       Vector_Create(&profile->triggerConditionList);
+
+    for (i = 0; i < TcArraySize; i++) {
+
+        char* tcType;
+        char* tcOperator;
+        char* tcReference;
+        int tcThreshold = 0;
+        int tcMinThresholdDuration = 0;
+
+	tcType = NULL;
+	tcOperator = NULL;
+	tcReference = NULL;
+
+        tcArrayMap = msgpack_get_array_element(TriggerConditionArray, i);
+
+        tcTypeStr = msgpack_get_map_value(tcArrayMap, "type");
+        if(tcTypeStr)
+        {
+          msgpack_print(tcTypeStr, msgpack_get_obj_name(tcTypeStr));
+          tcType = msgpack_strdup(tcTypeStr);
+        }
+
+        tcOperatorStr = msgpack_get_map_value(tcArrayMap, "operator");
+        if(tcOperatorStr)
+        {
+          msgpack_print(tcOperatorStr, msgpack_get_obj_name(tcOperatorStr));
+          tcOperator = msgpack_strdup(tcOperatorStr);
+        }
+
+        tcReferenceStr = msgpack_get_map_value(tcArrayMap, "reference");
+        if(tcReferenceStr)
+        {
+          msgpack_print(tcReferenceStr, msgpack_get_obj_name(tcReferenceStr));
+          tcReference = msgpack_strdup(tcReferenceStr);
+        }
+
+        tcThresholdInt = msgpack_get_map_value(tcArrayMap, "threshold");
+        if(tcThresholdInt)
+        {
+          msgpack_print(tcThresholdInt, msgpack_get_obj_name(tcThresholdInt));
+          MSGPACK_GET_NUMBER(tcThresholdInt, tcThreshold);
+          T2Debug("tcThreshold: %d\n", tcThreshold);
+        }
+
+        tcMinThresholdDurationInt = msgpack_get_map_value(tcArrayMap, "minThresholdDuration");
+        if(tcMinThresholdDurationInt)
+        {
+          msgpack_print(tcMinThresholdDurationInt, msgpack_get_obj_name(tcMinThresholdDurationInt));
+          MSGPACK_GET_NUMBER(tcMinThresholdDurationInt, tcMinThresholdDuration);
+	  T2Debug("tcMinThresholdDuration: %d\n", tcMinThresholdDuration);
+        }
+
+        T2Debug("Adding MsgPck Trigger Condition:%s type %s operator %s \n", tcReference, tcType, tcOperator);
+        TriggerCondition *triggerCondition = (TriggerCondition *) malloc(sizeof(TriggerCondition));
+
+        if(triggerCondition == NULL){
+            T2Error("%s Error adding MsgPck Trigger Condition to profile %s \n", __FUNCTION__, profile->name);
+            T2Debug("%s ++out\n", __FUNCTION__);
+            if(tcType)
+              free(tcType);
+            if(tcOperator)
+              free(tcOperator);
+            if(tcReference)
+              free(tcReference);
+            return T2ERROR_FAILURE;
+        }
+        triggerCondition->type = strdup(tcType);
+        triggerCondition->oprator = strdup(tcOperator);
+        triggerCondition->reference = strdup(tcReference);
+        triggerCondition->threshold = tcThreshold;
+        triggerCondition->minThresholdDuration = tcMinThresholdDuration;
+	triggerCondition->isSubscribed = false;
+
+        Vector_PushBack(profile->triggerConditionList, triggerCondition);
+        T2Debug("[[Added MsgPck Trigger Condition:%s]]\n", tcReference);
+
+        if(tcType)
+          free(tcType);
+        if(tcOperator)
+          free(tcOperator);
+        if(tcReference)
+          free(tcReference);
+    }
+    T2Debug("%s ++out\n", __FUNCTION__);
+    return T2ERROR_SUCCESS;
+}
+
+T2ERROR addTriggerCondition(Profile *profile, cJSON *jprofileTriggerCondition) {
+    
+    T2Debug("%s ++in\n", __FUNCTION__);
+    int triggerConditionIndex = 0;
+    int triggerCondition_count = 0;
+    if(jprofileTriggerCondition == NULL){
+        T2Debug("%s ++out\n", __FUNCTION__);
+        return T2ERROR_FAILURE; 
+    }
+        
+    triggerCondition_count = cJSON_GetArraySize(jprofileTriggerCondition);
+    Vector_Create(&profile->triggerConditionList);
+	  
+    for(triggerConditionIndex=0; triggerConditionIndex < triggerCondition_count; triggerConditionIndex++)
+    {
+        char *tcType = NULL;
+        char *tcOperator = NULL;
+        int tcThreshold = 0;
+        int tcMinThresholdDuration = 0;
+        char *tcReference = NULL;
+	 
+        cJSON* tcSubitem = cJSON_GetArrayItem(jprofileTriggerCondition, triggerConditionIndex);
+		 
+       if(tcSubitem != NULL)
+       {
+           cJSON *jTcSubItemtype = cJSON_GetObjectItem(tcSubitem, "type");
+           if(jTcSubItemtype)
+           {
+               tcType =  jTcSubItemtype->valuestring;
+           }
+           cJSON *jTcSubItemOperator = cJSON_GetObjectItem(tcSubitem, "operator");
+           if(jTcSubItemOperator)
+           {
+               tcOperator =  jTcSubItemOperator->valuestring;
+           }
+
+           cJSON *jTcSubItemThreshold = cJSON_GetObjectItem(tcSubitem, "threshold");
+           if(jTcSubItemThreshold)
+           {
+               tcThreshold =  jTcSubItemThreshold->valueint;
+           }
+
+           cJSON *jTcSubItemMinThresholdDuration = cJSON_GetObjectItem(tcSubitem, "minThresholdDuration");
+           if(jTcSubItemMinThresholdDuration)
+           {
+               tcMinThresholdDuration =  jTcSubItemMinThresholdDuration->valueint;
+           }
+
+           cJSON *jTcSubItemReference = cJSON_GetObjectItem(tcSubitem, "reference");
+           if(jTcSubItemReference)
+           {
+               tcReference =  jTcSubItemReference->valuestring;
+           }
+           T2Debug("Adding Trigger Condition:%s type %s operator %s \n", tcReference, tcType, tcOperator); 
+           TriggerCondition *triggerCondition = (TriggerCondition *) malloc(sizeof(TriggerCondition));
+
+           if(triggerCondition == NULL){
+               T2Error("%s ++out Error adding Trigger Condition to profile %s \n", __FUNCTION__, profile->name);
+               return T2ERROR_FAILURE;
+           }
+           triggerCondition->type = strdup(tcType);
+           triggerCondition->oprator = strdup(tcOperator);
+           triggerCondition->reference = strdup(tcReference);
+           triggerCondition->threshold = tcThreshold;
+           triggerCondition->minThresholdDuration = tcMinThresholdDuration;
+	   triggerCondition->isSubscribed = false;
+
+           Vector_PushBack(profile->triggerConditionList, triggerCondition);
+           T2Debug("[[Added Trigger Condition:%s]]\n", tcReference);
+       }
+    }
+
+    T2Debug("%s ++out\n", __FUNCTION__);
+    return T2ERROR_SUCCESS;
+}
+
+T2ERROR verifyTriggerCondition(cJSON *jprofileTriggerCondition)
+{
+    T2Debug("%s ++in\n", __FUNCTION__);
+    int triggerConditionIndex = 0;
+    int triggerCondition_count = 0;
+    int ret = T2ERROR_SUCCESS;
+    char *operator = NULL;
+    char *type = NULL;
+    char *reference = NULL;
+    triggerCondition_count = cJSON_GetArraySize(jprofileTriggerCondition);
+
+    for(triggerConditionIndex=0; triggerConditionIndex < triggerCondition_count; triggerConditionIndex++)
+    {
+	cJSON* tcSubitem = cJSON_GetArrayItem(jprofileTriggerCondition, triggerConditionIndex);
+	if(tcSubitem != NULL){
+            cJSON *jTcSubItemtype = cJSON_GetObjectItem(tcSubitem, "type");
+	    if(jTcSubItemtype == NULL){
+	       T2Debug("Null type %s ++out\n", __FUNCTION__);
+               return T2ERROR_FAILURE;
+	    }
+	    
+	    type = jTcSubItemtype->valuestring;
+            if(strncmp(type, "dataModel", strlen("dataModel")+1) != 0){
+	       T2Debug("Unexpected type %s ++out\n", __FUNCTION__);
+               return T2ERROR_FAILURE;
+            }
+          
+            cJSON *jTcSubItemOperator = cJSON_GetObjectItem(tcSubitem, "operator");
+            if(jTcSubItemOperator == NULL){
+	       T2Debug("Null operator %s ++out\n", __FUNCTION__);
+               return T2ERROR_FAILURE;
+	    }
+
+            operator = jTcSubItemOperator->valuestring; 
+            if((strncmp(operator, "any", strlen("any")+1) != 0) &&
+               (strncmp(operator, "lt", strlen("lt")+1) != 0) &&
+               (strncmp(operator, "gt", strlen("gt")+1) != 0) &&
+               (strncmp(operator, "eq", strlen("eq")+1) != 0)){
+		  T2Debug("Unexpected operator %s ++out\n", __FUNCTION__);
+		  return T2ERROR_FAILURE;
+            }
+
+            if((strncmp(operator, "any", strlen("any")+1) != 0)){
+                cJSON *jTcSubItemThreshold = cJSON_GetObjectItem(tcSubitem, "threshold");
+                if(jTcSubItemThreshold == NULL){
+	           T2Debug("Null threshold %s ++out\n", __FUNCTION__);
+                   return T2ERROR_FAILURE;
+                }
+            }
+	    
+	    cJSON *jTcSubItemReference = cJSON_GetObjectItem(tcSubitem, "reference");
+            if(jTcSubItemReference == NULL){
+		T2Debug("Null reference %s ++out\n", __FUNCTION__);
+                return T2ERROR_FAILURE;
+	    }
+
+	    reference = jTcSubItemReference->valuestring;
+            if(strlen(reference) == 0){
+	       T2Debug("Unexpected reference %s ++out\n", __FUNCTION__);
+               return T2ERROR_FAILURE;
+	    }
+        }
+    }	
+	
+    T2Debug("%s ++out\n", __FUNCTION__);
+    return ret;
+}
+
 T2ERROR processConfiguration(char** configData, char *profileName, char* profileHash, Profile **localProfile) {
     T2Debug("%s ++in\n", __FUNCTION__);
     //REPORTPROFILE CJson PARSING
@@ -213,6 +470,7 @@ T2ERROR processConfiguration(char** configData, char *profileName, char* profile
     cJSON *jprofileTimeReference = cJSON_GetObjectItem(json_root, "TimeReference");
     cJSON *jprofileParameter = cJSON_GetObjectItem(json_root, "Parameter");
     cJSON *jprofileGenerateNow = cJSON_GetObjectItem(json_root, "GenerateNow");
+    cJSON *jprofileTriggerCondition = cJSON_GetObjectItem(json_root, "TriggerCondition");
     if(jprofileParameter) {
         ThisProfileParameter_count = cJSON_GetArraySize(jprofileParameter);
     }
@@ -278,6 +536,16 @@ T2ERROR processConfiguration(char** configData, char *profileName, char* profile
         return T2ERROR_FAILURE;
     }
 
+    if(jprofileTriggerCondition){
+	int ret;
+	ret = verifyTriggerCondition(jprofileTriggerCondition);
+	if(ret == T2ERROR_FAILURE){
+            T2Error("TriggerCondition is invalid, unable to create profile\n");
+            cJSON_Delete(json_root);
+            return T2ERROR_FAILURE;
+	}
+    }	    
+
     //PROFILE CREATION
     Profile *profile = (Profile *) malloc(sizeof(Profile));
     if(profile == NULL) {
@@ -314,7 +582,8 @@ T2ERROR processConfiguration(char** configData, char *profileName, char* profile
             return T2ERROR_FAILURE;
         }
     }
-
+    
+    profile->minThresholdDuration = 0;
     profile->name = strdup(profileName);
     if(jprofileDescription) {
         profile->Description = strdup(jprofileDescription->valuestring);
@@ -545,6 +814,23 @@ T2ERROR processConfiguration(char** configData, char *profileName, char* profile
             profileParamCount++;
         }
     }
+
+    {
+        int triggerCondition_count = 0;
+        if(jprofileTriggerCondition) {
+            triggerCondition_count = cJSON_GetArraySize(jprofileTriggerCondition);
+            T2Debug("TC found in profile\n");
+        }
+        T2Debug("triggerCondition_count %d\n", triggerCondition_count);
+        if(triggerCondition_count)
+        {
+            ret = addTriggerCondition(profile, jprofileTriggerCondition); //add
+            if(ret != T2ERROR_SUCCESS) {
+                T2Error("%s Error adding Trigger Condition to profile %s \n", __FUNCTION__, profile->name);
+            }
+        }
+    } 
+
     // Not included for RDKB-25008 . DCA utils expects the list to be sorted based on logfile names
     T2Info("Number of tr181params/markers successfully added in profile = %d \n", profileParamCount);
 
@@ -645,6 +931,117 @@ msgpack_object *msgpack_get_array_element(msgpack_object *obj, int index)
     return NULL;
 }
 
+T2ERROR verifyMsgPckTriggerCondition(msgpack_object *value_map) {
+
+    msgpack_object *TriggerConditionArray;
+    msgpack_object *tcArrayMap;
+    msgpack_object *tcTypeStr;
+    msgpack_object *tcOperatorStr;
+    msgpack_object *tcReferenceStr;
+    msgpack_object *tcThresholdInt;
+    uint32_t TcArraySize = 0;
+    int i, ret = T2ERROR_SUCCESS;
+    char* tcType;
+    char* tcOperator;
+    char* tcReference;
+
+    if((value_map == NULL)){
+       T2Error("%s NULL object returning failure\n", __FUNCTION__);
+       return T2ERROR_FAILURE;
+    }
+    T2Debug("%s ++in\n", __FUNCTION__);
+
+    TriggerConditionArray = msgpack_get_map_value(value_map, "TriggerCondition");
+    MSGPACK_GET_ARRAY_SIZE(TriggerConditionArray, TcArraySize);
+
+    for(i = 0; i < TcArraySize; i++) {
+
+        tcType = NULL;
+        tcOperator = NULL;
+        tcReference = NULL;
+
+        tcArrayMap = msgpack_get_array_element(TriggerConditionArray, i);
+        tcTypeStr = msgpack_get_map_value(tcArrayMap, "type");
+        if(tcTypeStr == NULL){
+       	   T2Debug("Null type %s ++out\n", __FUNCTION__);
+           ret = T2ERROR_FAILURE;
+	   goto error;
+	}
+
+        msgpack_print(tcTypeStr, msgpack_get_obj_name(tcTypeStr));
+        tcType = msgpack_strdup(tcTypeStr);
+        if(strncmp(tcType, "dataModel", strlen("dataModel")+1) != 0){
+           T2Debug("Unexpected type %s ++out\n", __FUNCTION__);
+           ret = T2ERROR_FAILURE;
+	   goto error;
+        }
+
+        tcOperatorStr = msgpack_get_map_value(tcArrayMap, "operator");
+        if(tcOperatorStr == NULL){
+           T2Debug("Null operator %s ++out\n", __FUNCTION__);
+           ret = T2ERROR_FAILURE;
+	   goto error;
+	}
+
+        msgpack_print(tcOperatorStr, msgpack_get_obj_name(tcOperatorStr));
+        tcOperator = msgpack_strdup(tcOperatorStr);
+	if((strncmp(tcOperator, "any", strlen("any")+1) != 0) &&
+           (strncmp(tcOperator, "lt", strlen("lt")+1) != 0) &&
+           (strncmp(tcOperator, "gt", strlen("gt")+1) != 0) &&
+           (strncmp(tcOperator, "eq", strlen("eq")+1) != 0)){
+            T2Debug("Unexpected operator %s ++out\n", __FUNCTION__);
+            ret = T2ERROR_FAILURE;
+	    goto error;
+        }
+
+        if(strncmp(tcOperator, "any", strlen("any")+1) != 0){
+           tcThresholdInt = msgpack_get_map_value(tcArrayMap, "threshold");
+           if(tcThresholdInt == NULL)
+           {
+              T2Debug("Null threshold %s ++out\n", __FUNCTION__);
+              ret = T2ERROR_FAILURE;
+	      goto error;
+           }
+	}
+
+	tcReferenceStr = msgpack_get_map_value(tcArrayMap, "reference");
+        if(tcReferenceStr == NULL){
+	   T2Debug("Null reference %s ++out\n", __FUNCTION__);
+           ret = T2ERROR_FAILURE;
+	   goto error;
+	}
+
+        msgpack_print(tcReferenceStr, msgpack_get_obj_name(tcReferenceStr));
+        tcReference = msgpack_strdup(tcReferenceStr);
+        if(strlen(tcReference) == 0){
+           T2Debug("Unexpected reference %s ++out\n", __FUNCTION__);
+	   ret = T2ERROR_FAILURE;
+	   goto error;
+        }
+
+        if(tcType)
+          free(tcType);
+        if(tcOperator)
+          free(tcOperator);
+        if(tcReference)
+          free(tcReference);
+    }
+
+error:
+    if(ret == T2ERROR_FAILURE){
+       if(tcType)
+          free(tcType);
+       if(tcOperator)
+          free(tcOperator);
+       if(tcReference)
+          free(tcReference);
+    }
+
+    T2Debug("%s ++out\n", __FUNCTION__);
+    return ret;
+}
+
+
 T2ERROR processMsgPackConfiguration(msgpack_object *profiles_array_map, Profile **profile_dp) {
     msgpack_object *name_str;
     msgpack_object *hash_str;
@@ -706,6 +1103,20 @@ T2ERROR processMsgPackConfiguration(msgpack_object *profiles_array_map, Profile 
     profile->hash = msgpack_strdup(hash_str);
 
     value_map = msgpack_get_map_value(profiles_array_map, "value");
+    
+    if(value_map){
+       ret = verifyMsgPckTriggerCondition(value_map);
+       if(ret == T2ERROR_FAILURE){
+          if(profile->name)	    
+             free(profile->name);
+          if(profile->hash)
+             free(profile->hash);
+          if(profile)
+             free(profile);
+          T2Error("TriggerCondition is invalid, unable to create profile\n");
+          return T2ERROR_FAILURE;
+       }  
+    }
 
     Protocol_str = msgpack_get_map_value(value_map, "Protocol");
     msgpack_print(Protocol_str, msgpack_get_obj_name(Protocol_str));
@@ -880,6 +1291,7 @@ T2ERROR processMsgPackConfiguration(msgpack_object *profiles_array_map, Profile 
         free(paramtype);
     }
     T2Debug("Added parameter count:%d \n", profileParamCount);
+    addMsgPckTriggerCondition(profile, value_map);
 
     HTTP_map = msgpack_get_map_value(value_map, "HTTP");
 

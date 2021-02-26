@@ -26,10 +26,12 @@
 #include <stdio.h>
 #include <stddef.h>
 #include <string.h>
+#include <unistd.h>
 
 #include "t2log_wrapper.h"
 #include "scheduler.h"
 #include "vector.h"
+#include "profile.h"
 
 static TimeoutNotificationCB timeoutNotificationCb;
 static ActivationTimeoutCB activationTimeoutCb;
@@ -96,8 +98,13 @@ void* TimeoutThread(void *arg)
     SchedulerProfile *tProfile = (SchedulerProfile*)arg;
     struct timespec _ts;
     struct timespec _now;
+    struct timespec _MinThresholdTimeTs;
+    struct timespec _MinThresholdTimeStart;
+    unsigned int minThresholdTime = 0;
     int n;
     T2Debug("%s ++in\n", __FUNCTION__);
+    registerTriggerConditionConsumer();
+
     while(tProfile->repeat && !tProfile->terminated)
     {
         memset(&_ts, 0, sizeof(struct timespec));
@@ -117,13 +124,35 @@ void* TimeoutThread(void *arg)
         }
         else if (n == 0)
         {
-            T2Warning("Interrupted before TIMEOUT for profile : %s\n", tProfile->name);
-            timeoutNotificationCb(tProfile->name, true);
-            if(tProfile->terminated)
+            T2Info("Interrupted before TIMEOUT for profile : %s, minThresholdTime %u\n", tProfile->name, minThresholdTime);
+            if(minThresholdTime) 
             {
-                T2Error("Profile : %s is being removed from scheduler \n", tProfile->name);
-                pthread_mutex_unlock(&tProfile->tMutex);
-                break;
+		 memset(&_MinThresholdTimeTs, 0, sizeof(struct timespec));
+                 clock_gettime(CLOCK_REALTIME, &_MinThresholdTimeTs);
+		 T2Debug("minThresholdTime left %ld -\n", (_MinThresholdTimeTs.tv_sec - _MinThresholdTimeStart.tv_sec));
+                 if(minThresholdTime < (_MinThresholdTimeTs.tv_sec - _MinThresholdTimeStart.tv_sec)){
+                      minThresholdTime = 0;
+		      T2Debug("minThresholdTime reset done\n");
+		 }     
+            }
+
+            if(minThresholdTime == 0)
+            {
+                 timeoutNotificationCb(tProfile->name, true);
+                 if(tProfile->terminated)
+                 {
+                    T2Error("Profile : %s is being removed from scheduler \n", tProfile->name);
+                    pthread_mutex_unlock(&tProfile->tMutex);
+                    break;
+                 }
+                 minThresholdTime = getMinThresholdDuration(tProfile->name);
+                 T2Info("minThresholdTime %u\n", minThresholdTime);
+
+                 if(minThresholdTime)
+                 {
+		     memset(&_MinThresholdTimeStart, 0, sizeof(struct timespec));
+                     clock_gettime(CLOCK_REALTIME, &_MinThresholdTimeStart);
+                 }
             }
         }
         else

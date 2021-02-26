@@ -77,6 +77,16 @@ typedef struct _GrepMarker
     unsigned int skipFreq;
 }GrepMarker;
 
+typedef struct _TriggerCondition
+{
+    char* type;
+    char* oprator;
+    int threshold;
+    int minThresholdDuration;
+    char* reference;
+    bool isSubscribed;
+}TriggerCondition;
+
 void freeParam(void *data);
 
 void freeStaticParam(void *data);
@@ -84,5 +94,7 @@ void freeStaticParam(void *data);
 void freeEMarker(void *data);
 
 void freeGMarker(void *data);
+
+void freeTriggerCondition(void *data);
 
 #endif /* _T2COMMON_H_ */

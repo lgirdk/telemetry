@@ -45,6 +45,7 @@ typedef struct _Profile
     bool reportInProgress;
     bool generateNow;
     bool bClearSeekMap;
+    bool triggerReportOnCondition;
     char* hash;
     char* name;
     char* protocol;
@@ -56,6 +57,7 @@ typedef struct _Profile
     unsigned int activationTimeoutPeriod;
     unsigned int timeRef;
     unsigned int paramNumOfEntries;
+    unsigned int minThresholdDuration;
     Vector *paramList;
     Vector *staticParamList;
     T2HTTP *t2HTTPDest;
@@ -64,6 +66,7 @@ typedef struct _Profile
     Vector *cachedReportList;
     cJSON *jsonReportObj;
     pthread_t reportThread;
+    Vector *triggerConditionList;
 }Profile;
 
 T2ERROR initProfileList();
@@ -95,5 +98,11 @@ void sendLogUploadInterruptToScheduler();
 void NotifyTimeout(const char* profileName, bool isClearSeekMap);
 
 bool isProfileEnabled(const char *profileName);
+
+T2ERROR registerTriggerConditionConsumer();
+
+T2ERROR triggerReportOnCondtion(const char *referenceName);
+
+unsigned int getMinThresholdDuration(char *profileName);
 
 #endif /* _PROFILE_H_ */

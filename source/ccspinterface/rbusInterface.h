@@ -34,4 +34,8 @@ T2ERROR registerRbusT2EventListener(TelemetryEventCallback eventCB);
 
 T2ERROR unregisterRbusT2EventListener();
 
+T2ERROR rbusT2ConsumerReg(Vector *triggerConditionList);
+
+T2ERROR rbusT2ConsumerUnReg(Vector *triggerConditionList);
+
 #endif

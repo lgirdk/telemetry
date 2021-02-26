@@ -20,6 +20,7 @@
 #include <stdbool.h>
 #include <malloc.h>
 #include <string.h>
+#include <unistd.h>
 
 #include "profile.h"
 #include "reportprofiles.h"
@@ -33,6 +34,7 @@
 #include "vector.h"
 #include "dcautil.h"
 #include "t2parser.h"
+#include "rbusInterface.h"
 
 static bool initialized = false;
 static Vector *profileList;
@@ -112,6 +114,10 @@ static void freeProfile(void *data)
         if (profile->staticParamList)
         {
             Vector_Destroy(profile->staticParamList, freeStaticParam);
+        }
+        if(profile->triggerConditionList)
+        {
+            Vector_Destroy(profile->triggerConditionList, freeTriggerCondition);
         }
         free(profile);
     }
@@ -642,6 +648,10 @@ T2ERROR deleteProfile(const char *profileName)
         pthread_join(profile->reportThread, NULL);
     }
 
+    if(Vector_Size(profile->triggerConditionList) > 0){
+        rbusT2ConsumerUnReg(profile->triggerConditionList);
+    }
+
     if (Vector_Size(profile->gMarkerList) > 0)
         removeGrepConfig((char*)profileName);
 
@@ -830,3 +840,107 @@ T2ERROR uninitProfileList()
     T2Debug("%s --out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;
 }
+
+T2ERROR registerTriggerConditionConsumer()
+{
+
+    T2Debug("%s ++in\n", __FUNCTION__);
+    #define MAX_RETRY_COUNT 3
+    int profileIndex = 0;
+    int retry_count = 0;
+    int retry = 0;
+    int timer = 16;
+    int ret = T2ERROR_SUCCESS;
+    Profile *tempProfile = NULL;
+
+    while(retry_count <= MAX_RETRY_COUNT){
+        pthread_mutex_lock(&plMutex);
+	profileIndex = 0;
+        for(; profileIndex < Vector_Size(profileList); profileIndex++)
+        {
+            tempProfile = (Profile *)Vector_At(profileList, profileIndex);
+            if(tempProfile->triggerConditionList)
+            {
+               ret = rbusT2ConsumerReg(tempProfile->triggerConditionList);
+               T2Debug("rbusT2ConsumerReg return = %d\n", ret);
+	       if(ret != T2ERROR_SUCCESS){
+	           retry = 1;
+	       }   
+            }
+
+        }
+        pthread_mutex_unlock(&plMutex);
+	if(retry == 1){
+	   if(retry_count >= MAX_RETRY_COUNT)
+	      break;
+           T2Debug("Retry Consumer Registration in %d sec\n", timer);		
+	   retry_count++;
+           retry = 0;
+	   sleep(timer);
+	   timer = timer/2;
+        }
+        else{
+	   break;  
+        }		
+    }
+    T2Debug("%s --out\n", __FUNCTION__);
+    return ret;
+}
+
+
+T2ERROR triggerReportOnCondtion(const char *referenceName)
+{
+    T2Debug("%s ++in\n", __FUNCTION__);
+
+    int j, profileIndex = 0;
+    Profile *tempProfile = NULL;
+   
+    pthread_mutex_lock(&plMutex);
+    for(; profileIndex < Vector_Size(profileList); profileIndex++)
+    {
+        tempProfile = (Profile *)Vector_At(profileList, profileIndex);
+        if(tempProfile->triggerConditionList && (tempProfile->triggerConditionList->count > 0))
+        {
+             for( j = 0; j < tempProfile->triggerConditionList->count; j++ ) {
+                TriggerCondition *triggerCondition = ((TriggerCondition *) Vector_At(tempProfile->triggerConditionList, j));
+                if(strcmp(triggerCondition->reference,referenceName) == 0)
+                {
+	             T2Debug("Triggering report on condition for %s with %s operator, %d threshold\n",
+				     triggerCondition->reference, triggerCondition->oprator, triggerCondition->threshold);
+                     tempProfile->triggerReportOnCondition = true;
+                     tempProfile->minThresholdDuration = triggerCondition->minThresholdDuration;
+                     SendInterruptToTimeoutThread(tempProfile->name);
+                     T2Debug("%s --out\n", __FUNCTION__);
+                     pthread_mutex_unlock(&plMutex);
+                     return T2ERROR_SUCCESS;
+                }
+             }
+        }
+    }
+    pthread_mutex_unlock(&plMutex);
+    T2Debug("%s --out\n", __FUNCTION__);
+    return T2ERROR_SUCCESS;
+}
+
+unsigned int getMinThresholdDuration(char *profileName)
+{
+     unsigned int minThresholdDuration = 0;
+     Profile *get_profile = NULL;
+     T2Debug("%s --in\n", __FUNCTION__);
+     pthread_mutex_lock(&plMutex);
+     if(T2ERROR_SUCCESS != getProfile(profileName, &get_profile))
+     {
+         T2Error("Profile : %s not found\n", profileName);
+         T2Debug("%s --out\n", __FUNCTION__);
+         pthread_mutex_unlock(&plMutex);
+         return 0;
+     }
+     minThresholdDuration = get_profile->minThresholdDuration;
+     get_profile->minThresholdDuration = 0; // reinit the value
+     T2Debug("minThresholdDuration = %u \n",minThresholdDuration);
+     pthread_mutex_unlock(&plMutex);
+     T2Debug("%s --out\n", __FUNCTION__);
+     return minThresholdDuration;
+}
+
+

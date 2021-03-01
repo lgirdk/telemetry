@@ -736,12 +736,15 @@ T2ERROR t2_event_d(char* marker, int value) {
 
      EVENT_DEBUG("marker = %s : value = %d \n", marker, value);
 
+     // Send all markers - including zero value markers
+#if 0
      if (value == 0) {  // Requirement from field triage to ignore reporting 0 values
          pthread_mutex_unlock(&dMutex);
          EVENT_DEBUG("%s Value is 0 , do not event .\n", __FUNCTION__);
          EVENT_DEBUG("%s --out\n", __FUNCTION__);
          return T2ERROR_SUCCESS;
      }
+#endif
 
      char *buffer = (char*) malloc(MAX_DATA_LEN * sizeof(char));
      if (NULL != buffer) {

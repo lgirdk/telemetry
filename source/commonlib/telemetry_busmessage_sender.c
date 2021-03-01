@@ -567,10 +567,11 @@ T2ERROR t2_event_d(char* marker, int value) {
          return T2ERROR_FAILURE;
      }
 
-     if (value == 0) {  // Requirement from field triage to ignore reporting 0 values
+     //Send all markers including zero value markers
+     /* if (value == 0) {  // Requirement from field triage to ignore reporting 0 values
          pthread_mutex_unlock(&dMutex);
          return T2ERROR_SUCCESS;
-     }
+     } */
 
      char *buffer = (char*) malloc(MAX_DATA_LEN * sizeof(char));
      if (NULL != buffer) {

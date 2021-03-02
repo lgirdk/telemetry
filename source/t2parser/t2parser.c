@@ -73,6 +73,9 @@ static char * getProfileParameter(Profile * profile, const char *ref) {
 
 static T2ERROR addhttpURIreqParameter(Profile *profile, const char* Hname, const char* Href) {
     T2Debug("%s ++in\n", __FUNCTION__);
+    if(NULL == Hname || NULL == Href )
+        return T2ERROR_SUCCESS ;
+
     HTTPReqParam *httpreqparam = (HTTPReqParam *) malloc(sizeof(HTTPReqParam));
     if(!httpreqparam) {
         T2Error("failed to allocate memory \n");
@@ -643,8 +646,7 @@ msgpack_object *msgpack_get_array_element(msgpack_object *obj, int index)
     return NULL;
 }
 
-T2ERROR processMsgPackConfiguration(msgpack_object *profiles_array_map, Profile **profile_dp)
-{
+T2ERROR processMsgPackConfiguration(msgpack_object *profiles_array_map, Profile **profile_dp) {
     msgpack_object *name_str;
     msgpack_object *hash_str;
     msgpack_object *value_map;
@@ -685,12 +687,12 @@ T2ERROR processMsgPackConfiguration(msgpack_object *profiles_array_map, Profile 
 
     uint32_t Parameter_array_size = 0;
     uint32_t RequestURIParameter_array_size = 0;
-    
+
     T2Debug("%s --in\n", __FUNCTION__);
     Profile *profile = (Profile *) malloc(sizeof(Profile));
     if(profile == NULL) {
-	T2Error("Malloc error exiting: can not allocate memory to create profile \n");
-	return T2ERROR_MEMALLOC_FAILED;
+        T2Error("Malloc error exiting: can not allocate memory to create profile \n");
+        return T2ERROR_MEMALLOC_FAILED;
     }
     memset(profile, 0, sizeof(Profile));
 
@@ -709,30 +711,30 @@ T2ERROR processMsgPackConfiguration(msgpack_object *profiles_array_map, Profile 
     Protocol_str = msgpack_get_map_value(value_map, "Protocol");
     msgpack_print(Protocol_str, msgpack_get_obj_name(Protocol_str));
     profile->protocol = msgpack_strdup(Protocol_str);
-    if (0 == msgpack_strcmp(Protocol_str, "HTTP")) {
-	profile->t2HTTPDest = (T2HTTP *) malloc(sizeof(T2HTTP));
-	if(NULL == profile->t2HTTPDest) {
-	    free(profile->name);
-	    free(profile->hash);
-	    free(profile);
-	    T2Error("Malloc error exiting: can not allocate memory to create profile->t2HTTPDest \n");
-	    return T2ERROR_MEMALLOC_FAILED;
-	}
+    if(0 == msgpack_strcmp(Protocol_str, "HTTP")) {
+        profile->t2HTTPDest = (T2HTTP *) malloc(sizeof(T2HTTP));
+        if(NULL == profile->t2HTTPDest) {
+            free(profile->name);
+            free(profile->hash);
+            free(profile);
+            T2Error("Malloc error exiting: can not allocate memory to create profile->t2HTTPDest \n");
+            return T2ERROR_MEMALLOC_FAILED;
+        }
     }
 
     EncodingType_str = msgpack_get_map_value(value_map, "EncodingType");
     msgpack_print(EncodingType_str, msgpack_get_obj_name(EncodingType_str));
     profile->encodingType = msgpack_strdup(EncodingType_str);
-    if (0 == msgpack_strcmp(EncodingType_str, "JSON")) {
-	profile->jsonEncoding = (JSONEncoding *) malloc(sizeof(JSONEncoding));
-	if(NULL == profile->jsonEncoding) {
-	    free(profile->name);
-	    free(profile->hash);
-	    free(profile->t2HTTPDest);
-	    free(profile);
-	    T2Error("Malloc error exiting: can not allocate memory to create profile->jsonEncoding \n");
-	    return T2ERROR_MEMALLOC_FAILED;
-	}
+    if(0 == msgpack_strcmp(EncodingType_str, "JSON")) {
+        profile->jsonEncoding = (JSONEncoding *) malloc(sizeof(JSONEncoding));
+        if(NULL == profile->jsonEncoding) {
+            free(profile->name);
+            free(profile->hash);
+            free(profile->t2HTTPDest);
+            free(profile);
+            T2Error("Malloc error exiting: can not allocate memory to create profile->jsonEncoding \n");
+            return T2ERROR_MEMALLOC_FAILED;
+        }
     }
 
     Description_str = msgpack_get_map_value(value_map, "Description");
@@ -750,19 +752,19 @@ T2ERROR processMsgPackConfiguration(msgpack_object *profiles_array_map, Profile 
     msgpack_print(GenerateNow_boolean, msgpack_get_obj_name(GenerateNow_boolean));
     MSGPACK_GET_NUMBER(GenerateNow_boolean, profile->generateNow);
     T2Debug("profile->generateNow: %u\n", profile->generateNow);
-    if (profile->generateNow) {
-	profile->reportingInterval = 0;
-    } else {
+    if(profile->generateNow) {
+        profile->reportingInterval = 0;
+    }else {
 
-	ReportingInterval_u64 = msgpack_get_map_value(value_map, "ReportingInterval");
-	msgpack_print(ReportingInterval_u64, msgpack_get_obj_name(ReportingInterval_u64));
-	MSGPACK_GET_NUMBER(ReportingInterval_u64, profile->reportingInterval);
-	T2Debug("profile->reportingInterval: %u\n", profile->reportingInterval);
+        ReportingInterval_u64 = msgpack_get_map_value(value_map, "ReportingInterval");
+        msgpack_print(ReportingInterval_u64, msgpack_get_obj_name(ReportingInterval_u64));
+        MSGPACK_GET_NUMBER(ReportingInterval_u64, profile->reportingInterval);
+        T2Debug("profile->reportingInterval: %u\n", profile->reportingInterval);
 
-	ActivationTimeout_u64 = msgpack_get_map_value(value_map, "ActivationTimeout");
-	msgpack_print(ActivationTimeout_u64, msgpack_get_obj_name(ActivationTimeout_u64));
-	MSGPACK_GET_NUMBER(ActivationTimeout_u64, profile->activationTimeoutPeriod);
-	T2Debug("profile->activationTimeoutPeriod: %u\n", profile->activationTimeoutPeriod);
+        ActivationTimeout_u64 = msgpack_get_map_value(value_map, "ActivationTimeout");
+        msgpack_print(ActivationTimeout_u64, msgpack_get_obj_name(ActivationTimeout_u64));
+        MSGPACK_GET_NUMBER(ActivationTimeout_u64, profile->activationTimeoutPeriod);
+        T2Debug("profile->activationTimeoutPeriod: %u\n", profile->activationTimeoutPeriod);
     }
 
     TimeReference_str = msgpack_get_map_value(value_map, "TimeReference");
@@ -781,103 +783,102 @@ T2ERROR processMsgPackConfiguration(msgpack_object *profiles_array_map, Profile 
     Parameter_array = msgpack_get_map_value(value_map, "Parameter");
     int profileParamCount = 0;
     MSGPACK_GET_ARRAY_SIZE(Parameter_array, Parameter_array_size);
-    for (i = 0; i < Parameter_array_size; i++) {
 
-	char* paramtype;
-	char* use;
-	char* header;
-	char* content;
-	char* logfile;
-	bool reportEmpty;
-	int skipFrequency;
+    // Iterate through Map of multi profile configuration
+    for( i = 0; i < Parameter_array_size; i++ ) {
 
-	header = NULL;
-	content = NULL;
-	logfile = NULL;
-	skipFrequency = 0;
-	paramtype = NULL;
-	use = NULL;
-	reportEmpty = false;
+        char* paramtype;
+        char* use;
+        char* header;
+        char* content;
+        char* logfile;
+        bool reportEmpty;
+        int skipFrequency;
 
-	Parameter_array_map = msgpack_get_array_element(Parameter_array, i);
+        header = NULL;
+        content = NULL;
+        logfile = NULL;
+        skipFrequency = 0;
+        paramtype = NULL;
+        use = NULL;
+        reportEmpty = false;
 
-	Parameter_type_str = msgpack_get_map_value(Parameter_array_map, "type");
-	if (NULL == Parameter_type_str)
-	    /*TODO:Confirm if type is not configured. For now avoid corresponding marker*/
-	    continue;
-	msgpack_print(Parameter_type_str, msgpack_get_obj_name(Parameter_type_str));
-	paramtype = msgpack_strdup(Parameter_type_str);
+        Parameter_array_map = msgpack_get_array_element(Parameter_array, i);
 
-	Parameter_use_str = msgpack_get_map_value(Parameter_array_map, "use");
-	msgpack_print(Parameter_use_str, msgpack_get_obj_name(Parameter_use_str));
-	use = msgpack_strdup(Parameter_use_str);
+        Parameter_type_str = msgpack_get_map_value(Parameter_array_map, "type");
+        if(NULL == Parameter_type_str)
+            continue;
+        msgpack_print(Parameter_type_str, msgpack_get_obj_name(Parameter_type_str));
+        paramtype = msgpack_strdup(Parameter_type_str);
 
-	Parameter_reportEmpty_boolean = msgpack_get_map_value(Parameter_array_map, "reportEmpty");
-	msgpack_print(Parameter_reportEmpty_boolean, msgpack_get_obj_name(Parameter_reportEmpty_boolean));
-	MSGPACK_GET_NUMBER(Parameter_reportEmpty_boolean, reportEmpty);
-	T2Debug("reportEmpty: %u\n", reportEmpty);
+        Parameter_use_str = msgpack_get_map_value(Parameter_array_map, "use");
+        msgpack_print(Parameter_use_str, msgpack_get_obj_name(Parameter_use_str));
+        use = msgpack_strdup(Parameter_use_str);
 
-	if (0 == msgpack_strcmp(Parameter_type_str, "dataModel")) {
+        Parameter_reportEmpty_boolean = msgpack_get_map_value(Parameter_array_map, "reportEmpty");
+        msgpack_print(Parameter_reportEmpty_boolean, msgpack_get_obj_name(Parameter_reportEmpty_boolean));
+        MSGPACK_GET_NUMBER(Parameter_reportEmpty_boolean, reportEmpty);
+        T2Debug("reportEmpty: %u\n", reportEmpty);
 
-	    Parameter_name_str = msgpack_get_map_value(Parameter_array_map, "name");
-	    msgpack_print(Parameter_name_str, msgpack_get_obj_name(Parameter_name_str));
-	    header = msgpack_strdup(Parameter_name_str);
+        if(0 == msgpack_strcmp(Parameter_type_str, "dataModel")) {
+            Parameter_name_str = msgpack_get_map_value(Parameter_array_map, "name");
+            msgpack_print(Parameter_name_str, msgpack_get_obj_name(Parameter_name_str));
+            header = msgpack_strdup(Parameter_name_str);
 
-	    Parameter_reference_str = msgpack_get_map_value(Parameter_array_map, "reference");
-	    msgpack_print(Parameter_reference_str, msgpack_get_obj_name(Parameter_reference_str));
-	    content = msgpack_strdup(Parameter_reference_str);
+            Parameter_reference_str = msgpack_get_map_value(Parameter_array_map, "reference");
+            msgpack_print(Parameter_reference_str, msgpack_get_obj_name(Parameter_reference_str));
+            content = msgpack_strdup(Parameter_reference_str);
 
-	    if (NULL == header)
-		header = msgpack_strdup(Parameter_reference_str);
+            if(NULL == header)
+                header = msgpack_strdup(Parameter_reference_str);
 
-	} else if (0 == msgpack_strcmp(Parameter_type_str, "event")) {
+        }else if(0 == msgpack_strcmp(Parameter_type_str, "event")) {
 
-	    Parameter_name_str = msgpack_get_map_value(Parameter_array_map, "name");
-	    msgpack_print(Parameter_name_str, msgpack_get_obj_name(Parameter_name_str));
-	    logfile = msgpack_strdup(Parameter_name_str);
+            Parameter_name_str = msgpack_get_map_value(Parameter_array_map, "name");
+            msgpack_print(Parameter_name_str, msgpack_get_obj_name(Parameter_name_str));
+            logfile = msgpack_strdup(Parameter_name_str);
 
-	    Parameter_eventName_str = msgpack_get_map_value(Parameter_array_map, "eventName");
-	    msgpack_print(Parameter_eventName_str, msgpack_get_obj_name(Parameter_eventName_str));
-	    header = msgpack_strdup(Parameter_eventName_str);
+            Parameter_eventName_str = msgpack_get_map_value(Parameter_array_map, "eventName");
+            msgpack_print(Parameter_eventName_str, msgpack_get_obj_name(Parameter_eventName_str));
+            header = msgpack_strdup(Parameter_eventName_str);
 
-	    Parameter_component_str = msgpack_get_map_value(Parameter_array_map, "component");
-	    msgpack_print(Parameter_component_str, msgpack_get_obj_name(Parameter_component_str));
-	    content = msgpack_strdup(Parameter_component_str);
+            Parameter_component_str = msgpack_get_map_value(Parameter_array_map, "component");
+            msgpack_print(Parameter_component_str, msgpack_get_obj_name(Parameter_component_str));
+            content = msgpack_strdup(Parameter_component_str);
 
-	} else if (0 == msgpack_strcmp(Parameter_type_str, "grep")) {
+        }else if(0 == msgpack_strcmp(Parameter_type_str, "grep")) {
 
-	    Parameter_marker_str = msgpack_get_map_value(Parameter_array_map, "marker");
-	    msgpack_print(Parameter_marker_str, msgpack_get_obj_name(Parameter_marker_str));
-	    header = msgpack_strdup(Parameter_marker_str);
+            Parameter_marker_str = msgpack_get_map_value(Parameter_array_map, "marker");
+            msgpack_print(Parameter_marker_str, msgpack_get_obj_name(Parameter_marker_str));
+            header = msgpack_strdup(Parameter_marker_str);
 
-	    Parameter_search_str = msgpack_get_map_value(Parameter_array_map, "search");
-	    msgpack_print(Parameter_search_str, msgpack_get_obj_name(Parameter_search_str));
-	    content = msgpack_strdup(Parameter_search_str);
+            Parameter_search_str = msgpack_get_map_value(Parameter_array_map, "search");
+            msgpack_print(Parameter_search_str, msgpack_get_obj_name(Parameter_search_str));
+            content = msgpack_strdup(Parameter_search_str);
 
-	    Parameter_logFile_str = msgpack_get_map_value(Parameter_array_map, "logFile");
-	    msgpack_print(Parameter_logFile_str, msgpack_get_obj_name(Parameter_logFile_str));
-	    logfile = msgpack_strdup(Parameter_logFile_str);
+            Parameter_logFile_str = msgpack_get_map_value(Parameter_array_map, "logFile");
+            msgpack_print(Parameter_logFile_str, msgpack_get_obj_name(Parameter_logFile_str));
+            logfile = msgpack_strdup(Parameter_logFile_str);
 
-	}
-        else {
+        }else {
             T2Error("%s Unknown parameter type %s \n", __FUNCTION__, paramtype);
             free(paramtype);
             free(use);
             continue;
         }
-	ret = addParameter(profile, header, content, logfile, skipFrequency, paramtype, use, reportEmpty);
-	/* Add Multiple Report Profile Parameter */
-	if(T2ERROR_SUCCESS != ret) {
-	    T2Error("%s Error in adding parameter to profile %s \n", __FUNCTION__, profile->name);
-	} else {
-	    T2Debug("Added parameter:%s \n", header);
-	    profileParamCount++;
-	}
-	free(header);
-	free(content);
-	free(logfile);
-	free(use);
-	free(paramtype);
+        ret = addParameter(profile, header, content, logfile, skipFrequency, paramtype, use, reportEmpty);
+        /* Add Multiple Report Profile Parameter */
+        if(T2ERROR_SUCCESS != ret) {
+            T2Error("%s Error in adding parameter to profile %s \n", __FUNCTION__, profile->name);
+        }else {
+            T2Debug("Added parameter:%s \n", header);
+            profileParamCount++;
+        }
+        free(header);
+        free(content);
+        free(logfile);
+        free(use);
+        free(paramtype);
     }
     T2Debug("Added parameter count:%d \n", profileParamCount);
 
@@ -899,37 +900,36 @@ T2ERROR processMsgPackConfiguration(msgpack_object *profiles_array_map, Profile 
     RequestURIParameter_array = msgpack_get_map_value(HTTP_map, "RequestURIParameter");
     int httpParamCount = 0;
     MSGPACK_GET_ARRAY_SIZE(RequestURIParameter_array, RequestURIParameter_array_size);
-    for ( i = 0; i < RequestURIParameter_array_size; i++) {
-	char* href;
-	char* hname;
-	int httpret = 0;
+    for( i = 0; i < RequestURIParameter_array_size; i++ ) {
+        char* href;
+        char* hname;
+        int httpret = 0;
 
-	href = NULL;
-	hname = NULL;
-	RequestURIParameter_array_map = msgpack_get_array_element(RequestURIParameter_array, i);
+        href = NULL;
+        hname = NULL;
+        RequestURIParameter_array_map = msgpack_get_array_element(RequestURIParameter_array, i);
 
-	RequestURIParameter_Reference_str = msgpack_get_map_value(RequestURIParameter_array_map,
-								  "Reference");
-	msgpack_print(RequestURIParameter_Reference_str,
-		      msgpack_get_obj_name(RequestURIParameter_Reference_str));
-	href = msgpack_strdup(RequestURIParameter_Reference_str);
+        RequestURIParameter_Reference_str = msgpack_get_map_value(RequestURIParameter_array_map, "Reference");
+        msgpack_print(RequestURIParameter_Reference_str, msgpack_get_obj_name(RequestURIParameter_Reference_str));
+        href = msgpack_strdup(RequestURIParameter_Reference_str);
+        if(NULL == href) {
 
-	RequestURIParameter_Name_str = msgpack_get_map_value(RequestURIParameter_array_map, "Name");
-	msgpack_print(RequestURIParameter_Name_str, msgpack_get_obj_name(RequestURIParameter_Name_str));
-	hname = msgpack_strdup(RequestURIParameter_Name_str);
-	if(NULL == hname)
-	    hname = msgpack_strdup(RequestURIParameter_Reference_str);
+            RequestURIParameter_Name_str = msgpack_get_map_value(RequestURIParameter_array_map, "Name");
+            msgpack_print(RequestURIParameter_Name_str, msgpack_get_obj_name(RequestURIParameter_Name_str));
+            hname = msgpack_strdup(RequestURIParameter_Name_str);
+            if(NULL == hname)
+                hname = msgpack_strdup(RequestURIParameter_Reference_str);
 
-	httpret = addhttpURIreqParameter(profile, hname, href);
-	if(T2ERROR_SUCCESS != httpret) {
-	    T2Error("%s Error in adding request URIparameterReference: %s for the profile: %s \n",
-		    __FUNCTION__, href, profile->name);
-	} else {
-	    T2Debug("Added  request URIparameterReference: %s \n", href);
-	    httpParamCount++;
-	}
-	free(href);
-	free(hname);
+            httpret = addhttpURIreqParameter(profile, hname, href);
+            if(T2ERROR_SUCCESS != httpret) {
+                T2Error("%s Error in adding request URIparameterReference: %s for the profile: %s \n", __FUNCTION__, href, profile->name);
+            }else {
+                T2Debug("Added  request URIparameterReference: %s \n", href);
+                httpParamCount++;
+            }
+        }
+        free(href);
+        free(hname);
     }
     T2Debug("Added URI parameter count:%d \n", httpParamCount);
 
@@ -938,23 +938,23 @@ T2ERROR processMsgPackConfiguration(msgpack_object *profiles_array_map, Profile 
     ReportFormat_str = msgpack_get_map_value(JSONEncoding_map, "ReportFormat");
     msgpack_print(ReportFormat_str, msgpack_get_obj_name(ReportFormat_str));
     if(0 == msgpack_strcmp(ReportFormat_str, "NameValuePair")) {
-	profile->jsonEncoding->reportFormat = JSONRF_KEYVALUEPAIR;
+        profile->jsonEncoding->reportFormat = JSONRF_KEYVALUEPAIR;
     }else if(0 == msgpack_strcmp(ReportFormat_str, "ObjectHierarchy")) {
-	profile->jsonEncoding->reportFormat = JSONRF_OBJHIERARCHY;
+        profile->jsonEncoding->reportFormat = JSONRF_OBJHIERARCHY;
     }else { /* defaulting it to NameValuePair */
-	profile->jsonEncoding->reportFormat = JSONRF_KEYVALUEPAIR;
+        profile->jsonEncoding->reportFormat = JSONRF_KEYVALUEPAIR;
     }
 
     ReportTimestamp_str = msgpack_get_map_value(JSONEncoding_map, "ReportTimestamp");
     msgpack_print(ReportTimestamp_str, msgpack_get_obj_name(ReportTimestamp_str));
     if(0 == msgpack_strcmp(ReportTimestamp_str, "None")) {
-	profile->jsonEncoding->tsFormat = TIMESTAMP_NONE;
+        profile->jsonEncoding->tsFormat = TIMESTAMP_NONE;
     }else if(0 == msgpack_strcmp(ReportTimestamp_str, "Unix-Epoch")) {
-	profile->jsonEncoding->tsFormat = TIMESTAMP_UNIXEPOCH;
+        profile->jsonEncoding->tsFormat = TIMESTAMP_UNIXEPOCH;
     }else if(0 == msgpack_strcmp(ReportTimestamp_str, "ISO-8601")) {
-	profile->jsonEncoding->tsFormat = TIMESTAMP_ISO_8601;
+        profile->jsonEncoding->tsFormat = TIMESTAMP_ISO_8601;
     }else {/*default value for profile->jsonEncoding->tsFormat is None */
-	profile->jsonEncoding->tsFormat = TIMESTAMP_NONE;
+        profile->jsonEncoding->tsFormat = TIMESTAMP_NONE;
     }
 
     *profile_dp = profile;

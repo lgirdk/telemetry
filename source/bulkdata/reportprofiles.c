@@ -336,11 +336,7 @@ T2ERROR initReportProfiles()
 #endif
             {
                 T2Debug("Enabling datamodel for report profiles in RBUS mode \n");
-                #if defined(FEATURE_SUPPORT_WEBCONFIG)
                 regDEforProfileDataModel(datamodel_processProfile, datamodel_MsgpackProcessProfile);
-                #else
-                regDEforProfileDataModel(datamodel_processProfile, NULL);
-                #endif
             }
 #if defined(CCSP_SUPPORT_ENABLED)
             else {
@@ -661,6 +657,8 @@ void msgpack_free_blob(void *exec_data)
     free(execDataPf);
 }
 
+#endif
+
 void __msgpack_free_blob(void *user_data)
 {
     struct __msgpack__ *msgpack = (struct __msgpack__ *)user_data;
@@ -675,12 +673,12 @@ void ReportProfiles_ProcessReportProfilesMsgPackBlob(char *msgpack_blob , int ms
     int entry_count=0;
     struct __msgpack__ *msgpack = malloc(sizeof(struct __msgpack__));
     if (NULL == msgpack) {
-	T2Error("Insufficient memory at Line %d on %s \n", __LINE__, __FILE__);
-	return;
+        T2Error("Insufficient memory at Line %d on %s \n", __LINE__, __FILE__);
+        return;
     }
     msgpack->msgpack_blob = msgpack_blob;
     msgpack->msgpack_blob_size = msgpack_blob_size;
-    
+
     T2Debug("%s ++in\n", __FUNCTION__);
     msgpack_unpacked result;
     size_t off = 0;
@@ -691,23 +689,23 @@ void ReportProfiles_ProcessReportProfilesMsgPackBlob(char *msgpack_blob , int ms
     msgpack_object *profilesArray;
 
     msgpack_object *subdoc_name, *transaction_id, *version;
-    execData *execDataPf = NULL ;
+
     msgpack_unpacked_init(&result);
     ret = msgpack_unpack_next(&result, msgpack_blob, msgpack_blob_size, &off);
     if (ret != MSGPACK_UNPACK_SUCCESS) {
-	T2Error("The data in the buf is invalid format.\n");
-	__msgpack_free_blob((void *)msgpack);
-	msgpack_unpacked_destroy(&result);
-	T2Debug("%s --out\n", __FUNCTION__);
-	return;
+        T2Error("The data in the buf is invalid format.\n");
+        __msgpack_free_blob((void *)msgpack);
+        msgpack_unpacked_destroy(&result);
+        T2Debug("%s --out\n", __FUNCTION__);
+        return;
     }
-    profiles_root =  &result.data;
+    profiles_root = &result.data;
     if(profiles_root == NULL) {
         T2Error("Profile profiles_root is null . Unable to ReportProfiles_ProcessReportProfilesBlob \n");
-	__msgpack_free_blob((void *)msgpack);
-	msgpack_unpacked_destroy(&result);
-	T2Debug("%s --out\n", __FUNCTION__);
-	return;
+        __msgpack_free_blob((void *)msgpack);
+        msgpack_unpacked_destroy(&result);
+        T2Debug("%s --out\n", __FUNCTION__);
+        return;
     }
 
     subdoc_name = msgpack_get_map_value(profiles_root, "subdoc_name");
@@ -724,12 +722,16 @@ void ReportProfiles_ProcessReportProfilesMsgPackBlob(char *msgpack_blob , int ms
     if (NULL == subdoc_name && NULL == transaction_id && NULL == version) {
         /* dmcli flow */
         __ReportProfiles_ProcessReportProfilesMsgPackBlob((void *)msgpack);
-	__msgpack_free_blob((void *)msgpack);
-	msgpack_unpacked_destroy(&result);
-	T2Debug("%s --out\n", __FUNCTION__);
-	return;
+        __msgpack_free_blob((void *)msgpack);
+        msgpack_unpacked_destroy(&result);
+        T2Debug("%s --out\n", __FUNCTION__);
+        /* Return - further processing are only for webconfig framework which yet to be ported to generic layer from broadband */
+        return;
     }
+
+#if defined(FEATURE_SUPPORT_WEBCONFIG)
     /* webconfig flow */
+    execData *execDataPf = NULL;
     subdoc_version=(uint64_t)version->via.u64;
     transac_id=(uint16_t)transaction_id->via.u64;
     T2Debug("subdocversion is %llu transac_id in integer is %u"
@@ -738,10 +740,10 @@ void ReportProfiles_ProcessReportProfilesMsgPackBlob(char *msgpack_blob , int ms
     execDataPf = (execData*) malloc (sizeof(execData));
     if ( NULL == execDataPf ) {
         T2Error("execData memory allocation failed\n");
-	__msgpack_free_blob((void *)msgpack);
-	msgpack_unpacked_destroy(&result);
-	T2Debug("%s --out\n", __FUNCTION__);
-	return;
+        __msgpack_free_blob((void *)msgpack);
+        msgpack_unpacked_destroy(&result);
+        T2Debug("%s --out\n", __FUNCTION__);
+        return;
     }
     memset(execDataPf, 0, sizeof(execData));
     strncpy(execDataPf->subdoc_name,"telemetry",sizeof(execDataPf->subdoc_name)-1);
@@ -760,6 +762,8 @@ void ReportProfiles_ProcessReportProfilesMsgPackBlob(char *msgpack_blob , int ms
     PushBlobRequest(execDataPf);
     T2Debug("PushBlobRequest complete\n");
     msgpack_unpacked_destroy(&result);
+#endif
+
     T2Debug("%s --out\n", __FUNCTION__);
     return;
 }
@@ -768,7 +772,7 @@ int __ReportProfiles_ProcessReportProfilesMsgPackBlob(void *msgpack)
 {
     char *msgpack_blob = ((struct __msgpack__ *)msgpack)->msgpack_blob;
     int msgpack_blob_size = ((struct __msgpack__ *)msgpack)->msgpack_blob_size;
-    
+
     T2Debug("%s ++in\n", __FUNCTION__);
     msgpack_unpacked result;
     size_t off = 0;
@@ -781,10 +785,10 @@ int __ReportProfiles_ProcessReportProfilesMsgPackBlob(void *msgpack)
     msgpack_unpacked_init(&result);
     ret = msgpack_unpack_next(&result, msgpack_blob, msgpack_blob_size, &off);
     if (ret != MSGPACK_UNPACK_SUCCESS) {
-	T2Error("The data in the buf is invalid format.\n");
+        T2Error("The data in the buf is invalid format.\n");
         return T2ERROR_INVALID_ARGS;
     }
-    profiles_root =  &result.data;
+    profiles_root = &result.data;
     if(profiles_root == NULL) {
         T2Error("Profile profiles_root is null . Unable to ReportProfiles_ProcessReportProfilesBlob \n");
         T2Debug("%s --out\n", __FUNCTION__);
@@ -798,7 +802,7 @@ int __ReportProfiles_ProcessReportProfilesMsgPackBlob(void *msgpack)
     if(profiles_count == 0) {
         T2Debug("Empty report profiles in configuration. Delete all active profiles. \n");
         if (T2ERROR_SUCCESS != deleteAllReportProfiles())
-            T2Error("Failed to delete all profiles \n");
+        T2Error("Failed to delete all profiles \n");
         T2Debug("%s --out\n", __FUNCTION__);
         return T2ERROR_PROFILE_NOT_FOUND;
     }
@@ -809,32 +813,32 @@ int __ReportProfiles_ProcessReportProfilesMsgPackBlob(void *msgpack)
     msgpack_object *singleProfile;
     bool profile_found_flag = false;
     bool save_flag = false;
-    
+
     profileHashMap = getProfileHashMap();
 
-/* Delete profiles not present in the new profile list */
+    /* Delete profiles not present in the new profile list */
     count = hash_map_count(profileHashMap) - 1;
     while(count >= 0) {
-	profile_found_flag = false;
-	profileNameKey = hash_map_lookupKey(profileHashMap, count--);
-	for( profileIndex = 0; profileIndex < profiles_count; profileIndex++ ) {
-	    singleProfile = msgpack_get_array_element(profilesArray, profileIndex);
-	    msgpack_object* nameObj = msgpack_get_map_value(singleProfile, "name");
-	    if (0 == msgpack_strcmp(nameObj, profileNameKey)) {
-		T2Info("%s is found \n",profileNameKey);
-		profile_found_flag = true;
-		break;
-	    }
-	}
-	if (false == profile_found_flag) {
-	    ReportProfiles_deleteProfile(profileNameKey);
-	    save_flag = true;
-	}
+        profile_found_flag = false;
+        profileNameKey = hash_map_lookupKey(profileHashMap, count--);
+        for( profileIndex = 0; profileIndex < profiles_count; profileIndex++ ) {
+            singleProfile = msgpack_get_array_element(profilesArray, profileIndex);
+            msgpack_object* nameObj = msgpack_get_map_value(singleProfile, "name");
+            if (0 == msgpack_strcmp(nameObj, profileNameKey)) {
+                T2Info("%s is found \n",profileNameKey);
+                profile_found_flag = true;
+                break;
+            }
+        }
+        if (false == profile_found_flag) {
+            ReportProfiles_deleteProfile(profileNameKey);
+            save_flag = true;
+        }
     }
 
-/* Populate profile hash map for current configuration */
+    /* Populate profile hash map for current configuration */
     for( profileIndex = 0; profileIndex < profiles_count; profileIndex++ ) {
-	singleProfile = msgpack_get_array_element(profilesArray, profileIndex);
+        singleProfile = msgpack_get_array_element(profilesArray, profileIndex);
         if(singleProfile == NULL) {
             T2Error("Incomplete profile information, unable to create profile for index %d \n", profileIndex);
             continue;
@@ -842,45 +846,44 @@ int __ReportProfiles_ProcessReportProfilesMsgPackBlob(void *msgpack)
         msgpack_object* nameObj = msgpack_get_map_value(singleProfile, "name");
         msgpack_object* hashObj = msgpack_get_map_value(singleProfile, "hash");
         msgpack_object* profileObj = msgpack_get_map_value(singleProfile, "value");
-	if(nameObj == NULL || hashObj == NULL || profileObj == NULL) {
+        if(nameObj == NULL || hashObj == NULL || profileObj == NULL) {
             T2Error("Incomplete profile object information, unable to create profile\n");
             continue;
         }
 
-	char* profileName = NULL;
-	char *existingProfileHash = NULL;
-	Profile *profile = NULL;
+        char* profileName = NULL;
+        char *existingProfileHash = NULL;
+        Profile *profile = NULL;
         profileName = msgpack_strdup(nameObj);
-	existingProfileHash = hash_map_remove(profileHashMap, profileName);
+        existingProfileHash = hash_map_remove(profileHashMap, profileName);
         if(NULL == existingProfileHash) {
-	    if(T2ERROR_SUCCESS == processMsgPackConfiguration(singleProfile, &profile)) {
-		ReportProfiles_addReportProfile(profile);
-		save_flag = true;
-	    }
-	} else {
+            if(T2ERROR_SUCCESS == processMsgPackConfiguration(singleProfile, &profile)) {
+                ReportProfiles_addReportProfile(profile);
+                save_flag = true;
+            }
+        } else {
             if(0 == msgpack_strcmp(hashObj, existingProfileHash)) {
-		T2Info("Profile %s with %s hash already exist \n", profileName, existingProfileHash);
-		continue;
+                T2Info("Profile %s with %s hash already exist \n", profileName, existingProfileHash);
+                continue;
             } else {
-		if(T2ERROR_SUCCESS == processMsgPackConfiguration(singleProfile, &profile))
-                    if(T2ERROR_SUCCESS == ReportProfiles_deleteProfile(profile->name)) {
-                        ReportProfiles_addReportProfile(profile);
-			save_flag = true;
-		    }
-	    }
-	}
-	free(profileName);
+                if(T2ERROR_SUCCESS == processMsgPackConfiguration(singleProfile, &profile))
+                if(T2ERROR_SUCCESS == ReportProfiles_deleteProfile(profile->name)) {
+                    ReportProfiles_addReportProfile(profile);
+                    save_flag = true;
+                }
+            }
+        }
+        free(profileName);
     } /* End of looping through report profiles */
     if (save_flag) {
-	clearPersistenceFolder(REPORTPROFILES_PERSISTENCE_PATH);
-	T2Debug("Persistent folder is cleared\n");
-	MsgPackSaveConfig(REPORTPROFILES_PERSISTENCE_PATH, MSGPACK_REPORTPROFILES_PERSISTENT_FILE,
-			  msgpack_blob , msgpack_blob_size);
-	T2Debug("%s is saved on disk \n", MSGPACK_REPORTPROFILES_PERSISTENT_FILE);
+        clearPersistenceFolder(REPORTPROFILES_PERSISTENCE_PATH);
+        T2Debug("Persistent folder is cleared\n");
+        MsgPackSaveConfig(REPORTPROFILES_PERSISTENCE_PATH, MSGPACK_REPORTPROFILES_PERSISTENT_FILE,
+                msgpack_blob , msgpack_blob_size);
+        T2Debug("%s is saved on disk \n", MSGPACK_REPORTPROFILES_PERSISTENT_FILE);
     }
     msgpack_unpacked_destroy(&result);
     hash_map_destroy(profileHashMap, freeProfilesHashMap);
     T2Debug("%s --out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;
 }
-#endif

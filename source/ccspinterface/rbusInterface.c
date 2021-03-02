@@ -26,9 +26,8 @@
 #include <rbus/rbus_value.h>
 #include <stdlib.h>
 
-#if defined(FEATURE_SUPPORT_WEBCONFIG)
-#include <ansc_platform.h>
-#endif
+#include <glib.h>
+#include <glib/gi18n.h>
 
 #include "t2collection.h"
 #include "t2common.h"
@@ -286,15 +285,19 @@ rbusError_t t2PropertyDataSetHandler(rbusHandle_t handle, rbusProperty_t prop, r
             return RBUS_ERROR_ELEMENT_DOES_NOT_EXIST;
         }
 
-        #if defined(FEATURE_SUPPORT_WEBCONFIG)
         if(type_t == RBUS_STRING) {
             char* data = rbusValue_ToString(paramValue_t, NULL, 0);
-            char *webConfigString = NULL;
-            int stringSize = 0;
+            guchar *webConfigString = NULL;
+            gsize decodedDataLen = 0;
             if(data) {
                 T2Debug("Call datamodel function  with data %s \n", data);
-                webConfigString = AnscBase64Decode(data, &stringSize);
-                if(T2ERROR_SUCCESS != dmMsgPckProcessingCallBack(webConfigString, stringSize))
+                webConfigString = g_base64_decode(data, &decodedDataLen);
+                if(NULL == webConfigString ||  0 == decodedDataLen ){
+                    T2Error("Invalid base64 input string. Ignore processing input configuration.\n");
+                    return RBUS_ERROR_INVALID_INPUT;
+                }
+
+                if(T2ERROR_SUCCESS != dmMsgPckProcessingCallBack((char *)webConfigString, decodedDataLen))
                 {
                     free(data);
                     return RBUS_ERROR_INVALID_INPUT;
@@ -314,7 +317,6 @@ rbusError_t t2PropertyDataSetHandler(rbusHandle_t handle, rbusProperty_t prop, r
         } else {
             T2Debug("Unexpected value type for property %s \n", paramName);
         }
-      #endif
     }
     T2Debug("%s --out\n", __FUNCTION__);
     return RBUS_ERROR_SUCCESS;

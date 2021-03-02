@@ -33,12 +33,10 @@ static queue_t            *rpQueue = NULL;
 static pthread_t          rpThread;
 static pthread_mutex_t    rpMutex;
 static pthread_cond_t     rpCond;
-#if defined(FEATURE_SUPPORT_WEBCONFIG)
 static queue_t            *rpMsgPkgQueue = NULL;
 static pthread_t          rpMsgThread;
 static pthread_mutex_t    rpMsgMutex;
 static pthread_cond_t     msg_Cond;
-#endif
 
 /**
  * Thread function to receive report profiles Json object
@@ -72,7 +70,6 @@ static void *process_rp_thread(void *data)
     return NULL;
 }
 
-#if defined(FEATURE_SUPPORT_WEBCONFIG)
 static void *process_msg_thread(void *data)
 {
     struct __msgpack__ *msgpack;
@@ -92,7 +89,6 @@ static void *process_msg_thread(void *data)
     }
     return NULL;
 }
-#endif
 
 /* Description:
  *      The API validate JSON format and check if 'profiles' field is present in JSON data.
@@ -134,7 +130,6 @@ T2ERROR datamodel_processProfile(char *JsonBlob)
     return T2ERROR_SUCCESS;
 }
 
-#if defined(FEATURE_SUPPORT_WEBCONFIG)
 T2ERROR datamodel_MsgpackProcessProfile(char *str , int strSize)
 {	
     struct __msgpack__ *msgpack;
@@ -162,7 +157,6 @@ T2ERROR datamodel_MsgpackProcessProfile(char *str , int strSize)
     pthread_mutex_unlock(&rpMsgMutex);
     return T2ERROR_SUCCESS;
 }
-#endif
 
 /* Description:
  *      This API initializes message queue.
@@ -180,28 +174,22 @@ T2ERROR datamodel_init(void)
         T2Error("Failed to create report profile Queue\n");
         return T2ERROR_FAILURE;
     }
-#if defined(FEATURE_SUPPORT_WEBCONFIG)
     rpMsgPkgQueue = queue_create();
     if (rpMsgPkgQueue == NULL)
     {
         T2Error("Failed to create Msg Pck report profile Queue\n");
         return T2ERROR_FAILURE;
     }
-#endif
     pthread_mutex_init(&rpMutex, NULL);
     pthread_cond_init(&rpCond, NULL);
-#if defined(FEATURE_SUPPORT_WEBCONFIG)
     pthread_mutex_init(&rpMsgMutex, NULL);
     pthread_cond_init(&msg_Cond, NULL);
-#endif
 
     pthread_mutex_lock(&rpMutex);
     stopProcessing = false;
     pthread_mutex_unlock(&rpMutex);
     pthread_create(&rpThread, NULL, process_rp_thread, (void *)NULL);
-#if defined(FEATURE_SUPPORT_WEBCONFIG)
     pthread_create(&rpMsgThread, NULL, process_msg_thread, (void *)NULL);
-#endif
     T2Debug("%s --out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;
 }
@@ -214,19 +202,15 @@ void datamodel_unInit(void)
     stopProcessing = true;
     pthread_cond_signal(&rpCond);
     pthread_mutex_unlock(&rpMutex);
-#if defined(FEATURE_SUPPORT_WEBCONFIG)
     pthread_mutex_lock(&rpMsgMutex);
     pthread_cond_signal(&msg_Cond);
     pthread_mutex_unlock(&rpMsgMutex);
-#endif
     pthread_join(rpThread, NULL);
     pthread_mutex_destroy(&rpMutex);
     pthread_cond_destroy(&rpCond);
-#if defined(FEATURE_SUPPORT_WEBCONFIG)
     pthread_join(rpMsgThread, NULL);
     pthread_mutex_destroy(&rpMsgMutex);
     pthread_cond_destroy(&msg_Cond);
-#endif
 
     T2Debug("%s --out\n", __FUNCTION__);
 }

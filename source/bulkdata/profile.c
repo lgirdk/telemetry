@@ -572,7 +572,10 @@ T2ERROR deleteAllProfiles(void) {
         if (Vector_Size(tempProfile->gMarkerList) > 0)
             removeGrepConfig(tempProfile->name);
         pthread_mutex_unlock(&plMutex);
+
+        removeProfileFromDisk(REPORTPROFILES_PERSISTENCE_PATH, tempProfile->name);
     }
+    removeProfileFromDisk(REPORTPROFILES_PERSISTENCE_PATH, MSGPACK_REPORTPROFILES_PERSISTENT_FILE);
 
     pthread_mutex_lock(&plMutex);
     T2Debug("Deleting all profiles from the profileList\n");

@@ -64,7 +64,7 @@ void T2ER_PushDataWithDelim(char* eventInfo, char* user_data)
         else
         {
             pthread_mutex_lock(&erMutex);
-            if(queue_count(eQueue) > T2EVENTQUEUE_MAX_LIMIT)
+            if(t2_queue_count(eQueue) > T2EVENTQUEUE_MAX_LIMIT)
             {
                 T2Warning("T2EventQueue max limit : %d reached, dropping packet\n", T2EVENTQUEUE_MAX_LIMIT);
             }
@@ -81,7 +81,7 @@ void T2ER_PushDataWithDelim(char* eventInfo, char* user_data)
                     {
                         event->value = strdup(token);
                         T2Debug("Adding eventName : %s eventValue : %s to t2event queue\n", event->name, event->value);
-                        queue_push(eQueue, (void *)event);
+                        t2_queue_push(eQueue, (void *)event);
                         if(!stopDispatchThread)
                             pthread_cond_signal(&erCond);
                     }
@@ -115,7 +115,7 @@ void T2ER_Push(char* eventName, char* eventValue) {
             T2Error("EventName or EventValue is NULL, ignoring the notification\n");
         }else {
             pthread_mutex_lock(&erMutex);
-            if(queue_count(eQueue) > T2EVENTQUEUE_MAX_LIMIT) {
+            if(t2_queue_count(eQueue) > T2EVENTQUEUE_MAX_LIMIT) {
                 T2Warning("T2EventQueue max limit : %d reached, dropping packet\n", T2EVENTQUEUE_MAX_LIMIT);
             }else {
                 T2Debug("Received eventInfo : %s value : %s\n", eventName, (char* ) eventValue);
@@ -124,7 +124,7 @@ void T2ER_Push(char* eventName, char* eventValue) {
                     event->name = strdup(eventName);
                     event->value = strdup(eventValue);
                     T2Debug("Adding eventName : %s eventValue : %s to t2event queue\n", event->name, event->value);
-                    queue_push(eQueue, (void *) event);
+                    t2_queue_push(eQueue, (void *) event);
                     if(!stopDispatchThread)
                         pthread_cond_signal(&erCond);
                 }
@@ -147,10 +147,10 @@ void* T2ER_EventDispatchThread(void *arg)
     while(!stopDispatchThread)
     {
         pthread_mutex_lock(&erMutex);
-        T2Debug("Checking for events in event queue , event count = %d\n", queue_count(eQueue));
-        if(queue_count(eQueue) > 0)
+        T2Debug("Checking for events in event queue , event count = %d\n", t2_queue_count(eQueue));
+        if(t2_queue_count(eQueue) > 0)
         {
-            T2Event *event = (T2Event *)queue_pop(eQueue);
+            T2Event *event = (T2Event *)t2_queue_pop(eQueue);
             if(event == NULL)
             {
                 T2Error("event data in queue points to NULL\n");
@@ -197,7 +197,7 @@ T2ERROR T2ER_Init()
         T2Debug("T2ER already initialized, ignoring\n");
         return T2ERROR_SUCCESS;
     }
-    eQueue = queue_create();
+    eQueue = t2_queue_create();
     if(eQueue == NULL)
     {
         T2Error("Failed to create Event Receiver Queue\n");
@@ -348,7 +348,7 @@ void T2ER_Uninit()
         pthread_cond_destroy(&erCond);
     }
     T2Debug("T2ER Event Dispatch Thread successfully terminated\n");
-    queue_destroy(eQueue, freeT2Event);
+    t2_queue_destroy(eQueue, freeT2Event);
     eQueue = NULL;
     T2Debug("%s --out\n", __FUNCTION__);
 }

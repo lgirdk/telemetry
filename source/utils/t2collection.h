@@ -47,13 +47,13 @@ typedef struct{
 typedef void (*queue_cleanup)(void *);
 
 // queue operations
-queue_t *queue_create(void);
-void queue_destroy(queue_t *q, queue_cleanup freeItem);
-int8_t queue_push(queue_t *q, void *data);
-void *queue_pop(queue_t *q);
-void *queue_remove(queue_t *q, uint32_t n);
-void *queue_peek(queue_t *q, uint32_t n);
-uint32_t queue_count(queue_t *q);
+queue_t *t2_queue_create(void);
+void t2_queue_destroy(queue_t *q, queue_cleanup freeItem);
+int8_t t2_queue_push(queue_t *q, void *data);
+void *t2_queue_pop(queue_t *q);
+void *t2_queue_remove(queue_t *q, uint32_t n);
+void *t2_queue_peek(queue_t *q, uint32_t n);
+uint32_t t2_queue_count(queue_t *q);
 
 
 // hash map operations, currently hash map is flat there are no buckets

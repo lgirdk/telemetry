@@ -54,9 +54,9 @@ static void *process_rp_thread(void *data)
         pthread_cond_wait(&rpCond, &rpMutex);
 
         T2Debug("%s: Received wake up signal \n", __FUNCTION__);
-        if(queue_count(rpQueue) > 0)
+        if(t2_queue_count(rpQueue) > 0)
         {
-            reportProfiles = (cJSON *)queue_pop(rpQueue);
+            reportProfiles = (cJSON *)t2_queue_pop(rpQueue);
             if (reportProfiles)
             {
                 ReportProfiles_ProcessReportProfilesBlob(reportProfiles);
@@ -77,9 +77,9 @@ static void *process_msg_thread(void *data)
     {	
     	pthread_mutex_lock(&rpMsgMutex);
         pthread_cond_wait(&msg_Cond, &rpMsgMutex);
-	if(queue_count(rpMsgPkgQueue) > 0)
+	if(t2_queue_count(rpMsgPkgQueue) > 0)
         {
-            msgpack = (struct __msgpack__ *)queue_pop(rpMsgPkgQueue);
+            msgpack = (struct __msgpack__ *)t2_queue_pop(rpMsgPkgQueue);
             if (msgpack)
             {
         	ReportProfiles_ProcessReportProfilesMsgPackBlob(msgpack->msgpack_blob,msgpack->msgpack_blob_size);
@@ -118,7 +118,7 @@ T2ERROR datamodel_processProfile(char *JsonBlob)
     pthread_mutex_lock(&rpMutex);
     if (!stopProcessing)
     {
-        queue_push(rpQueue, (void *)rootObj);
+        t2_queue_push(rpQueue, (void *)rootObj);
         pthread_cond_signal(&rpCond);
     }
     else
@@ -145,7 +145,7 @@ T2ERROR datamodel_MsgpackProcessProfile(char *str , int strSize)
     pthread_mutex_lock(&rpMsgMutex);
     if (!stopProcessing)
     {
-       queue_push(rpMsgPkgQueue, (void *)msgpack);
+       t2_queue_push(rpMsgPkgQueue, (void *)msgpack);
        pthread_cond_signal(&msg_Cond);
     }
     else
@@ -167,14 +167,13 @@ T2ERROR datamodel_MsgpackProcessProfile(char *str , int strSize)
 T2ERROR datamodel_init(void)
 {
     T2Debug("%s ++in\n", __FUNCTION__);
-
-    rpQueue = queue_create();
+    rpQueue = t2_queue_create();
     if (rpQueue == NULL)
     {
         T2Error("Failed to create report profile Queue\n");
         return T2ERROR_FAILURE;
     }
-    rpMsgPkgQueue = queue_create();
+    rpMsgPkgQueue = t2_queue_create();
     if (rpMsgPkgQueue == NULL)
     {
         T2Error("Failed to create Msg Pck report profile Queue\n");

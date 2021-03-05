@@ -79,6 +79,9 @@ MAX_SSH_RETRY=3
 TELEMETRY_ER_READY="/tmp/.t2ReadyToReceiveEvents"
 TELEMETRY_GREP_PROFILE_NAME="/tmp/t2ProfileName"
 
+ARM_INTERFACE_IP="192.168.254.253"
+ATOM_INTERFACE_IP="192.168.254.254"
+
 ############ End global variables ############
 
 

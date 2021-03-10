@@ -1175,6 +1175,19 @@ T2ERROR processMsgPackConfiguration(msgpack_object *profiles_array_map, Profile 
         msgpack_print(ActivationTimeout_u64, msgpack_get_obj_name(ActivationTimeout_u64));
         MSGPACK_GET_NUMBER(ActivationTimeout_u64, profile->activationTimeoutPeriod);
         T2Debug("profile->activationTimeoutPeriod: %u\n", profile->activationTimeoutPeriod);
+
+        if (ReportingInterval_u64 && ActivationTimeout_u64 &&
+                profile->activationTimeoutPeriod < profile->reportingInterval) {
+
+            T2Error("activationTimeoutPeriod is less than reporting interval. invalid profile: %s \n", profile->name);
+            free(profile->name);
+            free(profile->hash);
+            free(profile->t2HTTPDest);
+            free(profile->Description);
+            free(profile->version);
+            free(profile);
+            return T2ERROR_FAILURE;
+        }
     }
 
     TimeReference_str = msgpack_get_map_value(value_map, "TimeReference");

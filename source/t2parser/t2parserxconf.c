@@ -224,11 +224,23 @@ T2ERROR processConfigurationXConf(char* configData, ProfileXConf **localProfile)
 
         cJSON* pSubitem = cJSON_GetArrayItem(profileData, markerIndex);
         if (pSubitem != NULL) {
-            header = cJSON_GetObjectItem(pSubitem, "header")->valuestring;
-            content = cJSON_GetObjectItem(pSubitem, "content")->valuestring;
-            logfile = cJSON_GetObjectItem(pSubitem, "type")->valuestring;
-            skipFrequency = atoi(cJSON_GetObjectItem(pSubitem, "pollingFrequency")->valuestring);
-            // TODO Revisit later Probably additional filed for component - depends on agreement with XAPPS folks - No change in plan for now
+            cJSON* jHeader = cJSON_GetObjectItem(pSubitem, "header");
+            cJSON* jContent = cJSON_GetObjectItem(pSubitem, "content");
+            cJSON* jLogfile = cJSON_GetObjectItem(pSubitem, "type");
+            cJSON* jSkipFrequency = cJSON_GetObjectItem(pSubitem, "pollingFrequency");
+            if(jHeader)
+                header = jHeader->valuestring;
+
+            if(jContent)
+                content = jContent->valuestring;
+
+            if(jLogfile)
+                logfile = jLogfile->valuestring;
+
+            if(jSkipFrequency)
+                skipFrequency = atoi(jSkipFrequency->valuestring);
+            else
+                skipFrequency = 0 ;
 
             if(skipFrequency > 0)
             {

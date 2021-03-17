@@ -394,13 +394,12 @@ int getErrorCode(char *str, char *ec) {
  */
 static int handleRDKErrCodes(GList **rdkec_head, char *line) {
     T2Debug("%s ++in\n", __FUNCTION__);
-    char err_code[20] = { 0 }, rdkec[20] = { 0 };
+    char err_code[20] = { 0 }, rdkec[30] = { 0 };
     pcdata_t *tnode = NULL;
 
     getErrorCode(line, err_code);
-    int len = strlen(err_code);
     if(strcmp(err_code, "") != 0) {
-        snprintf(rdkec, RDK_EC_MAXLEN+len, "RDK-%s", err_code);
+        snprintf(rdkec, sizeof(rdkec), "RDK-%s", err_code);
         tnode = searchPCNode(*rdkec_head, rdkec);
         if(NULL != tnode) {
             tnode->count++;

@@ -19,22 +19,12 @@
 # limitations under the License.
 ####################################################################################
 
-#masking dmcli usage when rbus service is not running
-
 . /etc/device.properties
 
 T2_MSG_CLIENT=/usr/bin/telemetry2_0_client
-
 t2UpdateStatus() {
   if [ "$DEVICE_TYPE" = "broadband" ]; then
-     if [ -e /nvram/rbus_support ]; then
-         rbus_alive=`ps | grep /usr/bin/rtrouted | grep -vc grep`
-         if [ "$rbus_alive" -eq "1" ];then
-             IS_T2_ENABLED=`dmcli eRT getv Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.Telemetry.Enable | grep value | awk '{print $5}'`
-         fi
-     else
-         IS_T2_ENABLED=`dmcli eRT getv Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.Telemetry.Enable | grep value | awk '{print $5}'`
-     fi
+     IS_T2_ENABLED=`dmcli eRT getv Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.Telemetry.Enable | grep value | awk '{print $5}'`
   else
      IS_T2_ENABLED=`tr181 -g Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.Telemetry.Enable 2>&1`
   fi

@@ -186,7 +186,7 @@ static T2ERROR saveDcaGrepResults() {
             if (clearSeekMapPtr) {
                 isClearSeekMap = (atoi(clearSeekMapPtr) == 1 ? true : false);
             }
-            T2Error("%s: for Profile: %s, clearValue: %d \n", __func__, profileName, isClearSeekMap);
+            T2Debug("%s: for Profile: %s, clearValue: %d \n", __func__, profileName, isClearSeekMap);
         } else {
             T2Error("%s: profileName missing for grep result \n", __FUNCTION__);
         }

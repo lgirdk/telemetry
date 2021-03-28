@@ -454,7 +454,11 @@ char *getLogLine(hash_map_t *logSeekMap, char *buf, int buflen, char *name) {
         T2Debug("Path variables are empty");
         return NULL;
     }
-    int logname_len = strlen(LOG_PATH) + strlen(name) +1;
+    int logname_len = 0;
+    if(name[0] != '/')
+        logname_len = strlen(LOG_PATH) + strlen(name) +1;
+    else
+        logname_len = strlen(name) +1;
     if(NULL == pcurrentLogFile) {
         char *currentLogFile = NULL;
         long seek_value = 0;
@@ -463,7 +467,10 @@ char *getLogLine(hash_map_t *logSeekMap, char *buf, int buflen, char *name) {
 
 
         if(NULL != currentLogFile) {
-            snprintf(currentLogFile,logname_len, "%s%s", LOG_PATH, name);
+            if(name[0] != '/')
+                snprintf(currentLogFile,logname_len, "%s%s", LOG_PATH, name);
+            else
+                snprintf(currentLogFile,logname_len,"%s", name);
             if(0 != getLogSeekValue(logSeekMap, name, &seek_value)) {
                 pcurrentLogFile = fopen(currentLogFile, "rb");
                 free(currentLogFile);

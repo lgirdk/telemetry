@@ -370,16 +370,22 @@ char *getLogLine(hash_map_t *logSeekMap, char *buf, int buflen, char *name) {
         T2Debug("Path variables are empty");
         return NULL;
     }
-    int logname_len = strlen(LOG_PATH) + strlen(name) +1;
+
+    char *logpath = LOG_PATH;
+#if defined(_LG_OFW_)
+    /* If name is already an absolute path then prepend empty string instead of LOG_PATH */
+    if (name[0] == '/')
+        logpath = "";
+#endif
+    int logname_len = strlen(logpath) + strlen(name) +1;
     if(NULL == pcurrentLogFile) {
         char *currentLogFile = NULL;
         long seek_value = 0;
 
         currentLogFile = malloc(logname_len);
 
-
         if(NULL != currentLogFile) {
-            snprintf(currentLogFile,logname_len, "%s%s", LOG_PATH, name);
+            snprintf(currentLogFile,logname_len, "%s%s", logpath, name);
             if(0 != getLogSeekValue(logSeekMap, name, &seek_value)) {
                 pcurrentLogFile = fopen(currentLogFile, "rb");
                 free(currentLogFile);
@@ -414,7 +420,7 @@ char *getLogLine(hash_map_t *logSeekMap, char *buf, int buflen, char *name) {
                         int fileExtn_len = logname_len + strlen(fileExtn);
                         char * rotatedLog = malloc(fileExtn_len);
                         if(NULL != rotatedLog) {
-                            snprintf(rotatedLog, fileExtn_len, "%s%s%s", LOG_PATH, name, fileExtn);
+                            snprintf(rotatedLog, fileExtn_len, "%s%s%s", logpath, name, fileExtn);
 
                             fclose(pcurrentLogFile);
                             pcurrentLogFile = NULL;
@@ -455,7 +461,7 @@ char *getLogLine(hash_map_t *logSeekMap, char *buf, int buflen, char *name) {
                 is_rotated_log = 0;
                 curLog = malloc(logname_len);
                 if(NULL != curLog) {
-                    snprintf(curLog, logname_len, "%s%s", LOG_PATH, name);
+                    snprintf(curLog, logname_len, "%s%s", logpath, name);
                     pcurrentLogFile = fopen(curLog, "rb");
 
                     if(NULL == pcurrentLogFile) {

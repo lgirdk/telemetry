@@ -43,7 +43,6 @@
 #include "telemetry2_0.h"
 #include "busInterface.h"
 #include "curlinterface.h"
-#include "syscfg/syscfg.h"
 #include "t2commonutils.h"
 
 #define RFC_RETRY_TIMEOUT 60
@@ -580,28 +579,28 @@ static T2ERROR doHttpGet(char* httpsUrl, char **data) {
             curl_code = curl_easy_perform(curl);
             curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
             snprintf(buf,sizeof(buf),"%d",http_code);
-            if (syscfg_set(NULL, "dcm_httpStatus", buf) == 0) 
+            if (telemetry_syscfg_set("dcm_httpStatus", buf) == 0)
             {
                T2Info("dcm_httpStatus set successfully\n");
             }
             if (http_code == 200)
             {
-               syscfg_set(NULL, "dcm_httpStatusString", "OK");
+               telemetry_syscfg_set("dcm_httpStatusString", "OK");
             }
             else
             {
-               syscfg_set(NULL, "dcm_httpStatusString", errbuf);
+               telemetry_syscfg_set("dcm_httpStatusString", errbuf);
             }
 
             Timestamp_Status = getcurrenttime(current_time, sizeof(current_time));
             if (Timestamp_Status != 0)
             {
                T2Error("Failed to fetch current dcm_lastAttemptTimestamp\n");
-               syscfg_set(NULL, "dcm_lastAttemptTimestamp", "");
+               telemetry_syscfg_set("dcm_lastAttemptTimestamp", "");
             }
             else
             {
-               if (syscfg_set(NULL, "dcm_lastAttemptTimestamp", current_time) == 0)
+               if (telemetry_syscfg_set("dcm_lastAttemptTimestamp", current_time) == 0)
                {
                   T2Info("dcm_lastAttemptTimestamp set successfully\n");
                }
@@ -619,11 +618,11 @@ static T2ERROR doHttpGet(char* httpsUrl, char **data) {
                 if (Timestamp_Status != 0)
                 {
                    T2Error("Failed to fetch current dcm_lastSuccessTimestamp\n");
-                   syscfg_set(NULL, "dcm_lastSuccessTimestamp", "");
+                   telemetry_syscfg_set("dcm_lastSuccessTimestamp", "");
                 }
                 else
                 {
-                   if (syscfg_set(NULL, "dcm_lastSuccessTimestamp", current_time) == 0)
+                   if (telemetry_syscfg_set("dcm_lastSuccessTimestamp", current_time) == 0)
                    {
                       T2Info("dcm_lastSuccessTimestamp set successfully \n");
                    }
@@ -884,11 +883,11 @@ static void* getUpdatedConfigurationThread(void *data)
     int maxAttempts = -1, attemptInterval = -1;
     int isValidUrl = 1;
 
-    if (syscfg_get (NULL, "dcm_retry_maxAttempts", buf, sizeof(buf)) == 0)
+    if (telemetry_syscfg_get("dcm_retry_maxAttempts", buf, sizeof(buf)) == 0)
     {
         maxAttempts = atoi(buf);
     }
-    if (syscfg_get (NULL, "dcm_retry_attemptInterval", buf, sizeof(buf)) == 0)
+    if (telemetry_syscfg_get("dcm_retry_attemptInterval", buf, sizeof(buf)) == 0)
     {
         attemptInterval = atoi(buf);
     }
@@ -918,7 +917,7 @@ static void* getUpdatedConfigurationThread(void *data)
 
         xConfRetryCount++;
         snprintf(buf,sizeof(buf),"%d",xConfRetryCount);
-        if(syscfg_set(NULL, "dcm_attemptCount", buf) != 0)
+        if(telemetry_syscfg_set("dcm_attemptCount", buf) != 0)
         {
             T2Error("dcm_attemptCount set failed\n");
         }

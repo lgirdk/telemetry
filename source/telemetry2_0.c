@@ -53,7 +53,7 @@
 #ifdef INCLUDE_BREAKPAD
 #include "breakpad_wrapper.h"
 #endif
-#include "syscfg/syscfg.h"
+#include "t2commonutils.h"
 
 #define MAX_PARAMETERNAME_LEN    512
 /*Define signals properly to make sure they don't get overide anywhere*/
@@ -291,7 +291,7 @@ static int checkTelemetryStatus (void)
     char buf[6];
     int res = 0;
 
-    if (syscfg_get(NULL, "telemetry_enable", buf, sizeof(buf)) == 0)
+    if (telemetry_syscfg_get("telemetry_enable", buf, sizeof(buf)) == 0)
     {
         if (strcmp(buf, "true") == 0)
         {

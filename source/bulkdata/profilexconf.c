@@ -33,6 +33,7 @@
 #include "vector.h"
 #include "dcautil.h"
 #include "t2parserxconf.h"
+#include "t2commonutils.h"
 
 #define T2REPORT_HEADER "T2"
 #define T2REPORT_HEADERVAL  "1.0"
@@ -242,20 +243,17 @@ static void* CollectAndReportXconf(void* data)
               T2Info("Report Cached, No. of reportes cached = %d\n", Vector_Size(profile->cachedReportList));
 
               snprintf(buf,sizeof(buf),"%d",Vector_Size(profile->cachedReportList));
-              if(syscfg_set(NULL, "upload_attemptCount", buf) != 0)
-              {
-                  T2Error("Failed to set upload attempt count\n");
-              }
+              telemetry_syscfg_set("upload_attemptCount", buf);
            }
            else if(ret == T2ERROR_SUCCESS)
            {
                snprintf(buf,sizeof(buf),"%d",Vector_Size(profile->cachedReportList)+1);
-               syscfg_set(NULL, "upload_attemptCount", buf);
+               telemetry_syscfg_set("upload_attemptCount", buf);
            }
            else if(Vector_Size(profile->cachedReportList) > 0)
            {
                snprintf(buf,sizeof(buf),"%d",Vector_Size(profile->cachedReportList)+1);
-               syscfg_set(NULL, "upload_attemptCount", buf);
+               telemetry_syscfg_set("upload_attemptCount", buf);
                T2Info("Trying to send  %d cached reports\n", Vector_Size(profile->cachedReportList));
                ret = sendCachedReportsOverHTTP(profile->t2HTTPDest->URL, profile->cachedReportList);
            }

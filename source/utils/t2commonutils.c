@@ -43,4 +43,34 @@ int  getcurrenttime(char* current_time_string,int timestampparams)
     return 0;
 }
 
+int telemetry_syscfg_get(char *temp, char *buf, int buf_size)
+{
+    FILE *value = NULL;
+    char cmd[256];
+    int ret = -1;
+    snprintf(cmd, sizeof(cmd), "syscfg get %s", temp);
+    value = popen(cmd, "r");
+    if(value)
+    {
+        fgets(buf, buf_size, value);
+        buf[strlen(buf) - 1] = '\0';
+        pclose(value);
+        ret = 0;
+    }
+    return ret;
+}
 
+int telemetry_syscfg_set(char *temp, char *buf)
+{
+    FILE *value = NULL;
+    char cmd[256];
+    int ret = -1;
+    snprintf(cmd, sizeof(cmd), "syscfg set %s \"%s\"", temp, buf);
+    value = popen(cmd, "w");
+    if(value)
+    {
+        pclose(value);
+        ret = 0;
+    }
+    return ret;
+}

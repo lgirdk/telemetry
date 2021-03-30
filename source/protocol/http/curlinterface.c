@@ -345,28 +345,28 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char* payload)
             res = curl_easy_perform(curl);
             curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
             snprintf(buf,sizeof(buf),"%d",http_code);
-            if (syscfg_set(NULL, "upload_httpStatus", buf) == 0)
+            if (telemetry_syscfg_set("upload_httpStatus", buf) == 0)
             {
                 T2Info("upload_httpStatus set successfully\n");
             }
             if (http_code == 200)
             {
-                syscfg_set(NULL, "upload_httpStatusString", "OK");
+                telemetry_syscfg_set("upload_httpStatusString", "OK");
             }
             else
             {
-               syscfg_set(NULL, "upload_httpStatusString", errbuf);
+                telemetry_syscfg_set("upload_httpStatusString", errbuf);
             }
 
             Timestamp_Status = getcurrenttime(current_time, sizeof(current_time));
             if (Timestamp_Status != 0)
             {
                 T2Error("Failed to fetch current upload_lastAttemptTimestamp\n");
-                syscfg_set(NULL, "upload_lastAttemptTimestamp", "");
+                telemetry_syscfg_set("upload_lastAttemptTimestamp", "");
             }
             else
             {
-                if (syscfg_set(NULL, "upload_lastAttemptTimestamp", current_time) == 0)
+                if (telemetry_syscfg_set("upload_lastAttemptTimestamp", current_time) == 0)
                 {
                     T2Info("upload_lastAttemptTimestamp set successfully\n");
                 }
@@ -387,11 +387,11 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char* payload)
                 if (Timestamp_Status != 0)
                 {
                     T2Error("Failed to fetch current upload_lastSuccessTimestamp\n");
-                    syscfg_set(NULL, "upload_lastSuccessTimestamp", "");
+                    telemetry_syscfg_set("upload_lastSuccessTimestamp", "");
                 }
                 else
                 {
-                    if (syscfg_set(NULL, "upload_lastSuccessTimestamp", current_time) == 0)
+                    if (telemetry_syscfg_set("upload_lastSuccessTimestamp", current_time) == 0)
                     {
                        T2Info("upload_lastSuccessTimestamp set successfully \n");
                     }

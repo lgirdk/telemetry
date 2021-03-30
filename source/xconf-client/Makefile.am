@@ -22,7 +22,7 @@ AM_CFLAGS += -D_ANSC_LITTLE_ENDIAN_
 
 lib_LTLIBRARIES = libxconfclient.la
 libxconfclient_la_SOURCES = xconfclient.c persistence.c
-libxconfclient_la_LDFLAGS = -shared -fPIC -lsyscfg -lcjson -lcurl
+libxconfclient_la_LDFLAGS = -shared -fPIC -lcjson -lcurl
 libxconfclient_la_LIBADD = ${top_builddir}/source/t2parser/libt2parser.la ${top_builddir}/source/ccspinterface/libccspinterface.la
 libxconfclient_la_CPPFLAGS = -fPIC -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/dbus-1.0 \
                                 -I${PKG_CONFIG_SYSROOT_DIR}$(libdir)/dbus-1.0/include \

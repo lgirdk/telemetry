@@ -26,6 +26,7 @@
 #include "reportprofiles.h"
 #include "t2log_wrapper.h"
 #include "t2common.h"
+#include "t2commonutils.h"
 
 #define MT_EVENT_PATTERN   "<event>"
 #define MT_EVENT_PATTERN_LENGTH 7
@@ -181,7 +182,7 @@ T2ERROR processConfigurationXConf(char* configData, ProfileXConf **localProfile)
         return T2ERROR_FAILURE;
     }
 
-    syscfg_set(NULL, "UploadRepositoryURL",juploadUrl->valuestring);
+    telemetry_syscfg_set("UploadRepositoryURL",juploadUrl->valuestring);
     int reportIntervalInSec = getScheduleInSeconds(jschedule->valuestring);
 
     T2Info("Received profile name : %s with interval of : %d secs and upload url : %s \n", jprofileName->valuestring,

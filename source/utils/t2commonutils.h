@@ -14,3 +14,5 @@
  * limitations under the License.
   *********************************************************************************/
 int  getcurrenttime(char* current_time_string,int timestampparams);
+int telemetry_syscfg_get(char *temp, char *buf, int buf_size);
+int telemetry_syscfg_set(char *temp, char *buf);

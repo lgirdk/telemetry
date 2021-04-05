@@ -636,11 +636,10 @@ T2ERROR deleteProfile(const char *profileName)
     }
 
     T2Info("Waiting for CollectAndReport to be complete : %s\n", profileName);
+    pthread_mutex_lock(&plMutex);
     if (profile->reportThread) {
         pthread_join(profile->reportThread, NULL);
     }
-
-    pthread_mutex_lock(&plMutex);
 
     if (Vector_Size(profile->gMarkerList) > 0)
         removeGrepConfig(profileName);

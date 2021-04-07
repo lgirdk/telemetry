@@ -584,6 +584,13 @@ static void* getUpdatedConfigurationThread(void *data)
     while(!stopFetchRemoteConfiguration && isValidUrl)
     {
         T2ERROR ret = fetchRemoteConfiguration(configURL, &configData);
+
+        xConfRetryCount++;
+        snprintf(buf,sizeof(buf),"%d",xConfRetryCount);
+        if(syscfg_set(NULL, "dcm_attemptCount", buf) != 0)
+        {
+            T2Error("dcm_attemptCount set failed\n");
+        }
         if(ret == T2ERROR_SUCCESS)
         {
             ProfileXConf *profile = 0;
@@ -663,12 +670,6 @@ static void* getUpdatedConfigurationThread(void *data)
             if(configData != NULL) {
                 free(configData);
                 configData = NULL ;
-            }
-            xConfRetryCount++;
-            snprintf(buf,sizeof(buf),"%d",xConfRetryCount);
-            if (syscfg_set(NULL, "dcm_attemptCount", buf) != 0)
-            {
-                T2Error("dcm_attemptCount set failed\n");
             }
             if(xConfRetryCount >= maxAttempts)
             {

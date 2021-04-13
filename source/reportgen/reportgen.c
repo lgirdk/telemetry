@@ -191,6 +191,12 @@ T2ERROR encodeEventMarkersInJSON(cJSON *valArray, Vector *eventMarkerList)
                 if(eventMarker->u.markerValue != NULL)
                 {
                     arrayItem = cJSON_CreateObject();
+
+                    //Removing \n from  the event values
+                    char *pos;
+                    if ((pos=strchr(eventMarker->u.markerValue, '\n')) != NULL)
+                        *pos = '\0';
+
                     if (eventMarker->alias) {
                         cJSON_AddStringToObject(arrayItem, eventMarker->alias, eventMarker->u.markerValue);
                     } else {

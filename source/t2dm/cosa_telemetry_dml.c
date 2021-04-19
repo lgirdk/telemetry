@@ -79,7 +79,7 @@ ULONG Telemetry_GetParamStringValue(ANSC_HANDLE hInsContext, char* ParamName, ch
 {
     PCOSA_DATAMODEL_TELEMETRY pMyObject = (PCOSA_DATAMODEL_TELEMETRY) g_pCosaBEManager->hTelemetry;
 
-    if(AnscEqualString(ParamName, "ReportProfiles", TRUE))
+    if (strcmp(ParamName, "ReportProfiles") == 0)
     {
         if (pMyObject->JsonBlob == NULL)
             return 0;
@@ -95,7 +95,7 @@ ULONG Telemetry_GetParamStringValue(ANSC_HANDLE hInsContext, char* ParamName, ch
         return 0;
     }
 
-    if(AnscEqualString(ParamName, "ReportProfilesMsgPack", TRUE))
+    if (strcmp(ParamName, "ReportProfilesMsgPack") == 0)
     {
         if (pMyObject->MsgpackBlob == NULL)
             return 0;
@@ -117,7 +117,7 @@ ULONG Telemetry_GetParamStringValue(ANSC_HANDLE hInsContext, char* ParamName, ch
 BOOL Telemetry_SetParamStringValue(ANSC_HANDLE hInsContext, char* ParamName, char* pString)
 {
     PCOSA_DATAMODEL_TELEMETRY pMyObject = (PCOSA_DATAMODEL_TELEMETRY) g_pCosaBEManager->hTelemetry;
-    if(AnscEqualString(ParamName, "ReportProfiles", TRUE))
+    if (strcmp(ParamName, "ReportProfiles") == 0)
     {
         if(T2ERROR_SUCCESS != datamodel_processProfile(pString))
         {
@@ -137,7 +137,7 @@ BOOL Telemetry_SetParamStringValue(ANSC_HANDLE hInsContext, char* ParamName, cha
         return TRUE;
     }
 
-    if(AnscEqualString(ParamName, "ReportProfilesMsgPack", TRUE))
+    if (strcmp(ParamName, "ReportProfilesMsgPack") == 0)
     {
         char *webConfigString  = NULL;
         int stringSize = 0;

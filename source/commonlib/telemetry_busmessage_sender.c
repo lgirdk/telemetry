@@ -177,7 +177,6 @@ static T2ERROR getRbusParameterVal(const char* paramName, char **paramValue) {
     } else {
         stringValue = rbusValue_ToString(paramValue_t, NULL, 0);
     }
-    EVENT_DEBUG("%s = %s\n", paramName, stringValue);
     *paramValue = stringValue;
     rbusValue_Release(paramValue_t);
 
@@ -274,7 +273,7 @@ int filtered_event_send(const char* data, char *markerName) {
     int status = 0 ;
     // EVENT_DEBUG("%s ++in\n", __FUNCTION__);
     if(!bus_handle) {
-        EVENT_DEBUG("bus_handle is null .. exiting !!! \n");
+        EVENT_ERROR("bus_handle is null .. exiting !!! \n");
         return ret;
     }
 
@@ -290,13 +289,11 @@ int filtered_event_send(const char* data, char *markerName) {
                 }
             }
             if(!isEventingEnabled) {
-                EVENT_DEBUG("rbus mode : marker %s not present in list, ignore sending \n", markerName);
                 pthread_mutex_unlock(&markerListMutex);
                 return status;
             }
-        }else {
-            EVENT_DEBUG("rbus mode : Eventing for %s from %s. Send events without filtering.\n", markerName, componentName);
         }
+
         pthread_mutex_unlock(&markerListMutex);
         // End of event filtering
 
@@ -353,7 +350,6 @@ int filtered_event_send(const char* data, char *markerName) {
  * rbusProperty name will the eventName and value will be null
  */
 static T2ERROR doPopulateEventMarkerList( ) {
-    // EVENT_DEBUG("%s ++in\n", __FUNCTION__);
 
     T2ERROR status = T2ERROR_SUCCESS;
     char deNameSpace[1][124] = { '\0' };
@@ -403,31 +399,27 @@ static T2ERROR doPopulateEventMarkerList( ) {
         while(NULL != rbusPropertyList) {
             char* eventname = rbusProperty_GetName(rbusPropertyList);
             if(eventname && strlen(eventname) > 0) {
-                EVENT_DEBUG("\t %s \n", eventname);
                 hash_map_put(eventMarkerMap, (void*) strdup(eventname), (void*) strdup(eventname));
             }
             rbusPropertyList = rbusProperty_GetNext(rbusPropertyList);
         }
     }else {
-        EVENT_DEBUG("rbus mode : No configured event markers for %s \n", componentName);
+        EVENT_ERROR("rbus mode : No configured event markers for %s \n", componentName);
     }
     pthread_mutex_unlock(&markerListMutex);
     rbusValue_Release(paramValue_t);
-    EVENT_DEBUG("%s --out\n", __FUNCTION__);
     return status;
 
 }
 
 static void rbusEventReceiveHandler(rbusHandle_t handle, rbusEvent_t const* event, rbusEventSubscription_t* subscription) {
-    EVENT_DEBUG("%s ++in\n", __FUNCTION__);
     char* eventName = event->name;
     if(eventName) {
         if(0 == strcmp(eventName, T2_PROFILE_UPDATED_NOTIFY))
             doPopulateEventMarkerList();
     }else {
-        EVENT_DEBUG("eventName is null \n");
+        EVENT_ERROR("eventName is null \n");
     }
-    EVENT_DEBUG("%s --out\n", __FUNCTION__);
 }
 
 static bool isCachingRequired( ) {
@@ -439,7 +431,6 @@ static bool isCachingRequired( ) {
 
     if(isRFCT2Enable && !isT2Ready) {
         if(access( T2_COMPONENT_READY, F_OK) != -1) {
-            EVENT_DEBUG("T2 component is ready, flushing the cache\n");
             isT2Ready = true;
             if(isRbusEnabled) {
                 rbusError_t ret = RBUS_ERROR_SUCCESS;
@@ -448,7 +439,7 @@ static bool isCachingRequired( ) {
                 }
                 ret = rbusEvent_Subscribe(bus_handle, T2_PROFILE_UPDATED_NOTIFY, rbusEventReceiveHandler, "T2Event");
                 if(ret != RBUS_ERROR_SUCCESS) {
-                    EVENT_DEBUG("Unable to subscribe to event %s with rbus error code : %d\n", T2_PROFILE_UPDATED_NOTIFY, ret);
+                    EVENT_ERROR("Unable to subscribe to event %s with rbus error code : %d\n", T2_PROFILE_UPDATED_NOTIFY, ret);
                 }
             }
             return false;

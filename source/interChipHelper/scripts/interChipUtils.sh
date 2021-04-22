@@ -306,11 +306,11 @@ copyLogsFromArm() {
     icucp -i $PEER_COMM_ID -r $ARM_INTERFACE_IP:$LOG_PATH/* $TMP_SCP_PATH/ > /dev/null 2>&1
     icucp -i $PEER_COMM_ID -r $ARM_INTERFACE_IP:$LOG_SYNC_PATH/$SelfHealBootUpLogFile  $ARM_INTERFACE_IP:$LOG_SYNC_PATH/$PcdLogFile  $TMP_SCP_PATH/ > /dev/null 2>&1
 
-    rpcRes=`rpcclient $ARM_ARPING_IP "touch $SCP_COMPLETE"`
+    rpcRes=`rpcclient2 "touch $SCP_COMPLETE"`
     rpcOk=`echo $rpcRes | grep "RPC CONNECTED"`
     if [ "$rpcOk" == "" ]; then
         echo_t "RPC touch failed : attemp 1" >> $RTL_LOG_FILE
-        rpcRes=`rpcclient $ARM_ARPING_IP "touch $SCP_COMPLETE"`
+        rpcRes=`rpcclient2 "touch $SCP_COMPLETE"`
     rpcOk=`echo $rpcRes | grep "RPC CONNECTED"`
         if [ "$rpcOk" == "" ]; then
             echo_t "RPC touch failed : attemp 2" >> $RTL_LOG_FILE

@@ -55,7 +55,6 @@ static void *bus_handle = NULL;
 static const char* RFC_T2_ENABLE_PARAM = "Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.Telemetry.Enable" ;
 static bool isRFCT2Enable = false ;
 static bool isT2Ready = false;
-static bool getParamStatus = false;
 static bool isRbusEnabled = false ;
 static int count = 0;
 static pthread_mutex_t initMtx = PTHREAD_MUTEX_INITIALIZER;
@@ -357,12 +356,34 @@ static bool initRFC( ) {
             status = false ;
         }
     }
-    if((getParamStatus == false) && bus_handle) {
+    if((isRFCT2Enable == false) && bus_handle) {
+
+        // Check PamdM status before getting RFC_T2_ENABLE_PARAM value
+        if ((access("/tmp/pam_initialized", F_OK) != 0))
+        {
+          EVENT_DEBUG("file %s doesn't exist..return !!!\n", "/tmp/pam_initialized");
+          return false;
+        }
+
+        // Check wifi-agent status before getting RFC_T2_ENABLE_PARAM value
+        if (access("/tmp/wifi_initialized", F_OK) != 0)
+        {
+          EVENT_DEBUG("file %s doesn't exist..return !!!\n", "/tmp/wifi_initialized");
+          return false;
+        }
+
+#ifndef _LG_MV3_
+        if (access("/tmp/cfg_file_applied", F_OK) != 0)
+        {
+          EVENT_DEBUG("file %s doesn't exist..return !!!\n", "/tmp/cfg_file_applied");
+          return false;
+        }
+#endif
+
         if(T2ERROR_SUCCESS == getParamValue(RFC_T2_ENABLE_PARAM, &paramValue) ) {
             if(paramValue != NULL && (strncasecmp(paramValue, "true", 4) == 0)) {
                 isRFCT2Enable = true;
             }
-            getParamStatus = true;
             status = true;
             free(paramValue);
         }else {

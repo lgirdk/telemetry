@@ -48,6 +48,7 @@
 #define T2_COMPONENT_READY    "/tmp/.t2ReadyToReceiveEvents"
 #define T2_SCRIPT_EVENT_COMPONENT "telemetry_client"
 #define SENDER_LOG_FILE "/tmp/t2_sender_debug.log"
+#define PAM_FILE                "/tmp/pam_initialized"
 
 static const char* CCSP_FIXED_COMP_ID = "com.cisco.spvtg.ccsp.t2commonlib" ;
 
@@ -347,12 +348,19 @@ static bool initRFC( ) {
             status = false ;
         }
     }
-    if((getParamStatus == false) && bus_handle) {
+    if((isRFCT2Enable == false) && bus_handle) {
+        //Check for PamdM status  before getting RFC_T2_ENABLE_PARAM value
+        if ((access(PAM_FILE,  F_OK) != 0)) //PAM_FILE does not exist
+        {          
+          EVENT_DEBUG("file pam_initialized doesn't exist..return !!! \n");
+          return false;
+        }
+
         if(T2ERROR_SUCCESS == getParamValue(RFC_T2_ENABLE_PARAM, &paramValue) ) {
             if(paramValue != NULL && (strncasecmp(paramValue, "true", 4) == 0)) {
                 isRFCT2Enable = true;
             }
-            getParamStatus = true;
+            //getParamStatus = true;
             status = true;
             free(paramValue);
         }else {

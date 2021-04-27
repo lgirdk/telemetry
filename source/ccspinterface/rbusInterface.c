@@ -20,8 +20,8 @@
 #include <stdbool.h>
 #include <string.h>
 #include <stdlib.h>
-#include <glib.h>
-#include <glib/gi18n.h>
+
+#include <ansc_platform.h>
 
 #include "t2collection.h"
 #include "t2common.h"
@@ -366,18 +366,18 @@ rbusError_t t2PropertyDataSetHandler(rbusHandle_t handle, rbusProperty_t prop, r
 
         if(type_t == RBUS_STRING) {
             char* data = rbusValue_ToString(paramValue_t, NULL, 0);
-            guchar *webConfigString = NULL;
-            gsize decodedDataLen = 0;
+            char *webConfigString = NULL;
+            int stringSize = 0;
             if(data) {
                 T2Debug("Call datamodel function  with data %s \n", data);
-                webConfigString = g_base64_decode(data, &decodedDataLen);
-                if(NULL == webConfigString ||  0 == decodedDataLen ){
+                webConfigString = AnscBase64Decode(data, &stringSize);
+                if(NULL == webConfigString ||  0 == stringSize ){
                     T2Error("Invalid base64 input string. Ignore processing input configuration.\n");
 		    free(data); //CID 168770: Resource leak
 		    return RBUS_ERROR_INVALID_INPUT;
                 }
 
-                if(T2ERROR_SUCCESS != dmMsgPckProcessingCallBack((char *)webConfigString, decodedDataLen))
+                if(T2ERROR_SUCCESS != dmMsgPckProcessingCallBack(webConfigString, stringSize))
                 {
                     free(data);
                     return RBUS_ERROR_INVALID_INPUT;
@@ -460,7 +460,7 @@ rbusError_t t2PropertyDataGetHandler(rbusHandle_t handle, rbusProperty_t propert
             char* text;
             size = (*dmSavedMsgPackProcessingCallBack)(&temp);
             if (temp != NULL && size > 0){
-                text = g_base64_encode (temp, size);
+                text = (char *) AnscBase64Encode (temp, size);
                 T2Info("Profiles from persistant folder profile.msgpack \n");
                 rbusValue_SetString(value, text);
                 free(text);

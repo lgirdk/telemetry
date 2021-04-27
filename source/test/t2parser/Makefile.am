@@ -42,12 +42,6 @@ t2parser_gtest_bin_CPPFLAGS = -I$(PKG_CONFIG_SYSROOT_DIR)$(includedir)/gtest \
                               -I${top_srcdir}/source/t2ssp \
                               -I${top_srcdir}/source/dcautil \
                               -I${RDK_PROJECT_ROOT_PATH}/opensource/include \
-                              -I${RDK_PROJECT_ROOT_PATH}/opensource/include/glib-2.0/ \
-                              -I${RDK_PROJECT_ROOT_PATH}/opensource/lib/glib-2.0/include/ \
-                              -I${RDK_PROJECT_ROOT_PATH}/opensource/include/glib-2.0/glib \
-                              -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/glib-2.0 \
-                              -I${PKG_CONFIG_SYSROOT_DIR}$(libdir)/glib-2.0/include \
-                              -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/ \
                               -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/msgpack
 
 if ENABLE_CCSP_SUPPORT
@@ -56,7 +50,7 @@ else
 t2parser_gtest_bin_SOURCES = gtest_main.cpp t2parserTest.cpp
 endif
 
-t2parser_gtest_bin_LDFLAGS = -lgtest -lgmock -lgcov -lcurl -lrbus $(GLIB_LIBS) -lcjson -lmsgpackc
+t2parser_gtest_bin_LDFLAGS = -lgtest -lgmock -lgcov -lcurl -lrbus -lcjson -lmsgpackc
 
 t2parser_gtest_bin_LDADD = ${top_builddir}/source/utils/libt2utils.la ${top_builddir}/source/ccspinterface/libccspinterface.la ${top_builddir}/source/t2parser/libt2parser.la
 

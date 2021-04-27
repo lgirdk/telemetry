@@ -42,12 +42,7 @@ scheduler_gtest_bin_CPPFLAGS = -I$(PKG_CONFIG_SYSROOT_DIR)$(includedir)/gtest \
                                -I${PKG_CONFIG_SYSROOT_DIR}$(includedir) \
                                -I${top_srcdir}/source/t2ssp \
                                -I${top_srcdir}/source/dcautil \
-                               -I${RDK_PROJECT_ROOT_PATH}/opensource/include \
-                               -I${RDK_PROJECT_ROOT_PATH}/opensource/include/glib-2.0/ \
-                               -I${RDK_PROJECT_ROOT_PATH}/opensource/lib/glib-2.0/include/ \
-                               -I${RDK_PROJECT_ROOT_PATH}/opensource/include/glib-2.0/glib \
-                               -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/glib-2.0 \
-                               -I${PKG_CONFIG_SYSROOT_DIR}$(libdir)/glib-2.0/include
+                               -I${RDK_PROJECT_ROOT_PATH}/opensource/include
 
 if ENABLE_CCSP_SUPPORT
 scheduler_gtest_bin_SOURCES = gtest_main.cpp schedulerTest.cpp ../../t2ssp/ssp_main.c ../../t2ssp/ssp_action.c ../../t2ssp/ssp_messagebus_interface.c ../../t2ssp/dm_pack_datamodel.c
@@ -55,7 +50,7 @@ else
 scheduler_gtest_bin_SOURCES = gtest_main.cpp schedulerTest.cpp
 endif
 
-scheduler_gtest_bin_LDFLAGS = -lgtest -lgmock -lgcov -lcurl -lrbus $(GLIB_LIBS) -lcjson -pthread
+scheduler_gtest_bin_LDFLAGS = -lgtest -lgmock -lgcov -lcurl -lrbus -lcjson -pthread
 
 scheduler_gtest_bin_LDADD = ${top_builddir}/source/scheduler/libscheduler.la ${top_builddir}/source/bulkdata/libbulkdata.la ${top_builddir}/source/utils/libt2utils.la ${top_builddir}/source/t2parser/libt2parser.la
 

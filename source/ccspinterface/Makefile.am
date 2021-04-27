@@ -21,8 +21,8 @@ AM_CFLAGS =
 lib_LTLIBRARIES = libccspinterface.la
 
 libccspinterface_la_SOURCES = busInterface.c rbusInterface.c
-libccspinterface_la_CFLAGS = $(GLIB_CFLAGS)
-libccspinterface_la_LDFLAGS = -shared -fPIC -lrbus $(GLIB_LIBS)
+libccspinterface_la_CFLAGS =
+libccspinterface_la_LDFLAGS = -shared -fPIC -lrbus
 if ENABLE_CCSP_SUPPORT
 libccspinterface_la_LDFLAGS += -lccsp_common
 libccspinterface_la_SOURCES += ccspinterface.c

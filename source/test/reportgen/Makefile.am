@@ -42,12 +42,7 @@ reportgen_gtest_bin_CPPFLAGS = -I$(PKG_CONFIG_SYSROOT_DIR)$(includedir)/gtest \
                                -I${PKG_CONFIG_SYSROOT_DIR}$(includedir) \
                                -I${top_srcdir}/source/t2ssp \
                                -I${top_srcdir}/source/dcautil \
-                               -I${RDK_PROJECT_ROOT_PATH}/opensource/include \
-                               -I${RDK_PROJECT_ROOT_PATH}/opensource/include/glib-2.0/ \
-                               -I${RDK_PROJECT_ROOT_PATH}/opensource/lib/glib-2.0/include/ \
-                               -I${RDK_PROJECT_ROOT_PATH}/opensource/include/glib-2.0/glib \
-                               -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/glib-2.0 \
-                               -I${PKG_CONFIG_SYSROOT_DIR}$(libdir)/glib-2.0/include
+                               -I${RDK_PROJECT_ROOT_PATH}/opensource/include
 
 if ENABLE_CCSP_SUPPORT
 reportgen_gtest_bin_SOURCES = gtest_main.cpp reportgenTest.cpp reportgenMock.cpp ../../t2ssp/ssp_main.c ../../t2ssp/ssp_action.c ../../t2ssp/ssp_messagebus_interface.c ../../t2ssp/dm_pack_datamodel.c
@@ -55,7 +50,7 @@ else
 reportgen_gtest_bin_SOURCES = gtest_main.cpp reportgenTest.cpp reportgenMock.cpp
 endif
 
-reportgen_gtest_bin_LDFLAGS = -lgtest -lgmock -lgcov -lcurl -lrbus $(GLIB_LIBS) -lcjson
+reportgen_gtest_bin_LDFLAGS = -lgtest -lgmock -lgcov -lcurl -lrbus -lcjson
 
 reportgen_gtest_bin_LDADD = ${top_builddir}/source/bulkdata/libbulkdata.la ${top_builddir}/source/ccspinterface/libccspinterface.la ${top_builddir}/source/dcautil/libdcautil.la ${top_builddir}/source/utils/libt2utils.la  ${top_builddir}/source/t2parser/libt2parser.la ${top_builddir}/source/reportgen/libreportgen.la
 

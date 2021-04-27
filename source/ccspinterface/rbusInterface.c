@@ -26,8 +26,7 @@
 #include <rbus/rbus_value.h>
 #include <stdlib.h>
 
-#include <glib.h>
-#include <glib/gi18n.h>
+#include <ansc_platform.h>
 
 #include "t2collection.h"
 #include "t2common.h"
@@ -287,17 +286,12 @@ rbusError_t t2PropertyDataSetHandler(rbusHandle_t handle, rbusProperty_t prop, r
 
         if(type_t == RBUS_STRING) {
             char* data = rbusValue_ToString(paramValue_t, NULL, 0);
-            guchar *webConfigString = NULL;
-            gsize decodedDataLen = 0;
+            char *webConfigString = NULL;
+            int stringSize = 0;
             if(data) {
                 T2Debug("Call datamodel function  with data %s \n", data);
-                webConfigString = g_base64_decode(data, &decodedDataLen);
-                if(NULL == webConfigString ||  0 == decodedDataLen ){
-                    T2Error("Invalid base64 input string. Ignore processing input configuration.\n");
-                    return RBUS_ERROR_INVALID_INPUT;
-                }
-
-                if(T2ERROR_SUCCESS != dmMsgPckProcessingCallBack((char *)webConfigString, decodedDataLen))
+                webConfigString = AnscBase64Decode(data, &stringSize);
+                if(T2ERROR_SUCCESS != dmMsgPckProcessingCallBack(webConfigString, stringSize))
                 {
                     free(data);
                     return RBUS_ERROR_INVALID_INPUT;

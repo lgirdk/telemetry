@@ -79,8 +79,6 @@ AC_TYPE_UINT8_T
 dnl Checks for library functions.
 AC_FUNC_MALLOC
 
-PKG_CHECK_MODULES([GLIB], [glib-2.0 >= 2.24.0])
-
 ENABLE_TESTS=false
 AM_CONDITIONAL([ENABLE_TESTS], [test x$ENABLE_TESTS = xtrue])
 

@@ -341,7 +341,7 @@ static bool initRFC( ) {
             status = false ;
         }
     }
-    if((getParamStatus == false) && bus_handle) {
+    if((isRFCT2Enable == false) && bus_handle) {
         //Check for PamdM status  before getting RFC_T2_ENABLE_PARAM value
         if ((access(PAM_FILE,  F_OK) != 0)) //PAM_FILE does not exist
         {          
@@ -353,7 +353,7 @@ static bool initRFC( ) {
             if(paramValue != NULL && (strncasecmp(paramValue, "true", 4) == 0)) {
                 isRFCT2Enable = true;
             }
-            getParamStatus = true;
+            //getParamStatus = true;
             status = true;
             free(paramValue);
         }else {

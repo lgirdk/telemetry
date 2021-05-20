@@ -240,12 +240,18 @@ unlock:
 
 static bool initRFC( ) {
     char* paramValue = NULL;
-    bool status = true ;
+    bool status = false ;
+
+/* Reading from PAM creates issue when it is not ready in RDKB devices REF:CISCOXB3-7182*/
+#if defined(ENABLE_RDKB_SUPPORT)
+    if (access( "/tmp/pam_initialized", F_OK ) != 0) {
+	return status;
+    }
+#endif
     // Check for RFC and proceed - if true - else return now .
     if(!bus_handle) {
         if(initMessageBus() != 0) {
             EVENT_ERROR("initMessageBus failed\n");
-            status = false ;
         }
     }
     if((getParamStatus == false) && bus_handle) {
@@ -256,8 +262,6 @@ static bool initRFC( ) {
             getParamStatus = true;
             status = true;
             free(paramValue);
-        }else {
-            status = false;
         }
     }
 

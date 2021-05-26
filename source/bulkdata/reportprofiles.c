@@ -53,12 +53,38 @@
 #define MAX_PROFILENAMES_LENGTH 2048
 #define T2_VERSION_DATAMODEL_PARAM  "Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.Telemetry.Version"
 
+#if defined(DROP_ROOT_PRIV)
+#include "cap.h"
+
+#define NONROOT_DATAMODEL_PARAM  "Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.NonRootSupport.Enable"
+static cap_user appcaps;
+#endif
+
 static BulkData bulkdata;
 static bool rpInitialized = false;
 static char *t2Version = NULL;
 
 pthread_mutex_t rpMutex = PTHREAD_MUTEX_INITIALIZER;
 
+#if defined(DROP_ROOT_PRIV)
+static void drop_root()
+{
+    char* buf=NULL;
+    appcaps.caps = NULL;
+    appcaps.user_name = NULL;
+    if(T2ERROR_SUCCESS == getParameterValue(NONROOT_DATAMODEL_PARAM, &buf)){
+ 	if (strncmp(buf, "true", strlen("true")) == 0) {
+            T2Info("Dropping root privileges for Telemetry 2.0 Process\n");
+            init_capability();
+            drop_root_caps(&appcaps);
+            update_process_caps(&appcaps);
+            read_capability(&appcaps);
+        }
+        else
+         T2Info("NonRootSupport false, Run Telemetry 2.0 Process as root\n");
+    }
+}
+#endif
 
 #if defined(FEATURE_SUPPORT_WEBCONFIG)
 uint32_t getTelemetryBlobVersion(char* subdoc)
@@ -321,6 +347,11 @@ T2ERROR initReportProfiles()
     initScheduler((TimeoutNotificationCB)ReportProfiles_TimeoutCb, (ActivationTimeoutCB)ReportProfiles_ActivationTimeoutCb);
     initT2MarkerComponentMap();
     T2ER_Init();
+
+    #if defined(DROP_ROOT_PRIV)
+    // Drop root privileges for Telemetry 2.0, If NonRootSupport RFC is true
+    drop_root();
+    #endif
 
     ProfileXConf_init();
     if(T2ERROR_SUCCESS == getParameterValue(T2_VERSION_DATAMODEL_PARAM, &t2Version) && strcmp(t2Version, "2") !=0) {

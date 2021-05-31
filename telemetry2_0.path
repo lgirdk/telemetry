@@ -18,6 +18,7 @@
 ##########################################################################
 [Unit]
 Description=Start Telemetry2_0
+OnFailure=path-fail-notifier@%n.service
 
 [Path]
 PathExists=/tmp/enable_t2_service

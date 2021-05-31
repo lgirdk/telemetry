@@ -325,32 +325,46 @@ static int addToVector(rdkList_t *pchead, Vector* grepResultList) {
  * @return Returns status of operation.
  * @retval Return 0 on success, -1 on failure
  */
-static int getSplitParameterValue(char *line, pcdata_t *pcnode) {
+static int getSplitParameterValue(char *line, pcdata_t *pcnode, rdkList_t *pchead) {
 
     char *strFound = NULL;
     strFound = strstr(line, pcnode->pattern);
 
-    if(strFound != NULL) {
-        int tlen = 0, plen = 0, vlen = 0;
-        tlen = (int) strlen(line);
-        plen = (int) strlen(pcnode->pattern);
-        strFound = strFound + plen;
-        if(tlen > plen) {
-            vlen = strlen(strFound);
-            // If value is only single char make sure its not an empty space .
-            // Ideally component should not print logs with empty values but we have to consider logs from OSS components
-            if((1 == vlen) && isspace(strFound[plen]))
-                return 0;
+    if(strFound != NULL)
+    {
+        if(strncmp(pcnode->header, "EVT_", 4) == 0)
+        {
+            /*
+                Create a new EVT maker node and fill it with the current marker's info
+                and add the whole line as its data. Leave the current marker
+                node's(the one came from DCMresponse file) data as null.
+                During the json creation this will be filtered.
+            */
+            insertPCNode(&pchead, pcnode->pattern, pcnode->header, pcnode->d_type, 0, line);
+        }
+        else
+        {
+            int tlen = 0, plen = 0, vlen = 0;
+            tlen = (int) strlen(line);
+            plen = (int) strlen(pcnode->pattern);
+            strFound = strFound + plen;
+            if(tlen > plen) {
+                vlen = strlen(strFound);
+                // If value is only single char make sure its not an empty space .
+                // Ideally component should not print logs with empty values but we have to consider logs from OSS components
+                if((1 == vlen) && isspace(strFound[plen]))
+                    return 0;
 
-            if(vlen > 0) {
-                if(NULL == pcnode->data)
-                    pcnode->data = (char *) malloc(MAXLINE);
+                if(vlen > 0) {
+                    if(NULL == pcnode->data)
+                        pcnode->data = (char *) malloc(MAXLINE);
 
-                if(NULL == pcnode->data)
-                    return (-1);
+                    if(NULL == pcnode->data)
+                        return (-1);
 
-                strncpy(pcnode->data, strFound, MAXLINE);
-                pcnode->data[tlen - plen] = '\0'; //For Boundary Safety
+                    strncpy(pcnode->data, strFound, MAXLINE);
+                    pcnode->data[tlen - plen] = '\0'; //For Boundary Safety
+                }
             }
         }
     }
@@ -461,7 +475,7 @@ static int processCountPattern(hash_map_t *logSeekMap, char *logfile, rdkList_t 
                 pc_node->count++;
             }else {
                 if(NULL != pc_node->header) {
-                    getSplitParameterValue(temp, pc_node);
+                    getSplitParameterValue(temp, pc_node, pchead);
                 }
             }
         }else {

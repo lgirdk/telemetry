@@ -426,6 +426,16 @@ static void rbusEventReceiveHandler(rbusHandle_t handle, rbusEvent_t const* even
 
 static bool isCachingRequired( ) {
 
+    /**
+     * Attempts to read from PAM before its ready creates deadlock .
+     * PAM not ready is a definite case for caching the event and avoid bus traffic
+     * */
+    #if defined(ENABLE_RDKB_SUPPORT)
+    if (access( "/tmp/pam_initialized", F_OK ) != 0) {
+        return true;
+    }
+    #endif
+
     if(!initRFC()) {
         EVENT_ERROR("initRFC failed - cache the events\n");
         return true;
@@ -446,7 +456,6 @@ static bool isCachingRequired( ) {
             }
             return false;
         }else {
-            EVENT_DEBUG("isRFCT2Enable is true but T2 is not ready to receive events yet\n");
             return true;
         }
     }

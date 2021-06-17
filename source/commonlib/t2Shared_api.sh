@@ -22,31 +22,20 @@
 . /etc/device.properties
 
 T2_MSG_CLIENT=/usr/bin/telemetry2_0_client
-t2UpdateStatus() {
-  if [ "$DEVICE_TYPE" = "broadband" ]; then
-     IS_T2_ENABLED=`dmcli eRT getv Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.Telemetry.Enable | grep value | awk '{print $5}'`
-  else
-     IS_T2_ENABLED=`tr181 -g Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.Telemetry.Enable 2>&1`
-  fi
-}
 
 t2CountNotify() {
-    if [ "$IS_T2_ENABLED" != "true" ] && [ "$IS_T2_ENABLED" != "false" ]; then
-    	t2UpdateStatus
-    fi
-    if [ "$IS_T2_ENABLED" == "true" ]; then
+
+    if [ -f "$T2_MSG_CLIENT" ]; then
         marker=$1
-        $T2_MSG_CLIENT  "$marker" "1"
+        $T2_MSG_CLIENT  "$marker" "1" &
     fi
 }
 
 t2ValNotify() {
-    if [ "$IS_T2_ENABLED" != "true" ] && [ "$IS_T2_ENABLED" != "false" ]; then
-    	t2UpdateStatus
-    fi
-    if [ "$IS_T2_ENABLED" == "true" ]; then
+
+    if [ -f "$T2_MSG_CLIENT" ]; then
         marker=$1
         shift
-        $T2_MSG_CLIENT "$marker" "$*"
+        $T2_MSG_CLIENT "$marker" "$*" &
     fi
 }

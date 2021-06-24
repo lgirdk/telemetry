@@ -273,10 +273,9 @@ T2ERROR getParamValue(const char* paramName, char **paramValue)
     return ret;
 }
 
-
-static int cacheEventToFile(char* telemetry_data)
+void *cacheEventToFile(void *arg)
 {
-
+	char *telemetry_data = (char *)arg;
         int fd;
         struct flock fl;
         fl.l_type = F_WRLCK;
@@ -284,13 +283,22 @@ static int cacheEventToFile(char* telemetry_data)
         fl.l_start = 0;
         fl.l_len = 0;
         fl.l_pid = 0;
+
+	pthread_detach(pthread_self());
+        EVENT_ERROR("%s:%d, Caching the event to File\n", __func__, __LINE__);
+	if(telemetry_data == NULL)
+	{
+		EVENT_ERROR("%s:%d, Data is NULL\n", __func__, __LINE__);
+                return NULL;
+	}
         pthread_mutex_lock(&FileCacheMutex);
 
         if ((fd = open(T2_CACHE_LOCK_FILE, O_RDWR | O_CREAT, 0666)) == -1)
         {
                 EVENT_ERROR("%s:%d, T2:open failed\n", __func__, __LINE__);
                 pthread_mutex_unlock(&FileCacheMutex);
-                return -1;
+		free(telemetry_data);
+                return NULL;
         }
 
         if(fcntl(fd, F_SETLKW, &fl) == -1)  /* set the lock */
@@ -298,7 +306,8 @@ static int cacheEventToFile(char* telemetry_data)
                 EVENT_ERROR("%s:%d, T2:fcntl failed\n", __func__, __LINE__);
                 pthread_mutex_unlock(&FileCacheMutex);
                 close(fd);
-                return -1;
+		free(telemetry_data);
+                return NULL;
         }
 
         FILE *fp = fopen(T2_CACHE_FILE, "a");
@@ -317,7 +326,8 @@ unlock:
         }
         close(fd);
         pthread_mutex_unlock(&FileCacheMutex);
-        return 0;
+	free(telemetry_data);
+        return NULL;
 }
 
 static bool initRFC( ) {
@@ -570,6 +580,7 @@ static bool isCachingRequired( ) {
 
 static int report_or_cache_data(char* telemetry_data, char* markerName) {
     int ret = 0;
+    pthread_t tid;
     pthread_mutex_lock(&eventMutex);
     if(isCachingRequired()) {
         EVENT_DEBUG("Caching the event : %s \n", telemetry_data);
@@ -578,8 +589,7 @@ static int report_or_cache_data(char* telemetry_data, char* markerName) {
         if(buffer) {
             // Caching format needs to be same for operation between rbus/dbus modes across reboots
             snprintf(buffer, eventDataLen, "%s%s%s", markerName, MESSAGE_DELIMITER, telemetry_data);
-            cacheEventToFile(buffer);
-            free(buffer);
+            pthread_create(&tid, NULL, cacheEventToFile, (void *)buffer);
         }
         pthread_mutex_unlock(&eventMutex);
         return T2ERROR_SUCCESS ;

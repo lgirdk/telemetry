@@ -21,7 +21,7 @@ AM_CFLAGS += -D_ANSC_USER
 AM_CFLAGS += -D_ANSC_LITTLE_ENDIAN_
 
 lib_LTLIBRARIES = libutils.la
-libutils_la_SOURCES = vector.c t2collection.c t2log_wrapper.c
+libutils_la_SOURCES = vector.c t2collection.c t2log_wrapper.c t2MtlsUtils.c
 libutils_la_LDFLAGS = -shared -fPIC -lrdkloggers
 libutils_la_CPPFLAGS = -fPIC -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/dbus-1.0 \
                                 -I${PKG_CONFIG_SYSROOT_DIR}$(libdir)/dbus-1.0/include \

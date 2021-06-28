@@ -97,6 +97,8 @@ int __ReportProfiles_ProcessReportProfilesMsgPackBlob(void *msgpack);
 
 void ReportProfiles_ProcessReportProfilesMsgPackBlob(char *msgpack_blob , int msgpack_blob_size);
 
+bool isMtlsEnabled(void);
+
 #define msgpack_get_obj_name(obj) #obj
 
 #define MSGPACK_GET_ARRAY_SIZE(obj, item)		\

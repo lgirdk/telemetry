@@ -29,6 +29,8 @@
 #include <curl/curl.h>
 
 #include "curlinterface.h"
+#include "reportprofiles.h"
+#include "t2MtlsUtils.h"
 #include "t2log_wrapper.h"
 
 static pthread_once_t curlFileMutexOnce = PTHREAD_ONCE_INIT;
@@ -144,6 +146,34 @@ static T2ERROR setHeader(CURL *curl, const char* destURL, struct curl_slist **he
     return T2ERROR_SUCCESS;
 }
 
+static T2ERROR setMtlsHeaders(CURL *curl, const char* certFile, const char* pPasswd) {
+    CURLcode code = CURLE_OK;
+    code = curl_easy_setopt(curl, CURLOPT_SSLENGINE_DEFAULT, 1L);
+    if(code != CURLE_OK) {
+        T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
+    }
+    code = curl_easy_setopt(curl, CURLOPT_SSLCERTTYPE, "P12");
+    if(code != CURLE_OK) {
+        T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
+    }
+    /* set the cert for client authentication */
+    code = curl_easy_setopt(curl, CURLOPT_SSLCERT, certFile);
+    if(code != CURLE_OK) {
+        T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
+    }
+    code = curl_easy_setopt(curl, CURLOPT_KEYPASSWD, pPasswd);
+    if(code != CURLE_OK) {
+        T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
+    }
+    /* disconnect if we cannot authenticate */
+    code = curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1L);
+    if(code != CURLE_OK) {
+        T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
+    }
+
+    return T2ERROR_SUCCESS;
+}
+
 static T2ERROR setPayload(CURL *curl, const char* payload)
 {
     CURLcode code = CURLE_OK ;
@@ -166,6 +196,8 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char* payload)
     T2ERROR ret = T2ERROR_FAILURE;
     long http_code;
     struct curl_slist *headerList = NULL;
+    char *pCertFile = NULL ;
+    char *pKeyFile = NULL ;
 
     T2Debug("%s ++in\n", __FUNCTION__);
     curl = curl_easy_init();
@@ -176,6 +208,17 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char* payload)
             curl_easy_cleanup(curl);
             return ret;
         }
+
+        if(isMtlsEnabled() == true)
+	{
+          if (T2ERROR_SUCCESS == getMtlsCerts(&pCertFile, &pKeyFile)){
+              setMtlsHeaders(curl, pCertFile, pKeyFile);
+          } else {
+              T2Error("mTLS_cert get failed\n");
+	      return T2ERROR_FAILURE;
+          }
+	}
+
         setPayload(curl, payload);
 
         pthread_once(&curlFileMutexOnce, sendOverHTTPInit);
@@ -199,6 +242,11 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char* payload)
 
             fclose(fp);
         }
+        if(NULL != pCertFile)
+            free(pCertFile);
+
+        if(NULL != pKeyFile)
+            free(pKeyFile);
         curl_slist_free_all(headerList);
         curl_easy_cleanup(curl);
 

@@ -30,6 +30,8 @@
 #include "reportprofiles.h"
 #include "profilexconf.h"
 #include "xconfclient.h"
+
+#include "t2MtlsUtils.h"
 #include "t2parserxconf.h"
 #include "vector.h"
 #include "persistence.h"
@@ -261,6 +263,10 @@ static T2ERROR doHttpGet(char* httpsUrl, char **data) {
     long http_code = 0;
     long curl_code = 0;
 
+    char *pCertFile = NULL ;
+    char *pPasswd = NULL ;
+    // char *pKeyType = "PEM" ;
+
     if (NULL == httpsUrl) {
         T2Error("NULL httpsUrl given, doHttpGet failed\n");
         return T2ERROR_FAILURE;
@@ -272,6 +278,7 @@ static T2ERROR doHttpGet(char* httpsUrl, char **data) {
     curl = curl_easy_init();
 
     if (curl) {
+
         code = curl_easy_setopt(curl, CURLOPT_URL, httpsUrl);
         if(code != CURLE_OK){
            T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
@@ -296,6 +303,40 @@ static T2ERROR doHttpGet(char* httpsUrl, char **data) {
         if(code != CURLE_OK){
            T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
         }
+        if(isMtlsEnabled() == true)
+        {	
+          if(T2ERROR_SUCCESS == getMtlsCerts(&pCertFile, &pPasswd)) {
+            code = curl_easy_setopt(curl, CURLOPT_SSLENGINE_DEFAULT, 1L);
+            if(code != CURLE_OK) {
+                T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
+            }
+
+            code = curl_easy_setopt(curl, CURLOPT_SSLCERTTYPE, "P12");
+            if(code != CURLE_OK) {
+                T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
+            }
+            code = curl_easy_setopt(curl, CURLOPT_SSLCERT, pCertFile);
+            if(code != CURLE_OK) {
+                T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
+            }
+            code = curl_easy_setopt(curl, CURLOPT_KEYPASSWD, pPasswd);
+            if(code != CURLE_OK) {
+                T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
+            }
+
+            /* disconnect if authentication fails */
+            code = curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1L);
+            if(code != CURLE_OK) {
+                T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
+            }
+          } else {
+            free(httpResponse->data);
+            free(httpResponse);
+            T2Error("mTLS_get failure\n");
+	    return T2ERROR_FAILURE; 
+          }
+        }
+
         // Set interface and addr type
  /* For now, Let curl start hopping between v4/v6 address like it is there for legacy dca till STBIT-1511 gets resolved.*/
  /*
@@ -329,6 +370,11 @@ static T2ERROR doHttpGet(char* httpsUrl, char **data) {
             *data = strdup(httpResponse->data);
             free(httpResponse->data);
             free(httpResponse);
+            if(NULL != pCertFile)
+                free(pCertFile);
+
+            if(NULL != pPasswd)
+                free(pPasswd);
             curl_easy_cleanup(curl);
         } else {
             T2Error("%s:%d, T2:Telemetry XCONF communication Failed with http code : %ld Curl code : %ld \n", __func__,
@@ -336,6 +382,10 @@ static T2ERROR doHttpGet(char* httpsUrl, char **data) {
             T2Error("%s : curl_easy_perform failed with error message %s from curl \n", __FUNCTION__, curl_easy_strerror(curl_code));
             free(httpResponse->data);
             free(httpResponse);
+            if(NULL != pCertFile)
+                free(pCertFile);
+            if(NULL != pPasswd)
+                free(pPasswd);
             curl_easy_cleanup(curl);
             if(http_code == 404)
                 return T2ERROR_PROFILE_NOT_SET;

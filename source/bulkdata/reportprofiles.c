@@ -42,6 +42,7 @@
 #include "t2parser.h"
 #include "interChipHelper.h"
 #include "telemetry2_0.h"
+#include "t2MtlsUtils.h"
 
 //Including Webconfig Framework For Telemetry 2.0 As part of RDKB-28897
 #define SUBDOC_COUNT    1
@@ -66,6 +67,9 @@ static bool rpInitialized = false;
 static char *t2Version = NULL;
 
 pthread_mutex_t rpMutex = PTHREAD_MUTEX_INITIALIZER;
+
+static bool isT2MtlsEnable = false;
+static bool initT2MtlsEnable = false;
 
 #if defined(DROP_ROOT_PRIV)
 static void drop_root()
@@ -341,6 +345,9 @@ T2ERROR initReportProfiles()
         T2Error("%s ReportProfiles already initialized - ignoring\n", __FUNCTION__);
         return T2ERROR_FAILURE;
     }
+    if(isMtlsEnabled() == true){
+      initMtls();
+    }
     rpInitialized = true;
 
     bulkdata.enable = false;
@@ -435,6 +442,7 @@ T2ERROR ReportProfiles_uninit( ) {
     }
     rpInitialized = false;
 
+    uninitMtls();
     T2ER_Uninit();
     destroyT2MarkerComponentMap();
     uninitScheduler();
@@ -926,4 +934,25 @@ int __ReportProfiles_ProcessReportProfilesMsgPackBlob(void *msgpack)
     hash_map_destroy(profileHashMap, freeProfilesHashMap);
     T2Debug("%s --out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;
+}
+
+bool isMtlsEnabled(void) 
+{
+    char *paramValue = NULL;
+
+    if(initT2MtlsEnable == false) {
+       if(T2ERROR_SUCCESS == getParameterValue(T2_MTLS_RFC, &paramValue))
+       {
+          if(paramValue != NULL && (strncasecmp(paramValue, "true", 4) == 0)) {
+             T2Debug("mTLS support is Enabled\n");
+             isT2MtlsEnable = true;
+          }
+          initT2MtlsEnable = true;
+          free(paramValue);
+       }
+       else{
+              T2Error("getParameterValue failed\n");
+       }
+    }
+    return isT2MtlsEnable;
 }

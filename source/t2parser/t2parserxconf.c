@@ -23,6 +23,7 @@
 
 #include "t2parserxconf.h"
 #include "xconfclient.h"
+#include "busInterface.h"
 #include "reportprofiles.h"
 #include "t2log_wrapper.h"
 #include "t2common.h"
@@ -32,6 +33,9 @@
 #define MT_TR181PARAM_PATTERN   "<message_bus>"
 #define MT_TR181PATAM_PATTERN_LENGTH 13
 #define SPLITMARKER_SUFFIX  "_split"
+
+#define XCONF_END_POINT_PARAMETER "Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.TelemetryEndpoint.URL"
+#define MAX_END_POINT_LEN 128
 
 static int getScheduleInSeconds(const char* cronPattern) {
     unsigned int scheduleIntervalInMin = 15; // Default value from field settings
@@ -193,8 +197,8 @@ T2ERROR processConfigurationXConf(char* configData, ProfileXConf **localProfile)
 
     profile->protocol = strdup("HTTP");
     profile->t2HTTPDest = (T2HTTP *)malloc(sizeof(T2HTTP));
-    profile->t2HTTPDest->URL = strdup(juploadUrl->valuestring);
 
+    profile->t2HTTPDest->URL = strdup(juploadUrl->valuestring);
     profile->encodingType = strdup("JSON");
 
     Vector_Create(&profile->paramList);

@@ -52,7 +52,7 @@
 #define MAX_PARAMETERNAME_LEN    512
 /*Define signals properly to make sure they don't get overide anywhere*/
 #define LOG_UPLOAD 10
-#define EXEC_RELOAD 15
+#define EXEC_RELOAD 12
 
 
 static bool isDebugEnabled = true;
@@ -87,6 +87,12 @@ static void terminate() {
     ReportProfiles_uninit();
     rdk_logger_deinit();
     curl_global_cleanup();
+    if(0 != remove("/tmp/.t2ReadyToReceiveEvents")){
+        T2Info("%s Unable to remove ready to receive event flag \n", __FUNCTION__);
+    }
+    if(0 != remove("/tmp/telemetry_initialized_bootup")){
+        T2Info("%s Unable to remove initialization complete flag \n", __FUNCTION__);
+    }
 }
 
 static void _print_stack_backtrace(void)
@@ -129,9 +135,6 @@ void sig_handler(int sig)
         T2Info(("LOG_UPLOAD received!\n"));
         ReportProfiles_Interrupt();
     }
-    else if ( sig == SIGUSR2 ) {
-        T2Info(("SIGUSR2 received!\n"));
-    }
     else if ( sig == SIGCHLD ) {
         signal(SIGCHLD, sig_handler); /* reset it to this function */
         T2Info(("SIGCHLD received!\n"));
@@ -140,7 +143,7 @@ void sig_handler(int sig)
         signal(SIGPIPE, sig_handler); /* reset it to this function */
         T2Info(("SIGPIPE received!\n"));
     }
-    else if(sig == EXEC_RELOAD)
+    else if(sig == SIGUSR2 || sig == EXEC_RELOAD)
     {
         T2Info(("EXEC_RELOAD received!\n"));
         if(T2ERROR_SUCCESS == startXConfClient()) {

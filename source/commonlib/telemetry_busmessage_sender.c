@@ -441,17 +441,20 @@ static bool isCachingRequired( ) {
         return true;
     }
 
-    if(isRFCT2Enable && !isT2Ready) {
+    if(isRFCT2Enable) {
+        // Always check for t2 is ready to accept events. Shutdown target can bring down t2 process at runtime
         if(access( T2_COMPONENT_READY, F_OK) != -1) {
-            isT2Ready = true;
-            if(isRbusEnabled) {
-                rbusError_t ret = RBUS_ERROR_SUCCESS;
-                if(componentName && (0 != strcmp(componentName, "telemetry_client"))) {
-                    doPopulateEventMarkerList();
-                }
-                ret = rbusEvent_Subscribe(bus_handle, T2_PROFILE_UPDATED_NOTIFY, rbusEventReceiveHandler, "T2Event",0);
-                if(ret != RBUS_ERROR_SUCCESS) {
-                    EVENT_ERROR("Unable to subscribe to event %s with rbus error code : %d\n", T2_PROFILE_UPDATED_NOTIFY, ret);
+            if(!isT2Ready) {
+                isT2Ready = true;
+                if(isRbusEnabled) {
+                    rbusError_t ret = RBUS_ERROR_SUCCESS;
+                    if(componentName && (0 != strcmp(componentName, "telemetry_client"))) {
+                        doPopulateEventMarkerList();
+                    }
+                    ret = rbusEvent_Subscribe(bus_handle, T2_PROFILE_UPDATED_NOTIFY, rbusEventReceiveHandler, "T2Event", 0);
+                    if(ret != RBUS_ERROR_SUCCESS) {
+                        EVENT_ERROR("Unable to subscribe to event %s with rbus error code : %d\n", T2_PROFILE_UPDATED_NOTIFY, ret);
+                    }
                 }
             }
             return false;

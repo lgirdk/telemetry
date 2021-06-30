@@ -449,7 +449,7 @@ static bool isCachingRequired( ) {
                 if(componentName && (0 != strcmp(componentName, "telemetry_client"))) {
                     doPopulateEventMarkerList();
                 }
-                ret = rbusEvent_Subscribe(bus_handle, T2_PROFILE_UPDATED_NOTIFY, rbusEventReceiveHandler, "T2Event");
+                ret = rbusEvent_Subscribe(bus_handle, T2_PROFILE_UPDATED_NOTIFY, rbusEventReceiveHandler, "T2Event",0);
                 if(ret != RBUS_ERROR_SUCCESS) {
                     EVENT_ERROR("Unable to subscribe to event %s with rbus error code : %d\n", T2_PROFILE_UPDATED_NOTIFY, ret);
                 }

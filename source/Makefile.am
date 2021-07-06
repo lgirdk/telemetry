@@ -21,6 +21,9 @@ SUBDIRS = utils ccspinterface t2parser xconf-client protocol reportgen scheduler
 if ENABLE_CCSP_SUPPORT
 SUBDIRS += t2dm
 endif
+if WITH_GTEST_SUPPORT
+SUBDIRS += test
+endif
 
 AM_CFLAGS = -D_ANSC_LINUX
 AM_CFLAGS += -D_ANSC_USER

@@ -543,7 +543,7 @@ T2ERROR disableProfile(const char *profileName, bool *isDeleteRequired) {
     return T2ERROR_SUCCESS;
 }
 
-T2ERROR deleteAllProfiles(void) {
+T2ERROR deleteAllProfiles(bool delFromDisk) {
     T2Debug("%s ++in\n", __FUNCTION__);
 
     int count = 0;
@@ -579,10 +579,13 @@ T2ERROR deleteAllProfiles(void) {
         if (Vector_Size(tempProfile->gMarkerList) > 0)
             removeGrepConfig(tempProfile->name);
         pthread_mutex_unlock(&plMutex);
-
-        removeProfileFromDisk(REPORTPROFILES_PERSISTENCE_PATH, tempProfile->name);
+        if(delFromDisk == true){
+           removeProfileFromDisk(REPORTPROFILES_PERSISTENCE_PATH, tempProfile->name);
+	}   
     }
-    removeProfileFromDisk(REPORTPROFILES_PERSISTENCE_PATH, MSGPACK_REPORTPROFILES_PERSISTENT_FILE);
+    if(delFromDisk == true){
+       removeProfileFromDisk(REPORTPROFILES_PERSISTENCE_PATH, MSGPACK_REPORTPROFILES_PERSISTENT_FILE);
+    }   
 
     pthread_mutex_lock(&plMutex);
     T2Debug("Deleting all profiles from the profileList\n");
@@ -832,7 +835,7 @@ T2ERROR uninitProfileList()
     }
 
     initialized = false;
-    deleteAllProfiles();
+    deleteAllProfiles(false); // avoid removing multiProfiles from Disc
 
     pthread_mutex_destroy(&reportLock);
     pthread_mutex_destroy(&plMutex);

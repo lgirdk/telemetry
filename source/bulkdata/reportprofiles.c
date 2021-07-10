@@ -501,7 +501,7 @@ static void freeReportProfileHashMap(void *data) {
 static T2ERROR deleteAllReportProfiles() {
     T2Debug("%s ++in\n", __FUNCTION__);
 
-    if (T2ERROR_SUCCESS != deleteAllProfiles()) {
+    if (T2ERROR_SUCCESS != deleteAllProfiles(true)) {
         T2Error("Error while deleting all report profiles \n");
     }
 

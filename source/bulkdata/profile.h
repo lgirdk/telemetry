@@ -87,7 +87,7 @@ T2ERROR disableProfile(const char *profileName, bool *isDeleteRequired);
 
 T2ERROR deleteProfile(const char *profileName);
 
-T2ERROR deleteAllProfiles(void);
+T2ERROR deleteAllProfiles(bool delFromDisk);
 
 void updateMarkerComponentMap();
 

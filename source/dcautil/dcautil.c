@@ -19,6 +19,7 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <unistd.h>
 
 #ifdef DUAL_CORE_XB3
 #include <sys/inotify.h>
@@ -51,11 +52,17 @@ static T2ERROR getInterChipDCAResult(char* profileName, cJSON** pdcaResultObj, b
     }
     fprintf(profileFp, "%s%s%d\n", profileName, DELIMITER, isClearSeekMap ? 1:0);
     fclose(profileFp);
-
     execNotifier("notifyGetGrepResult");
     // Open up inotify listener for available result file notification .
     int notifyfd = -1;
     int watchfd = -1;
+
+    if( access(INOTIFY_FILE, F_OK) != -1 ){
+        // Do not lockout on inotify wait if event is already available
+        execNotifier("clearInotifyDir");
+        goto cleanup ;
+    }
+
     notifyfd = inotify_init();
 
     if (notifyfd < 0) {

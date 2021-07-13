@@ -27,6 +27,7 @@
 #define TELEMETRY_GREP_PROFILE_NAME "/tmp/t2ProfileName"
 
 #define DIRECTORY_TO_MONITOR "/tmp/t2events"
+#define INOTIFY_FILE "/tmp/t2events/eventType.cmd"
 #define MAX_EVENT_TYPE_BUFFER 50
 
 // Event on ATOM to load/reload new config

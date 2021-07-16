@@ -22,6 +22,7 @@
 #include <stdlib.h>
 #include <pthread.h>
 #include <net/if.h>
+#include <netdb.h>
 #include <string.h>
 #include <ifaddrs.h>
 #include <stdbool.h>
@@ -45,21 +46,41 @@ static void sendOverHTTPInit(){
 }
 
 #if defined(ENABLE_RDKB_SUPPORT)
+/**
+ * Return address type assigned to interface as IPv6 only if
+ * a global IPv6 IP is assigned .
+ */
 static ADDRESS_TYPE getAddressType(const char *cif) {
     struct ifaddrs *ifap, *ifa;
-    ADDRESS_TYPE addressType = ADDR_UNKNOWN;
+    int ret = 0;
+    int family;
+    char host[NI_MAXHOST] = {'\0'};
+    ADDRESS_TYPE addressType = ADDR_IPV4;
 
     getifaddrs(&ifap);
-    for (ifa = ifap; ifa; ifa = ifa->ifa_next) {
-        if (ifa->ifa_name == NULL || strcmp(ifa->ifa_name, cif))
-            continue;
+    if(getifaddrs(&ifap) == -1) {
+        return ADDR_UNKNOWN;
+    }
 
-        if (ifa->ifa_addr->sa_family == AF_INET)
-            addressType = ADDR_IPV4;
-        else
-            addressType = ADDR_IPV6;
+    for( ifa = ifap; ifa; ifa = ifa->ifa_next ) {
+        if(ifa->ifa_name == NULL || strcmp(ifa->ifa_name, cif))
+        continue;
 
-        break;
+        family = ifa->ifa_addr->sa_family;
+        if(family != AF_INET6)
+        continue;
+
+        ret = getnameinfo(ifa->ifa_addr, sizeof(struct sockaddr_in6), host, NI_MAXHOST, NULL, 0, NI_NUMERICHOST);
+        if(ret == 0) {
+            struct sockaddr_in6 *ipv6Addr = (struct sockaddr_in6 *) ifa->ifa_addr ;
+            if(ipv6Addr->sin6_scope_id != 0 || strncmp(host, "::1", NI_MAXHOST) == 0) {
+                T2Debug("Address %s is link local or localhost . Cannot be considered as valid Ipv6 address .\n", host);
+                continue;
+            } else {
+                addressType = ADDR_IPV6;
+                break;
+            }
+        }
     }
 
     freeifaddrs(ifap);

@@ -21,7 +21,7 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <unistd.h>
-
+#include <string.h>
 #include "t2log_wrapper.h"
 
 unsigned int rdkLogLevel = RDK_LOG_INFO;
@@ -35,30 +35,56 @@ void LOGInit()
 
 void T2Log(unsigned int level, const char *msg, ...)
 {
-    va_list arg;
-    char *pTempChar = NULL;
-    int ret = 0;
-
-    if( level <=  rdkLogLevel)
+  va_list arg;
+  char *pTempChar = NULL;
+  int ret = 0;
+  if( level <= rdkLogLevel)
+  {
+    va_start(arg, msg);
+    int messageLen = vsnprintf(NULL, 0, msg, arg);
+    va_end(arg);
+    messageLen++;
+    pTempChar = (char *)malloc(messageLen);
+    memset(pTempChar, '\0' , messageLen);
+    if(pTempChar)
     {
-        pTempChar = (char *)malloc(4096);
-        if(pTempChar)
-        {
-            va_start(arg, msg);
-            ret = vsnprintf(pTempChar, 4096, msg,arg);
-            if(ret < 0)
-            {
-                perror(pTempChar);
-            }
-            va_end(arg);
-
-            RDK_LOG(level, "LOG.RDK.T2", "%s", pTempChar);
-
-
-            if(pTempChar !=NULL)
-            {
-                free(pTempChar);
-            }
+      const int loggerBufferSize = 450 ;
+      int writableBuffer = loggerBufferSize - 1 ;
+      va_start(arg, msg);
+      ret = vsnprintf(pTempChar, messageLen, msg,arg);
+      if(ret < 0)
+      {
+        perror(pTempChar);
+      }
+      va_end(arg);
+      if (messageLen > loggerBufferSize) { // Break down logging message to smaller chunks supported by rdklogger .
+        unsigned int dataRemaining = messageLen ;
+        unsigned int count = 1 ;
+        char buff[loggerBufferSize];
+        memset(buff,'\0', loggerBufferSize);
+        strncpy(buff, pTempChar, writableBuffer);
+        dataRemaining = dataRemaining - writableBuffer ;
+        RDK_LOG(level, "LOG.RDK.T2", "%s\n", buff);
+        while (dataRemaining > 0){
+          memset(buff,'\0', loggerBufferSize);
+          if (dataRemaining > writableBuffer) {
+            strncpy(buff, pTempChar + (writableBuffer*count), writableBuffer);
+            dataRemaining = dataRemaining - writableBuffer ;
+          } else {
+            strncpy(buff, pTempChar + (writableBuffer*count), dataRemaining);
+            dataRemaining = 0 ;
+          }
+          RDK_LOG(level, "LOG.RDK.T2", "%s\n", buff);
+          count ++ ;
         }
+      }else {
+        RDK_LOG(level, "LOG.RDK.T2", "%s", pTempChar);
+      }
+      if(pTempChar != NULL)
+      {
+        free(pTempChar);
+      }
     }
+    va_end(arg);
+  }
 }

@@ -400,8 +400,16 @@ static void* CollectAndReport(void* data)
                     //return NULL;
                     goto reportThreadEnd;
                 }
+
+                FILE *fpReport = fopen(TELEMETRY_REPORT_FILE, "w");
+                if(fpReport != NULL)
+                {
+                    fprintf(fpReport,"cJSON Report = %s\n", jsonReport);
+                    fclose(fpReport);
+                }
+                T2Info("cJSON Report is written to file %s\n",TELEMETRY_REPORT_FILE);
+
                 long size = strlen(jsonReport);
-                T2Info("cJSON Report = %s\n", jsonReport);
                 cJSON *root = cJSON_Parse(jsonReport);
                 if(root != NULL) {
                     cJSON *array = cJSON_GetObjectItem(root, profile->RootName);

@@ -35,6 +35,7 @@
 #define DEFAULT_MAX_REPORT_SIZE 51200
 #define MAX_CACHED_REPORTS 5
 
+#define TELEMETRY_REPORT_FILE "/tmp/telemetry_report.txt"
 
 typedef enum
 {

@@ -210,6 +210,7 @@ static void* CollectAndReport(void* data)
     Vector *grepResultList = NULL;
     cJSON *valArray = NULL;
     char* jsonReport = NULL;
+    FILE *fpReport = NULL;
 
     struct timespec startTime;
     struct timespec endTime;
@@ -274,8 +275,16 @@ static void* CollectAndReport(void* data)
                 profile->reportInProgress = false;
                 return NULL;
             }
+
+            fpReport = fopen(TELEMETRY_REPORT_FILE, "w");
+            if(fpReport != NULL)
+            {
+                fprintf(fpReport,"cJSON Report = %s\n", jsonReport);
+                fclose(fpReport);
+            }
+            T2Info("cJSON Report is written to file %s\n",TELEMETRY_REPORT_FILE);
+
             long size = strlen(jsonReport);
-            T2Info("cJSON Report = %s\n", jsonReport);
             T2Info("Report Size = %ld\n", size);
             if(size > DEFAULT_MAX_REPORT_SIZE) {
                 T2Warning("Report size is exceeding the max limit : %d\n", DEFAULT_MAX_REPORT_SIZE);

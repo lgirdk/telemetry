@@ -280,6 +280,7 @@ static void* CollectAndReport(void* data)
     Vector *grepResultList = NULL;
     cJSON *valArray = NULL;
     char* jsonReport = NULL;
+    FILE *fpReport = NULL;
     cJSON *triggercondition = NULL;
     time_t maxuploadinSec = 0;
     time_t maxuploadinmilliSec = 0;
@@ -396,8 +397,16 @@ static void* CollectAndReport(void* data)
                 }
                 return NULL;
             }
+
+            fpReport = fopen(TELEMETRY_REPORT_FILE, "w");
+            if(fpReport != NULL)
+            {
+                fprintf(fpReport,"cJSON Report = %s\n", jsonReport);
+                fclose(fpReport);
+            }
+            T2Info("cJSON Report is written to file %s\n",TELEMETRY_REPORT_FILE);
+
             long size = strlen(jsonReport);
-            T2Info("cJSON Report = %s\n", jsonReport);
             cJSON *root = cJSON_Parse(jsonReport);
             if(root != NULL) {
                 cJSON *array = cJSON_GetObjectItem(root, profile->RootName);

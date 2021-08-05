@@ -354,7 +354,8 @@ T2ERROR initReportProfiles()
     #endif
 
     ProfileXConf_init();
-    if(T2ERROR_SUCCESS == getParameterValue(T2_VERSION_DATAMODEL_PARAM, &t2Version) && strcmp(t2Version, "2") !=0) {
+    t2Version = strdup("2.0.1"); // Setting the version to 2.0.1
+    {
         T2Debug("T2 Version = %s\n", t2Version);
         initProfileList();
         free(t2Version);

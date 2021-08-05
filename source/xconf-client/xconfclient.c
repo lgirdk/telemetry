@@ -24,6 +24,7 @@
 #include <ifaddrs.h>
 #include <stdbool.h>
 #include <curl/curl.h>
+#include <unistd.h>
 
 #include "t2log_wrapper.h"
 #include "reportprofiles.h"
@@ -388,6 +389,20 @@ static T2ERROR getRemoteConfigURL(char **configURL) {
     T2Debug("%s ++in\n", __FUNCTION__);
 
     char *paramVal = NULL;
+     /**
+     * Attempts to read from PAM before its ready creates deadlock in PAM .
+     * Long pending unresolved issue with PAM !!!
+     * PAM not ready is a definite case for caching the event and avoid bus traffic
+     * */
+    #if defined(ENABLE_RDKB_SUPPORT)
+    int count = 0 , MAX_RETRY = 20 ;
+    while (access( "/tmp/pam_initialized", F_OK ) != 0) {
+        sleep(6);
+        if(count >= MAX_RETRY)
+            break ;
+        count ++ ;
+    }
+    #endif
 
     if (T2ERROR_SUCCESS == getParameterValue(TR181_CONFIG_URL, &paramVal)) {
         if (NULL != paramVal) {

@@ -31,7 +31,7 @@
 #include "dca.h"
 #include "interChipHelper.h"
 
-#define T2EVENTQUEUE_MAX_LIMIT 100
+#define T2EVENTQUEUE_MAX_LIMIT 200
 #define MESSAGE_DELIMITER "<#=#>"
 
 static queue_t *eQueue = NULL;
@@ -56,57 +56,46 @@ void freeT2Event(void *data)
     }
 }
 
-void T2ER_PushDataWithDelim(char* eventInfo, char* user_data)
-{
+void T2ER_PushDataWithDelim(char* eventInfo, char* user_data) {
     T2Debug("%s ++in\n", __FUNCTION__);
-    if(EREnabled)
-    {
-        if(!eventInfo)
-        {
+    if(EREnabled) {
+        if(!eventInfo) {
             T2Error("EventInfo is NULL, ignoring the notification\n");
-        }
-        else
-        {
+        }else {
             pthread_mutex_lock(&erMutex);
-            if(t2_queue_count(eQueue) > T2EVENTQUEUE_MAX_LIMIT)
-            {
-                T2Warning("T2EventQueue max limit : %d reached, dropping packet\n", T2EVENTQUEUE_MAX_LIMIT);
-            }
-            else
-            {
-                T2Debug("Received eventInfo : %s\n", eventInfo);
-                T2Event *event = (T2Event *)malloc(sizeof(T2Event));
-                char* token = strSplit(eventInfo, MESSAGE_DELIMITER);
-                if(token != NULL)
-                {
+            T2Debug("Received eventInfo : %s\n", eventInfo);
+            char* token = strSplit(eventInfo, MESSAGE_DELIMITER);
+            if(token != NULL) {
+                T2Event *event = (T2Event *) malloc(sizeof(T2Event));
+                if(event) {
                     event->name = strdup(token);
                     token = strSplit(NULL, MESSAGE_DELIMITER);
-                    if(token != NULL)
-                    {
+                    if(token != NULL) {
                         event->value = strdup(token);
-                        T2Debug("Adding eventName : %s eventValue : %s to t2event queue\n", event->name, event->value);
-                        t2_queue_push(eQueue, (void *)event);
-                        if(!stopDispatchThread)
-                            pthread_cond_signal(&erCond);
-                    }
-                    else
-                    {
+                        if(t2_queue_count(eQueue) > T2EVENTQUEUE_MAX_LIMIT) {
+                            T2Warning("T2EventQueue max limit : %d reached, dropping packet for  eventName : %s eventValue : %s\n",
+                                    T2EVENTQUEUE_MAX_LIMIT, event->name, event->value);
+                            free(event->value);
+                            free(event->name);
+                            free(event);
+                        }else {
+                            T2Debug("Adding eventName : %s eventValue : %s to t2event queue\n", event->name, event->value);
+                            t2_queue_push(eQueue, (void *) event);
+                            if(!stopDispatchThread)
+                                pthread_cond_signal(&erCond);
+                        }
+                    }else {
                         free(event->name);
                         free(event);
                         T2Error("Missing event value\n");
                     }
                 }
-                else
-                {
-                    T2Error("Missing delimiter in the event received\n");
-                    free(event);
-                }
+            }else {
+                T2Error("Missing delimiter in the event received\n");
             }
             pthread_mutex_unlock(&erMutex);
         }
-    }
-    else
-    {
+    }else {
         T2Warning("ER is not initialized, ignoring telemetry events for now\n");
     }
     T2Debug("%s --out\n", __FUNCTION__);
@@ -120,7 +109,8 @@ void T2ER_Push(char* eventName, char* eventValue) {
         }else {
             pthread_mutex_lock(&erMutex);
             if(t2_queue_count(eQueue) > T2EVENTQUEUE_MAX_LIMIT) {
-                T2Warning("T2EventQueue max limit : %d reached, dropping packet\n", T2EVENTQUEUE_MAX_LIMIT);
+                T2Warning("T2EventQueue max limit : %d reached, dropping packet for eventName : %s eventValue : %s\n", 
+			   T2EVENTQUEUE_MAX_LIMIT, eventName, eventValue);
             }else {
                 T2Debug("Received eventInfo : %s value : %s\n", eventName, (char* ) eventValue);
                 T2Event *event = (T2Event *) malloc(sizeof(T2Event));

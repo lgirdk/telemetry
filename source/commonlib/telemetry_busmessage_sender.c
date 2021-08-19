@@ -23,6 +23,9 @@
 #include <pthread.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
+#include <stdarg.h>
+#include <time.h>
 
 #if defined(CCSP_SUPPORT_ENABLED)
 #include <ccsp/ccsp_memory.h>
@@ -36,6 +39,7 @@
 #include "t2collection.h"
 #include "vector.h"
 #include "telemetry2_0.h"
+#include "t2log_wrapper.h"
 #include "telemetry_busmessage_internal.h"
 
 #define MESSAGE_DELIMITER "<#=#>"
@@ -43,6 +47,7 @@
 #define MAX_CACHED_EVENTS_LIMIT 50
 #define T2_COMPONENT_READY    "/tmp/.t2ReadyToReceiveEvents"
 #define T2_SCRIPT_EVENT_COMPONENT "telemetry_client"
+#define SENDER_LOG_FILE "/tmp/t2_sender_debug.log"
 
 static const char* CCSP_FIXED_COMP_ID = "com.cisco.spvtg.ccsp.t2commonlib" ;
 
@@ -54,14 +59,83 @@ static bool isT2Ready = false;
 static bool getParamStatus = false;
 static bool isRbusEnabled = false ;
 
+static pthread_mutex_t initMtx = PTHREAD_MUTEX_INITIALIZER;
+static bool isMutexInitialized = false ;
+
 static hash_map_t *eventMarkerMap = NULL;
 
-pthread_mutex_t eventMutex = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t sMutex = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t fMutex = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t dMutex = PTHREAD_MUTEX_INITIALIZER;
-static pthread_mutex_t FileCacheMutex = PTHREAD_MUTEX_INITIALIZER;
-static pthread_mutex_t markerListMutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutexattr_t mutexAttr;
+
+static pthread_mutex_t eventMutex ;
+static pthread_mutex_t sMutex ;
+static pthread_mutex_t fMutex ;
+static pthread_mutex_t dMutex ;
+static pthread_mutex_t FileCacheMutex ;
+static pthread_mutex_t markerListMutex ;
+static pthread_mutex_t loggerMutex ;
+
+static void EVENT_DEBUG(char* format, ...) {
+
+    if(access(ENABLE_DEBUG_FLAG, F_OK) == -1) {
+        return;
+    }
+
+    FILE *logHandle = NULL ;
+
+    pthread_mutex_lock(&loggerMutex);
+    logHandle = fopen(SENDER_LOG_FILE, "a+");
+    if(logHandle) {
+        time_t rawtime;
+        struct tm* timeinfo;
+
+        time(&rawtime);
+        timeinfo = localtime(&rawtime);
+        static char timeBuffer[20] = { '\0' };
+        strftime(timeBuffer, sizeof(timeBuffer), "%Y-%m-%d %H:%M:%S", timeinfo);
+        fprintf(logHandle, "%s : ", timeBuffer);
+        va_list argList;
+        va_start(argList, format);
+        vfprintf(logHandle, format, argList);
+        va_end(argList);
+        fclose(logHandle);
+    }
+    pthread_mutex_unlock(&loggerMutex);
+
+}
+
+static void initMutex() {
+    pthread_mutex_lock(&initMtx);
+    if ( !isMutexInitialized ) {
+        isMutexInitialized = true ;
+        pthread_mutexattr_init(&mutexAttr);
+        pthread_mutexattr_settype(&mutexAttr, PTHREAD_MUTEX_RECURSIVE);
+
+        pthread_mutex_init(&sMutex, &mutexAttr);
+        pthread_mutex_init(&fMutex, &mutexAttr);
+        pthread_mutex_init(&dMutex, &mutexAttr);
+        pthread_mutex_init(&FileCacheMutex, &mutexAttr);
+        pthread_mutex_init(&markerListMutex, &mutexAttr);
+        pthread_mutex_init(&loggerMutex, &mutexAttr);
+    }
+    pthread_mutex_unlock(&initMtx);
+}
+
+static void uninitMutex() {
+    pthread_mutex_lock(&initMtx);
+    if ( isMutexInitialized ) {
+        isMutexInitialized = false ;
+
+        pthread_mutex_destroy(&sMutex);
+        pthread_mutex_destroy(&fMutex);
+        pthread_mutex_destroy(&dMutex);
+        pthread_mutex_destroy(&FileCacheMutex);
+        pthread_mutex_destroy(&markerListMutex);
+        pthread_mutex_destroy(&loggerMutex);
+
+        pthread_mutexattr_destroy(&mutexAttr);
+    }
+    pthread_mutex_unlock(&initMtx);
+}
 
 #if defined(CCSP_SUPPORT_ENABLED)
 T2ERROR getParamValues(char **paramNames, const int paramNamesCount, parameterValStruct_t ***valStructs, int *valSize)
@@ -279,7 +353,7 @@ static bool initRFC( ) {
 int filtered_event_send(const char* data, char *markerName) {
     rbusError_t ret = RBUS_ERROR_SUCCESS;
     int status = 0 ;
-    // EVENT_DEBUG("%s ++in\n", __FUNCTION__);
+    EVENT_DEBUG("%s ++in\n", __FUNCTION__);
     if(!bus_handle) {
         EVENT_ERROR("bus_handle is null .. exiting !!! \n");
         return ret;
@@ -287,22 +361,27 @@ int filtered_event_send(const char* data, char *markerName) {
 
     if(isRbusEnabled)
     {
+
         // Filter data from marker list
-        pthread_mutex_lock(&markerListMutex);
         if(componentName && (0 != strcmp(componentName, T2_SCRIPT_EVENT_COMPONENT))) { // Events from scripts needs to be sent without filtering
+
+            EVENT_DEBUG("%s markerListMutex lock & get list of marker for component %s \n", __FUNCTION__, componentName);
+            pthread_mutex_lock(&markerListMutex);
             bool isEventingEnabled = false;
             if(markerName && eventMarkerMap) {
                 if(hash_map_get(eventMarkerMap, markerName)) {
                     isEventingEnabled = true;
                 }
+            } else {
+                EVENT_DEBUG("%s eventMarkerMap for component %s is empty \n", __FUNCTION__ , componentName );
             }
+            EVENT_DEBUG("%s markerListMutex unlock\n", __FUNCTION__ );
+            pthread_mutex_unlock(&markerListMutex);
             if(!isEventingEnabled) {
-                pthread_mutex_unlock(&markerListMutex);
+                EVENT_DEBUG("%s markerName %s not found in event list for component %s . Unlock markerListMutex . \n", __FUNCTION__ , markerName , componentName);
                 return status;
             }
         }
-
-        pthread_mutex_unlock(&markerListMutex);
         // End of event filtering
 
         rbusProperty_t objProperty = NULL ;
@@ -317,10 +396,11 @@ int filtered_event_send(const char* data, char *markerName) {
         rbusValue_Init(&value);
         rbusValue_SetProperty(value, objProperty);
 
-        // EVENT_DEBUG("rbus_set with param [%s] with value [%s]\n", T2_EVENT_PARAM, data);
+        EVENT_DEBUG("rbus_set with param [%s] with %s and value [%s]\n", T2_EVENT_PARAM, markerName, data);
         ret = rbus_set(bus_handle, T2_EVENT_PARAM, value, &options);
         if(ret != RBUS_ERROR_SUCCESS) {
             EVENT_ERROR("rbus_set Failed for [%s] with error [%d]\n", T2_EVENT_PARAM, ret);
+            EVENT_DEBUG(" !!! Error !!! rbus_set Failed for [%s] with error [%d]\n", T2_EVENT_PARAM, ret);
             status = -1 ;
         }else {
             status = 0 ;
@@ -347,7 +427,7 @@ int filtered_event_send(const char* data, char *markerName) {
         }
     }
 #endif // CCSP_SUPPORT_ENABLED 
-    //EVENT_DEBUG("%s --out with status %d \n", __FUNCTION__, status);
+    EVENT_DEBUG("%s --out with status %d \n", __FUNCTION__, status);
     return status;
 }
 
@@ -362,12 +442,13 @@ static T2ERROR doPopulateEventMarkerList( ) {
     if(!isRbusEnabled)
         return T2ERROR_SUCCESS;
 
+    EVENT_DEBUG("%s ++in\n", __FUNCTION__);
     rbusError_t ret = RBUS_ERROR_SUCCESS;
     rbusValue_t paramValue_t;
 
     if(!bus_handle && T2ERROR_SUCCESS != initMessageBus()) {
         EVENT_ERROR("Unable to get message bus handles \n");
-        //EVENT_DEBUG("%s --out\n", __FUNCTION__);
+        EVENT_DEBUG("%s --out\n", __FUNCTION__);
         return T2ERROR_FAILURE;
     }
 
@@ -375,7 +456,7 @@ static T2ERROR doPopulateEventMarkerList( ) {
     EVENT_DEBUG("rbus mode : Query marker list with data element = %s \n", deNameSpace[0]);
 
     pthread_mutex_lock(&markerListMutex);
-    // EVENT_DEBUG("Clean up eventMarkerMap \n");
+    EVENT_DEBUG("Lock markerListMutex & Clean up eventMarkerMap \n");
     if(eventMarkerMap != NULL)
         hash_map_destroy(eventMarkerMap, free);
 
@@ -384,6 +465,8 @@ static T2ERROR doPopulateEventMarkerList( ) {
     if(ret != RBUS_ERROR_SUCCESS) {
         EVENT_ERROR("rbus mode : No event list configured in profiles %s\n", deNameSpace[0]);
         pthread_mutex_unlock(&markerListMutex);
+        EVENT_DEBUG("rbus mode : No event list configured in profiles %s . Unlock markerListMutex\n", deNameSpace[0]);
+        EVENT_DEBUG("%s --out\n", __FUNCTION__);
         return T2ERROR_SUCCESS;
     }
 
@@ -392,6 +475,8 @@ static T2ERROR doPopulateEventMarkerList( ) {
         EVENT_ERROR("rbus mode : Unexpected data object received for %s get query \n", deNameSpace[0]);
         rbusValue_Release(paramValue_t);
         pthread_mutex_unlock(&markerListMutex);
+        EVENT_DEBUG("Unlock markerListMutex\n");
+        EVENT_DEBUG("%s --out\n", __FUNCTION__);
         return T2ERROR_FAILURE;
     }
 
@@ -403,6 +488,7 @@ static T2ERROR doPopulateEventMarkerList( ) {
         while(NULL != rbusPropertyList) {
             const char* eventname = rbusProperty_GetName(rbusPropertyList);
             if(eventname && strlen(eventname) > 0) {
+                EVENT_DEBUG("\t %s\n", eventname);
                 hash_map_put(eventMarkerMap, (void*) strdup(eventname), (void*) strdup(eventname));
             }
             rbusPropertyList = rbusProperty_GetNext(rbusPropertyList);
@@ -410,8 +496,10 @@ static T2ERROR doPopulateEventMarkerList( ) {
     }else {
         EVENT_ERROR("rbus mode : No configured event markers for %s \n", componentName);
     }
+    EVENT_DEBUG("Unlock markerListMutex\n");
     pthread_mutex_unlock(&markerListMutex);
     rbusValue_Release(paramValue_t);
+    EVENT_DEBUG("%s --out\n", __FUNCTION__);
     return status;
 
 }
@@ -456,6 +544,7 @@ static bool isCachingRequired( ) {
                     ret = rbusEvent_Subscribe(bus_handle, T2_PROFILE_UPDATED_NOTIFY, rbusEventReceiveHandler, "T2Event", 0);
                     if(ret != RBUS_ERROR_SUCCESS) {
                         EVENT_ERROR("Unable to subscribe to event %s with rbus error code : %d\n", T2_PROFILE_UPDATED_NOTIFY, ret);
+                        EVENT_DEBUG("Unable to subscribe to event %s with rbus error code : %d\n", T2_PROFILE_UPDATED_NOTIFY, ret);
                     }
                 }
             }
@@ -510,20 +599,26 @@ void t2_uninit(void) {
 
     if(isRbusEnabled)
         rBusInterface_Uninit();
+
+    uninitMutex();
 }
 
 T2ERROR t2_event_s(char* marker, char* value) {
 
     int ret;
     T2ERROR retStatus = T2ERROR_FAILURE ;
+    EVENT_DEBUG("%s ++in\n", __FUNCTION__);
 
+    initMutex();
     pthread_mutex_lock(&sMutex);
     if ( NULL == marker || NULL == value) {
         EVENT_ERROR("%s:%d Error in input parameters \n", __func__, __LINE__);
         pthread_mutex_unlock(&sMutex);
+        EVENT_DEBUG("%s --out\n", __FUNCTION__);
         return T2ERROR_FAILURE;
     }
 
+    EVENT_DEBUG("marker = %s : value = %s \n", marker, value);
     // If data is empty should not be sending the empty marker over bus
     if ( 0 == strlen(value) || strcmp(value, "0") == 0 ) {
         pthread_mutex_unlock(&sMutex);
@@ -537,6 +632,7 @@ T2ERROR t2_event_s(char* marker, char* value) {
         retStatus = T2ERROR_SUCCESS;
     }
     pthread_mutex_unlock(&sMutex);
+    EVENT_DEBUG("%s --out\n", __FUNCTION__);
     return retStatus;
 }
 
@@ -544,14 +640,18 @@ T2ERROR t2_event_f(char* marker, double value) {
 
     int ret;
     T2ERROR retStatus = T2ERROR_FAILURE ;
+    EVENT_DEBUG("%s ++in\n", __FUNCTION__);
 
+     initMutex();
      pthread_mutex_lock(&fMutex);
      if ( NULL == marker ) {
          EVENT_ERROR("%s:%d Error in input parameters \n", __func__, __LINE__);
          pthread_mutex_unlock(&fMutex);
+         EVENT_DEBUG("%s --out\n", __FUNCTION__);
          return T2ERROR_FAILURE;
      }
 
+     EVENT_DEBUG("marker = %s : value = %f \n", marker, value);
      char *buffer = (char*) malloc(MAX_DATA_LEN * sizeof(char));
      if (NULL != buffer) {
          snprintf(buffer, MAX_DATA_LEN, "%f", value);
@@ -564,6 +664,7 @@ T2ERROR t2_event_f(char* marker, double value) {
          EVENT_ERROR("%s:%d Error unable to allocate memory \n", __func__, __LINE__);
      }
      pthread_mutex_unlock(&fMutex);
+     EVENT_DEBUG("%s --out\n", __FUNCTION__);
      return retStatus ;
 }
 
@@ -571,16 +672,23 @@ T2ERROR t2_event_d(char* marker, int value) {
 
     int ret;
     T2ERROR retStatus = T2ERROR_FAILURE ;
+    EVENT_DEBUG("%s ++in\n", __FUNCTION__);
 
+     initMutex();
      pthread_mutex_lock(&dMutex);
      if ( NULL == marker ) {
          EVENT_ERROR("%s:%d Error in input parameters \n", __func__, __LINE__);
          pthread_mutex_unlock(&dMutex);
+         EVENT_DEBUG("%s --out\n", __FUNCTION__);
          return T2ERROR_FAILURE;
      }
 
+     EVENT_DEBUG("marker = %s : value = %d \n", marker, value);
+
      if (value == 0) {  // Requirement from field triage to ignore reporting 0 values
          pthread_mutex_unlock(&dMutex);
+         EVENT_DEBUG("%s Value is 0 , do not event .\n", __FUNCTION__);
+         EVENT_DEBUG("%s --out\n", __FUNCTION__);
          return T2ERROR_SUCCESS;
      }
 
@@ -595,6 +703,7 @@ T2ERROR t2_event_d(char* marker, int value) {
      } else {
          EVENT_ERROR("%s:%d Error unable to allocate memory \n", __func__, __LINE__);
      }
+     EVENT_DEBUG("%s --out\n", __FUNCTION__);
      pthread_mutex_unlock(&dMutex);
      return retStatus ;
 }

@@ -41,6 +41,7 @@
 #define MAX_XCONF_RETRY_COUNT 5
 #define IFINTERFACE      "erouter0"
 #define XCONF_CONFIG_FILE  "DCMresponse.txt"
+#define PROCESS_CONFIG_COMPLETE_FLAG "/tmp/t2DcmComplete"
 
 static const int MAX_URL_LEN = 1024;
 static const int MAX_URL_ARG_LEN = 128;
@@ -512,6 +513,12 @@ static void* getUpdatedConfigurationThread(void *data)
                     T2Info("Successfully set new profile : %s\n", profile->name);
                     configFetch = T2ERROR_SUCCESS;
                 }
+
+                // Touch a file to indicate script based supplementary services to proceed with configuration
+                FILE *fp = NULL ;
+                fp = fopen(PROCESS_CONFIG_COMPLETE_FLAG, "w+");
+                if(fp)
+                    fclose(fp);
 
             }
             if(configData != NULL) {

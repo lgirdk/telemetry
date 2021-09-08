@@ -281,6 +281,10 @@ static int addToVector(GList *pchead, Vector* grepResultList) {
                     	GrepResult* grepResult = (GrepResult*) malloc(sizeof(GrepResult));
                         grepResult->markerName = strdup(tmp->header);
                         grepResult->markerValue = strdup(tmp->data);
+			if(tmp->data){
+				free(tmp->data);
+				tmp->data = NULL;
+			}
                         T2Debug("Adding STR to result list %s : %s \n", grepResult->markerName, grepResult->markerValue);
                         Vector_PushBack(grepResultList, grepResult);
 
@@ -428,7 +432,6 @@ static int handleRDKErrCodes(GList **rdkec_head, char *line) {
 static int processCountPattern(hash_map_t *logSeekMap, char *logfile, GList *pchead, int pcIndex, GList **rdkec_head) {
     T2Debug("%s ++in\n", __FUNCTION__);
     char temp[MAXLINE];
-
     T2Debug("Read from log file %s \n", logfile);
     while(getLogLine(logSeekMap,temp, MAXLINE, logfile) != NULL) {
 

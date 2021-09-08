@@ -171,6 +171,9 @@ Vector* getRbusProfileParamValues(Vector *paramList) {
                 paramValues[0]->parameterName = strdup(param);
                 paramValues[0]->parameterValue = strdup("NULL");
             }
+	    if(rbusPropertyValues != NULL){
+	          rbusProperty_Release(rbusPropertyValues);
+	    }
         }else {
             paramValues = (tr181ValStruct_t**) malloc(paramValCount * sizeof(tr181ValStruct_t*));
             if(paramValues != NULL) {
@@ -244,7 +247,7 @@ rbusError_t t2PropertyDataSetHandler(rbusHandle_t handle, rbusProperty_t prop, r
         type_t = rbusValue_GetType(paramValue_t);
     } else {
         return RBUS_ERROR_INVALID_INPUT;
-        T2Debug("%s --out\n", __FUNCTION__);
+	T2Debug("%s --out\n", __FUNCTION__);
     }
     if(strncmp(paramName, T2_EVENT_PARAM, maxParamLen) == 0) {
         if(type_t == RBUS_PROPERTY) {
@@ -310,7 +313,7 @@ rbusError_t t2PropertyDataSetHandler(rbusHandle_t handle, rbusProperty_t prop, r
                 webConfigString = g_base64_decode(data, &decodedDataLen);
                 if(NULL == webConfigString ||  0 == decodedDataLen ){
                     T2Error("Invalid base64 input string. Ignore processing input configuration.\n");
-                    return RBUS_ERROR_INVALID_INPUT;
+		    return RBUS_ERROR_INVALID_INPUT;
                 }
 
                 if(T2ERROR_SUCCESS != dmMsgPckProcessingCallBack((char *)webConfigString, decodedDataLen))

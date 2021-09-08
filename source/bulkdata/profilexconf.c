@@ -206,8 +206,11 @@ static void* CollectAndReportXconf(void* data)
                     free(thirdCachedReport);
                 }
                 Vector_PushBack(profile->cachedReportList, strdup(jsonReport));
-
                 profile->reportInProgress = false;
+		if(jsonReport){
+                        free(jsonReport);
+			jsonReport= NULL;
+		}
                 T2Debug("%s --out\n", __FUNCTION__);
                 return NULL;
             }

@@ -211,7 +211,8 @@ T2ERROR getCCSPParamVal(const char* paramName, char **paramValue)
     if(T2ERROR_SUCCESS != ccspGetParameterValues((const char**)paramNames, 1, &valStructs, &valSize))
     {
         T2Error("Unable to get %s\n", paramName);
-        return T2ERROR_FAILURE;
+        free(paramNames[0]);
+	return T2ERROR_FAILURE;
     }
     T2Debug("%s = %s\n", paramName, valStructs[0]->parameterValue);
     *paramValue = strdup(valStructs[0]->parameterValue);

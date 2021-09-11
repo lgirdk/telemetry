@@ -41,6 +41,7 @@
 #include "busInterface.h"
 #include "t2parser.h"
 #include "interChipHelper.h"
+#include "telemetry2_0.h"
 
 //Including Webconfig Framework For Telemetry 2.0 As part of RDKB-28897
 #define SUBDOC_COUNT    1
@@ -315,6 +316,7 @@ T2ERROR ReportProfiles_deleteProfile(const char* profileName) {
 static void createComponentDataElements() {
     T2Debug("%s ++in\n", __FUNCTION__);
     Vector* componentList = NULL ;
+    FILE* cfgReadyFlag = NULL ;
     int i = 0;
     int length = 0 ;
     getComponentsWithEventMarkers(&componentList);
@@ -324,6 +326,11 @@ static void createComponentDataElements() {
         if(compName)
             regDEforCompEventList(compName, getComponentMarkerList);
     }
+    cfgReadyFlag = fopen(T2_CONFIG_READY, "w+");
+    if(cfgReadyFlag){
+        fclose(cfgReadyFlag);
+    }
+
     T2Debug("%s --out\n", __FUNCTION__);
 }
 

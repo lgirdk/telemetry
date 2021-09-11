@@ -94,6 +94,9 @@ static void terminate() {
     if(0 != remove("/tmp/telemetry_initialized_bootup")){
         T2Info("%s Unable to remove initialization complete flag \n", __FUNCTION__);
     }
+    if(0 != remove(T2_CONFIG_READY)){
+        T2Info("%s Unable to remove config initialization complete flag \n", __FUNCTION__);
+    }
 }
 
 static void _print_stack_backtrace(void)

@@ -531,28 +531,40 @@ static bool isCachingRequired( ) {
         return true;
     }
 
-    if(isRFCT2Enable) {
-        // Always check for t2 is ready to accept events. Shutdown target can bring down t2 process at runtime
-        if(access( T2_COMPONENT_READY, F_OK) != -1) {
-            if(!isT2Ready) {
-                isT2Ready = true;
-                if(isRbusEnabled) {
-                    rbusError_t ret = RBUS_ERROR_SUCCESS;
-                    if(componentName && (0 != strcmp(componentName, "telemetry_client"))) {
-                        doPopulateEventMarkerList();
-                    }
-                    ret = rbusEvent_Subscribe(bus_handle, T2_PROFILE_UPDATED_NOTIFY, rbusEventReceiveHandler, "T2Event", 0);
-                    if(ret != RBUS_ERROR_SUCCESS) {
-                        EVENT_ERROR("Unable to subscribe to event %s with rbus error code : %d\n", T2_PROFILE_UPDATED_NOTIFY, ret);
-                        EVENT_DEBUG("Unable to subscribe to event %s with rbus error code : %d\n", T2_PROFILE_UPDATED_NOTIFY, ret);
-                    }
+    // If feature is disabled by RFC, caching is always disabled
+    if(!isRFCT2Enable) {
+        return false ;
+    }
+
+    // Always check for t2 is ready to accept events. Shutdown target can bring down t2 process at runtime
+    if(access( T2_COMPONENT_READY, F_OK) == -1) {
+        return true ;
+    }
+
+    if(!isRbusEnabled){
+        isT2Ready = true;
+    }
+
+    if(!isT2Ready) {
+        if(componentName && (0 != strcmp(componentName, "telemetry_client"))) {
+            // From other binary applications in rbus mode if t2 daemon is yet to determine state of component specific config from cloud, enable cache
+            if( access( T2_CONFIG_READY, F_OK) == -1 ) {
+                return true;
+            }else {
+                rbusError_t ret = RBUS_ERROR_SUCCESS;
+                doPopulateEventMarkerList();
+                ret = rbusEvent_Subscribe(bus_handle, T2_PROFILE_UPDATED_NOTIFY, rbusEventReceiveHandler, "T2Event", 0);
+                if(ret != RBUS_ERROR_SUCCESS) {
+                    EVENT_ERROR("Unable to subscribe to event %s with rbus error code : %d\n", T2_PROFILE_UPDATED_NOTIFY, ret);
+                    EVENT_DEBUG("Unable to subscribe to event %s with rbus error code : %d\n", T2_PROFILE_UPDATED_NOTIFY, ret);
                 }
+                isT2Ready = true;
             }
-            return false;
         }else {
-            return true;
+            isT2Ready = true;
         }
     }
+
     return false;
 }
 

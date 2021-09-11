@@ -52,6 +52,7 @@ typedef enum
 #define T2_CACHE_FILE    "/tmp/t2_caching_file"
 #define T2_ATOM_CACHE_FILE    "/tmp/t2_atom_caching_file"
 #define T2_CACHE_LOCK_FILE    "/tmp/t2_lock_file"
+#define T2_CONFIG_READY    "/tmp/.t2ConfigReady"
 
 #ifdef __cplusplus
 }

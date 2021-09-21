@@ -123,7 +123,11 @@ static T2ERROR setHeader(CURL *curl, const char* destURL, struct curl_slist **he
         T2Error("Unknown Address Type - returning failure\n");
         return T2ERROR_FAILURE;
     }
+#if defined(_HUB4_PRODUCT_REQ_)
+    else if((getAddressType(INTERFACE) == ADDR_IPV4) && (getAddressType("brlan0") != ADDR_IPV6))
+#else
     else if(getAddressType(INTERFACE) == ADDR_IPV4)
+#endif
         curl_easy_setopt(curl, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V4);
     else
         curl_easy_setopt(curl, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V6);

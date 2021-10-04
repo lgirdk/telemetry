@@ -59,6 +59,7 @@
 #define DEFAULT_LOG_PATH "/opt/logs/"
 #endif
 
+#define TELEMETRY_SEEKFILE_PREFIX "/tmp/telemetry_seekmap_"
 typedef struct _GrepSeekProfile {
     hash_map_t *logFileSeekMap;
     int execCounter;
@@ -76,6 +77,10 @@ void removeProfileFromSeekMap(char *profileName);
 GrepSeekProfile *addToProfileSeekMap(char* profileName);
 
 GrepSeekProfile *getLogSeekMapForProfile(char* profileName);
+
+GrepSeekProfile *getLogSeekMapFromFile(char* profileName);
+
+T2ERROR writeLogSeekMapToFile( char* profileName, hash_map_t *logFileSeekMap);
 
 /**
  * Get log line from log file including the rotated log file if applicable

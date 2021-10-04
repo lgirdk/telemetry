@@ -75,6 +75,94 @@ GrepSeekProfile *addToProfileSeekMap(char* profileName){
     return gsProfile;
 }
 
+GrepSeekProfile *getLogSeekMapFromFile(char* profileName){
+
+    T2Debug("%s ++in for profileName = %s \n", __FUNCTION__, profileName);
+    GrepSeekProfile *gsProfile = NULL;
+    FILE *fp = NULL;
+    char filePath[256] = {'\0'};
+    char str[128];
+
+    snprintf(filePath, sizeof(filePath), "%s%s", TELEMETRY_SEEKFILE_PREFIX, profileName);
+    fp = fopen(filePath, "r");
+    if (fp == NULL) {
+        T2Debug("Unable to read  file : %s\n", filePath);
+        return NULL;
+    }
+    pthread_mutex_lock(&pSeekLock);
+    if (profileSeekMap) {
+        gsProfile = malloc(sizeof(GrepSeekProfile));
+        gsProfile->logFileSeekMap = hash_map_create();
+        while (fgets(str,sizeof(str),fp) != NULL) {
+            char *n, *p;
+            int len;
+            char *name = NULL;
+            long value, *val;
+
+            if ((n = strchr(str,':'))) {
+                len = n - str;
+                name = malloc(len+1);
+                if (name) {
+                    memcpy(name, str, len);
+                    (name)[len] = '\0';
+                    n++;
+                    value = atol(n);
+                    val = (long *) malloc(sizeof(long));
+                    if (NULL != val) {
+                        *val = value ;
+                        hash_map_put(gsProfile->logFileSeekMap, name, val);
+                    } else {
+                        free (name);
+                    }
+                }
+            }
+        }
+
+        gsProfile->execCounter = 0;
+        hash_map_put(profileSeekMap, strdup(profileName), (void*)gsProfile);
+    } else {
+        T2Debug("profileSeekMap exists .. \n");
+    }
+    pthread_mutex_unlock(&pSeekLock);
+    fclose(fp);
+    T2Debug("%s --out\n", __FUNCTION__);
+    return gsProfile;
+}
+
+T2ERROR writeLogSeekMapToFile( char* profileName, hash_map_t *logFileSeekMap)
+{
+    FILE *fp = NULL;
+    char filePath[256] = {'\0'};
+
+    T2Debug("%s ++in\n", __FUNCTION__);
+
+    snprintf(filePath, sizeof(filePath), "%s%s", TELEMETRY_SEEKFILE_PREFIX, profileName);
+
+    fp = fopen(filePath, "w");
+    if(fp == NULL)
+    {
+        T2Error("Unable to write to file : %s\n", filePath);
+        return T2ERROR_FAILURE;
+    }
+
+    element_t *e = logFileSeekMap->queue->head;
+    long seek_value,value;
+    while (e != NULL) {
+        hash_element_t *element = (hash_element_t *) (e->data) ;
+        if (element){
+            seek_value = *((long*)(element->data))  ;
+        } else {
+            T2Debug("data is null .. Setting seek value to 0 \n");
+            seek_value = 0 ;
+        }
+        fprintf(fp, "%s:%ld\n", element->key,seek_value);
+        e = e->next;
+    }
+    fclose(fp);
+    T2Debug("%s --out\n", __FUNCTION__);
+    return T2ERROR_SUCCESS;
+}
+
 static void freeLogFileSeekMap(void *data) {
     if (data != NULL) {
         hash_element_t *element = (hash_element_t *) data;

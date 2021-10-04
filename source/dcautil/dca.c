@@ -643,8 +643,12 @@ static int parseMarkerList(char* profileName, Vector* vMarkerList, Vector* grepR
     // Get logfile -> seek value map associated with the profile
     gsProfile = (GrepSeekProfile *) getLogSeekMapForProfile(profileName);
     if(NULL == gsProfile) {
-        T2Debug("logSeekMap is null, add logSeekMap for %s \n", profileName);
-        gsProfile = (GrepSeekProfile *) addToProfileSeekMap(profileName);
+        T2Debug("logSeekMap is null for %s, try to get from file \n", profileName);
+        gsProfile = (GrepSeekProfile *) getLogSeekMapFromFile(profileName);
+        if (NULL == gsProfile) {
+            T2Debug("logSeekMap from file  is null, add logSeekMap for %s \n", profileName);
+            gsProfile = (GrepSeekProfile *) addToProfileSeekMap(profileName);
+	}
     }
 
     if(NULL == gsProfile) {
@@ -726,6 +730,8 @@ static int parseMarkerList(char* profileName, Vector* vMarkerList, Vector* grepR
     if(filename) {
         updateLogSeek(gsProfile->logFileSeekMap, filename);
     }
+
+    writeLogSeekMapToFile(profileName,gsProfile->logFileSeekMap);
 
     gsProfile->execCounter += 1;
     T2Debug("Execution Count = %d\n",gsProfile->execCounter);

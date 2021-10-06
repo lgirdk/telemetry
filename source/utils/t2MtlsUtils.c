@@ -35,8 +35,12 @@
 static const char* staticMtlsCert = "/etc/ssl/certs/staticXpkiCrt.pk12";
 static const char* staticMtlsDestFile = "/tmp/.cfgStaticxpki";
 
-static const char* dynamicMtlsCert = "/opt/certs/devicecert_1.pk12";
 static const char* dynamicMtlsDestFile = "/tmp/.cfgDynamicxpki";
+#if defined(ENABLE_RDKB_SUPPORT)
+static const char* dynamicMtlsCert = "/nvram/certs/devicecert_1.pk12";
+#else
+static const char* dynamicMtlsCert = "/opt/certs/devicecert_1.pk12";
+#endif
 
 void initMtls() {
     T2Debug("%s ++in\n", __FUNCTION__);

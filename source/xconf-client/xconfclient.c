@@ -26,6 +26,7 @@
 #include <curl/curl.h>
 #include <unistd.h>
 
+#include "cJSON.h"
 #include "t2log_wrapper.h"
 #include "reportprofiles.h"
 #include "profilexconf.h"
@@ -115,6 +116,96 @@ static T2ERROR getBuildType(char* buildType) {
     }
     return T2ERROR_FAILURE;
 }
+
+#if !defined(ENABLE_RDKB_SUPPORT)
+static char *getTimezone () {
+    T2Debug("Retrieving the timezone value\n");
+    int count = 0, i = 0;
+    FILE *file, *fp;
+    char *zoneValue = NULL;
+    char *jsonDoc = NULL;
+    static const char* jsonpath = NULL;
+    static char* CPU_ARCH = NULL;
+    char fileContent[255] = { '\0' };
+    fp = fopen( DEVICE_PROPERTIES, "r");
+    if (fp) {
+        while (fscanf(fp, "%255s", fileContent) != EOF) {
+            char *property = NULL;
+            if ((property = strstr(fileContent, "CPU_ARCH")) != NULL) {
+                property = property + strlen("CPU_ARCH=");
+                CPU_ARCH = strdup(property);
+                T2Debug("CPU_ARCH=%s\n",CPU_ARCH);
+                break;
+            }
+        }
+        fclose(fp);
+    }
+    jsonpath = "/opt/output.json";
+    if((NULL != CPU_ARCH) && (0 == strcmp("x86", CPU_ARCH))){
+            jsonpath = "/tmp/output.json";
+    }
+    T2Debug("Reading Timezone value from %s file...\n", jsonpath);
+    while ( zoneValue == NULL){
+          T2Debug ("timezone retry:%d\n",count);
+          if (access(jsonpath, F_OK) != -1){
+                  file = fopen( jsonpath, "r");
+                  if (file) {
+                        fseek(file, 0, SEEK_END);
+                        long numbytes = ftell(file);
+                        jsonDoc = (char*)malloc(sizeof(char)*(numbytes + 1));
+                        fseek(file, 0, SEEK_SET);
+                        fread(jsonDoc, numbytes, 1, file);
+                        fclose(file);
+                        cJSON *root = cJSON_Parse(jsonDoc);
+                        if (root != NULL){
+                            cJSON *array = cJSON_GetObjectItem(root, "xmediagateways");
+                            if(array){
+                                 for (i = 0 ; i < cJSON_GetArraySize(array) ; i++)
+                                 {
+                                      cJSON * subarray = cJSON_GetArrayItem(array, i);
+                                      cJSON * timezone = cJSON_GetObjectItem(subarray, "timezone");
+                                      if(timezone){
+                                          char *time = cJSON_GetStringValue(timezone);
+                                          zoneValue = strdup(time);
+                                      }
+                                 }
+                            }
+                        }
+                        free(jsonDoc);
+                        jsonDoc = NULL;
+                        cJSON_Delete(root);
+                 }
+          }
+          count++;
+         if (count == 10){
+             T2Debug("Timezone retry count reached the limit . Timezone data source is missing\n");
+             break;
+         }
+     }
+     if ( zoneValue == NULL) {
+              T2Debug("Timezone value from %s is empty, Reading from  /opt/persistent/timeZoneDST file...\n",jsonpath);
+              if (access("/opt/persistent/timeZoneDST", F_OK) != -1){
+                      file = fopen ("/opt/persistent/timeZoneDST", "r");
+                      if (NULL != file){
+                              fseek(file, 0, SEEK_END);
+                              long numbytes = ftell(file);
+                              char *zone = (char*)malloc(sizeof(char)*(numbytes + 1));
+                              fseek(file, 0, SEEK_SET);
+                              while (fscanf (file, "%s", zone) != EOF){
+                                        zoneValue = strdup(zone);
+                              }
+                        fclose(file);
+                        free(zone);
+                      }
+              }
+     
+     }
+     if(CPU_ARCH){
+	     free(CPU_ARCH);
+     }
+     return zoneValue;
+}
+#endif
 
 static T2ERROR appendRequestParams(char *buf, const int maxArgLen) {
 
@@ -218,10 +309,27 @@ static T2ERROR appendRequestParams(char *buf, const int maxArgLen) {
     }
 
     // TODO Check relevance of this existing hardcoded data - can be removed if not used in production
-    strncat(buf,
-            "controllerId=2504&channelMapId=2345&vodId=15660&version=2",
+     strncat(buf,
+            "controllerId=2504&channelMapId=2345&vodId=15660&",
             avaBufSize);
-
+     int slen = strlen("controllerId=2504&channelMapId=2345&vodId=15660&");
+    avaBufSize = avaBufSize - slen;
+#if !defined(ENABLE_RDKB_SUPPORT)
+    char *timezone = NULL;
+    timezone = getTimezone();
+    if(timezone != NULL){
+            memset(tempBuf, 0, MAX_URL_ARG_LEN);
+            write_size = snprintf(tempBuf, MAX_URL_ARG_LEN, "timezone=%s&",timezone);
+            strncat(buf, tempBuf, avaBufSize);
+            avaBufSize = avaBufSize - write_size;
+            free(timezone);
+     } else{
+	     T2Error("Failed to get Value for %s\n", "TIMEZONE");
+             ret = T2ERROR_FAILURE;
+	     goto error;
+     }
+#endif
+     strncat(buf,"version=2", avaBufSize);
     T2Debug("%s:%d Final http get URL if size %d is : \n %s \n", __func__,
             __LINE__, avaBufSize, buf);
 error:

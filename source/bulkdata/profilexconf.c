@@ -278,20 +278,18 @@ static void* CollectAndReportXconf(void* data)
               T2Info("Report Cached, No. of reportes cached = %lu\n", (unsigned long)Vector_Size(profile->cachedReportList));
 
               snprintf(buf,sizeof(buf),"%d",Vector_Size(profile->cachedReportList));
-              telemetry_syscfg_set("upload_attemptCount", buf);
            }
-           else if(ret == T2ERROR_SUCCESS)
+           else
            {
                snprintf(buf,sizeof(buf),"%d",Vector_Size(profile->cachedReportList)+1);
-               telemetry_syscfg_set("upload_attemptCount", buf);
+               if(Vector_Size(profile->cachedReportList) > 0)
+               {
+                   T2Info("Trying to send %lu cached reports\n", (unsigned long)Vector_Size(profile->cachedReportList));
+                   ret = sendCachedReportsOverHTTP(profile->t2HTTPDest->URL, profile->cachedReportList);
+               }
            }
-           else if(Vector_Size(profile->cachedReportList) > 0)
-           {
-               snprintf(buf,sizeof(buf),"%d",Vector_Size(profile->cachedReportList)+1);
-               telemetry_syscfg_set("upload_attemptCount", buf);
-               T2Info("Trying to send  %lu cached reports\n", (unsigned long)Vector_Size(profile->cachedReportList));
-               ret = sendCachedReportsOverHTTP(profile->t2HTTPDest->URL, profile->cachedReportList);
-           }
+
+           telemetry_syscfg_set("upload_attemptCount", buf);
         }
         else
         {

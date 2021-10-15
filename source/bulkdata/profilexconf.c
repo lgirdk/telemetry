@@ -319,24 +319,23 @@ static void* CollectAndReportXconf(void* data)
               saveCachedReportToPersistenceFolder(profile->name, profile->cachedReportList);
 
               snprintf(buf,sizeof(buf),"%d",Vector_Size(profile->cachedReportList));
-              telemetry_syscfg_set("upload_attemptCount", buf);
            }
-           else if(ret == T2ERROR_SUCCESS)
+           else
            {
                snprintf(buf,sizeof(buf),"%d",Vector_Size(profile->cachedReportList)+1);
-               telemetry_syscfg_set("upload_attemptCount", buf);
-           }
-           else if(profile->cachedReportList != NULL && Vector_Size(profile->cachedReportList) > 0)
-           {
-               snprintf(buf,sizeof(buf),"%d",Vector_Size(profile->cachedReportList)+1);
-               telemetry_syscfg_set("upload_attemptCount", buf);
-               T2Info("Trying to send  %lu cached reports\n", (unsigned long)Vector_Size(profile->cachedReportList));
-               ret = sendCachedReportsOverHTTP(profile->t2HTTPDest->URL, profile->cachedReportList);
-               if(ret == T2ERROR_SUCCESS){
+
+               if (profile->cachedReportList != NULL && Vector_Size(profile->cachedReportList) > 0)
+               {
+                   T2Info("Trying to send  %lu cached reports\n", (unsigned long)Vector_Size(profile->cachedReportList));
+                   ret = sendCachedReportsOverHTTP(profile->t2HTTPDest->URL, profile->cachedReportList);
+                   if(ret == T2ERROR_SUCCESS){
 	               // Do not get misleaded by function name. Call is to delete the directory for storing cached reports
-                   removeProfileFromDisk(CACHED_MESSAGE_PATH, profile->name);
+                       removeProfileFromDisk(CACHED_MESSAGE_PATH, profile->name);
+                   }
                }
            }
+
+           telemetry_syscfg_set("upload_attemptCount", buf);
         }
         else
         {

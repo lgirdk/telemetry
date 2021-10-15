@@ -245,22 +245,19 @@ static void* CollectAndReportXconf(void* data)
 
                         T2Info("Report Cached, No. of reportes cached = %d\n", Vector_Size(profile->cachedReportList));
                         snprintf(buf,sizeof(buf),"%d",Vector_Size(profile->cachedReportList));
-                        if(telemetry_syscfg_set("upload_attemptCount", buf) != 0)
+                    }
+                    else
+                    {
+                        snprintf(buf,sizeof(buf),"%d",Vector_Size(profile->cachedReportList)+1);
+                        if(Vector_Size(profile->cachedReportList) > 0)
                         {
-                            T2Error("Failed to set upload attempt count\n");
+                            T2Info("Trying to send  %d cached reports\n", Vector_Size(profile->cachedReportList));
+                            ret = sendCachedReportsOverHTTP(profile->t2HTTPDest->URL, profile->cachedReportList);
                         }
                     }
-                    else if(ret == T2ERROR_SUCCESS)
+                    if(telemetry_syscfg_set("upload_attemptCount", buf) != 0)
                     {
-                        snprintf(buf,sizeof(buf),"%d",Vector_Size(profile->cachedReportList)+1);
-                        telemetry_syscfg_set("upload_attemptCount", buf);
-                    }
-                    else if(Vector_Size(profile->cachedReportList) > 0)
-                    {
-                        snprintf(buf,sizeof(buf),"%d",Vector_Size(profile->cachedReportList)+1);
-                        telemetry_syscfg_set("upload_attemptCount", buf);
-                        T2Info("Trying to send  %d cached reports\n", Vector_Size(profile->cachedReportList));
-                        ret = sendCachedReportsOverHTTP(profile->t2HTTPDest->URL, profile->cachedReportList);
+                        T2Error("Failed to set upload attempt count\n");
                     }
                 }
                 else

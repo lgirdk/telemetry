@@ -162,12 +162,12 @@ void* T2ER_EventDispatchThread(void *arg)
                     T2Debug("Storing in profile : %s\n", (char *)Vector_At(profileList, index));
                     ReportProfiles_storeMarkerEvent((char *)Vector_At(profileList, index), event);
                 }
-                Vector_Destroy(profileList, free);
             }
             else
             {
                 T2Warning("No Matching Profiles for event with MarkerName : %s Value : %s - Ignoring\n", event->name, event->value);
             }
+            Vector_Destroy(profileList, free);
             freeT2Event(event);
         }
         else

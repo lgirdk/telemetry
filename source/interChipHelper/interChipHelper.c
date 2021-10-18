@@ -353,7 +353,8 @@ int listenForInterProcessorChipEvents(int notifyfd, int watchfd) {
         T2Info("Failure in reading buffer \n");
         return -1;
     }
-
+    /*CID 137537: String not null terminated*/
+    buffer[sizeof(buffer)-1] = '\0';
     event_ptr = (struct inotify_event *) buffer;
 
     if(event_ptr != NULL) {

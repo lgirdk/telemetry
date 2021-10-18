@@ -251,7 +251,13 @@ Vector* getCCSPProfileParamValues(Vector *paramList) {
             T2Error("Failed to retrieve param : %s\n", paramNames[0]);
             paramValCount = 0;
         }else {
-            if(ccspParamValues == NULL || paramValCount == 0)
+	    /* CID 175831: Dereference after null check */
+            if(ccspParamValues == NULL)
+	    {
+	       T2Info("unable to get ccspParamValues \n");
+	       return profileValueList;
+	    }
+            if(paramValCount == 0)
                 T2Info("ParameterName : %s Retrieved value count : %d\n", paramNames[0], paramValCount);
         }
 

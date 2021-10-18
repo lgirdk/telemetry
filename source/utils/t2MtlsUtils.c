@@ -94,18 +94,24 @@ T2ERROR getMtlsCerts(char **certName, char **phrase) {
     }else if(access(staticMtlsCert, F_OK) != -1) { // Static cert
         T2Info("Using Static Certs for mTls connection\n");
         *certName = strdup(staticMtlsCert);
-        if(access(staticMtlsDestFile, F_OK) == -1) {
+
+	/* CID: 189984 Time of check time of use (TOCTOU) */
+	filePointer = fopen(staticMtlsDestFile, "r");
+        if( !filePointer ) {
             T2Info("%s Destination file %s is not present. Generate now.\n", __FUNCTION__, *phrase);
             v_secure_system("/usr/bin/GetConfigFile %s", staticMtlsDestFile);
+            filePointer = fopen(staticMtlsDestFile, "r");
         }
 
-        filePointer = fopen(staticMtlsDestFile, "r");
-        if(filePointer) {
-            if(NULL != fgets(buf, sizeof(buf) - 1, filePointer)) {
-                buf[strcspn(buf, "\n")] = '\0';
-                *phrase = strdup(buf);
-            }
-            fclose(filePointer);
+        if(!filePointer) {
+	   T2Error("Certs not found\n");
+	}
+	else {
+           if(NULL != fgets(buf, sizeof(buf) - 1, filePointer)) {
+              buf[strcspn(buf, "\n")] = '\0';
+              *phrase = strdup(buf);
+           }
+           fclose(filePointer);
         }
         ret = T2ERROR_SUCCESS;
     }else {

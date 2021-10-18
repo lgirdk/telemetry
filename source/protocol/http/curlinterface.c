@@ -126,21 +126,42 @@ static T2ERROR setHeader(CURL *curl, const char* destURL, struct curl_slist **he
         return T2ERROR_FAILURE;
     }
 #if defined(_HUB4_PRODUCT_REQ_)
-    else if((getAddressType(INTERFACE) == ADDR_IPV4) && (getAddressType("brlan0") != ADDR_IPV6))
+    else if((getAddressType(INTERFACE) == ADDR_IPV4) && (getAddressType("brlan0") != ADDR_IPV6)) 
+    {
 #else
     else if(getAddressType(INTERFACE) == ADDR_IPV4)
+    {
 #endif
-        curl_easy_setopt(curl, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V4);
-    else
-        curl_easy_setopt(curl, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V6);
+        code = curl_easy_setopt(curl, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V4);
+        if(code != CURLE_OK){
+           T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
+        }
+    }	
+    else {
+        code = curl_easy_setopt(curl, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V6);
+        if(code != CURLE_OK){
+           T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
+        }
+    }
+    /* CID 125287: Unchecked return value from library */
+    code = curl_easy_setopt(curl, CURLOPT_INTERFACE, INTERFACE);
+    if(code != CURLE_OK){
+       T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
+    }
 
-    curl_easy_setopt(curl, CURLOPT_INTERFACE, INTERFACE);
 #endif
     *headerList = curl_slist_append(NULL, "Accept: application/json");
     curl_slist_append(*headerList, "Content-type: application/json");
 
-    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, *headerList);
-    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, writeToFile);
+    code = curl_easy_setopt(curl, CURLOPT_HTTPHEADER, *headerList);
+    if(code != CURLE_OK){
+       T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
+    }
+
+    code = curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, writeToFile);
+    if(code != CURLE_OK){
+       T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
+    }
 
     T2Debug("%s --out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;
@@ -192,7 +213,7 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char* payload)
 {
     CURL *curl = NULL;
     FILE *fp = NULL;
-    CURLcode res;
+    CURLcode res, code = CURLE_OK;
     T2ERROR ret = T2ERROR_FAILURE;
     long http_code;
     struct curl_slist *headerList = NULL;
@@ -215,6 +236,7 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char* payload)
               setMtlsHeaders(curl, pCertFile, pKeyFile);
           } else {
               T2Error("mTLS_cert get failed\n");
+              curl_easy_cleanup(curl); // CID 189985: Resource leak
 	      return T2ERROR_FAILURE;
           }
 	}
@@ -226,7 +248,11 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char* payload)
 
         fp = fopen(CURL_OUTPUT_FILE, "wb");
         if (fp) {
-            curl_easy_setopt(curl, CURLOPT_WRITEDATA, fp);
+	    /* CID 143029 Unchecked return value from library */
+            code = curl_easy_setopt(curl, CURLOPT_WRITEDATA, fp);
+	    if(code != CURLE_OK){
+	       T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
+            } 
             res = curl_easy_perform(curl);
             curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
             if (res != CURLE_OK)

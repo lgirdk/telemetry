@@ -95,7 +95,7 @@ static void drop_root()
 uint32_t getTelemetryBlobVersion(char* subdoc)
 {
     T2Debug("Inside getTelemetryBlobVersion subdoc %s \n",subdoc);
-    uint32_t version = 0;
+    uint32_t version = 0, ret =0;
     FILE *file = NULL;
     file = fopen(WEBCONFIG_BLOB_VERSION,  "r+");
     if(file == NULL)
@@ -104,7 +104,11 @@ uint32_t getTelemetryBlobVersion(char* subdoc)
     }
     else
     {
-    fscanf(file,"%u",&version);
+     /* CID 157387: Unchecked return value from library */
+    if ((ret = fscanf(file,"%u",&version)) != 1)
+    {
+	T2Debug("Failed to read version from /nvram/telemetry_webconfig_blob_version.txt \n");
+    }
     T2Debug("Version of Telemetry blob is %u\n",version);
     fclose(file);
     return version;
@@ -770,7 +774,8 @@ void ReportProfiles_ProcessReportProfilesMsgPackBlob(char *msgpack_blob , int ms
     // profilesArray = msgpack_get_map_value(profiles_root, "profiles");
     // MSGPACK_GET_ARRAY_SIZE(profilesArray, profiles_count);
 
-    if (NULL == subdoc_name && NULL == transaction_id && NULL == version) {
+    /*CID 158225 - Dereference after null check */
+    if (NULL == subdoc_name || NULL == transaction_id || NULL == version) {
         /* dmcli flow */
         __ReportProfiles_ProcessReportProfilesMsgPackBlob((void *)msgpack);
         __msgpack_free_blob((void *)msgpack);

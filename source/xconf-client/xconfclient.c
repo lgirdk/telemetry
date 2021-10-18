@@ -440,6 +440,7 @@ static T2ERROR doHttpGet(char* httpsUrl, char **data) {
           } else {
             free(httpResponse->data);
             free(httpResponse);
+	    curl_easy_cleanup(curl); //CID 189986:Resource leak
             T2Error("mTLS_get failure\n");
 	    return T2ERROR_FAILURE; 
           }

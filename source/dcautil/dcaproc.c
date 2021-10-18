@@ -402,15 +402,18 @@ int getTotalCpuTimes(int * totalTime)
 {
     FILE *fp;
     long double a[10];
-    int total;
+    int total, ret =0;
 
     fp = fopen("/proc/stat","r");
 
     if(!fp)
     return 0;
 
-    fscanf(fp,"%*s %Lf %Lf %Lf %Lf %Lf %Lf %Lf %Lf %Lf %Lf",
+    ret = fscanf(fp,"%*s %Lf %Lf %Lf %Lf %Lf %Lf %Lf %Lf %Lf %Lf",
             &a[0],&a[1],&a[2],&a[3],&a[4],&a[5],&a[6],&a[7],&a[8],&a[9]);
+    if(ret == -1)
+       T2Debug("%s --read error from /proc/stat \n", __FUNCTION__);
+
     fclose(fp);
     total = (a[0]+a[1]+a[2]+a[3]+a[4]+a[5]+a[6]+a[7]+a[8]+a[9]);
     *totalTime = total;

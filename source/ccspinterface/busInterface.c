@@ -48,7 +48,8 @@ bool isRbusEnabled( ) {
 static bool busInit( ) {
     T2Debug("%s ++in \n", __FUNCTION__);
     if(!isBusInit) {
-        isRbusEnabled();
+        if (isRbusEnabled())
+	    T2Debug("%s --RBUS mode is active \n", __FUNCTION__); //CID 158206:Unchecked return value
         isBusInit = true;
     }
     T2Debug("%s --out \n", __FUNCTION__);

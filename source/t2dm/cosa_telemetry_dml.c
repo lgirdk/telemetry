@@ -117,6 +117,11 @@ ULONG Telemetry_GetParamStringValue(ANSC_HANDLE hInsContext, char* ParamName, ch
 BOOL Telemetry_SetParamStringValue(ANSC_HANDLE hInsContext, char* ParamName, char* pString)
 {
     PCOSA_DATAMODEL_TELEMETRY pMyObject = (PCOSA_DATAMODEL_TELEMETRY) g_pCosaBEManager->hTelemetry;
+    /* CID 159575 : Dereference after null check */
+    if(pString == NULL)
+    {
+        return FALSE;
+    }
     if (strcmp(ParamName, "ReportProfiles") == 0)
     {
         if(T2ERROR_SUCCESS != datamodel_processProfile(pString))
@@ -141,10 +146,8 @@ BOOL Telemetry_SetParamStringValue(ANSC_HANDLE hInsContext, char* ParamName, cha
     {
         char *webConfigString  = NULL;
         ULONG stringSize = 0;
-	if(pString != NULL)
-	{
- 		webConfigString = AnscBase64Decode(pString, &stringSize);
-	}
+ 	webConfigString = AnscBase64Decode(pString, &stringSize);
+
         if(T2ERROR_SUCCESS != datamodel_MsgpackProcessProfile(webConfigString,stringSize))
         {
         	return FALSE;

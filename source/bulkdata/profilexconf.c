@@ -163,96 +163,89 @@ static void* CollectAndReportXconf(void* data)
             profile->reportInProgress = false;
             return NULL;
         }
+        if(Vector_Size(profile->paramList) > 0)
+        {
+
+           profileParamVals = getProfileParameterValues(profile->paramList);
+           T2Info("Fetch complete for TR-181 Object/Parameter Values for parameters \n");
+           if(profileParamVals != NULL)
+           {
+              encodeParamResultInJSON(valArray, profile->paramList, profileParamVals);
+           }
+           Vector_Destroy(profileParamVals, freeProfileValues);
+        }
+        if(Vector_Size(profile->gMarkerList) > 0)
+        {
+           getGrepResults(profile->name, profile->gMarkerList, &grepResultList, profile->bClearSeekMap);
+           T2Info("Grep complete for %d markers \n", Vector_Size(profile->gMarkerList));
+           encodeGrepResultInJSON(valArray, grepResultList);
+           Vector_Destroy(grepResultList, freeGResult);
+        }
+        if(Vector_Size(profile->eMarkerList) > 0)
+        {
+           encodeEventMarkersInJSON(valArray, profile->eMarkerList);
+        }
+        ret = prepareJSONReport(profile->jsonReportObj, &jsonReport);
+        destroyJSONReport(profile->jsonReportObj);
+        profile->jsonReportObj = NULL;
+
+        if(ret != T2ERROR_SUCCESS)
+        {
+           T2Error("Unable to generate report for : %s\n", profile->name);
+           profile->reportInProgress = false;
+           return NULL;
+        }
+        long size = strlen(jsonReport);
+        T2Info("cJSON Report = %s\n", jsonReport);
+        T2Info("Report Size = %ld\n", size);
+        if(profile->isUpdated)
+        {
+           T2Info("Profile is udpated, report is cached to send with updated Profile TIMEOUT\n");
+           if(Vector_Size(profile->cachedReportList) == MAX_CACHED_REPORTS)
+           {
+              T2Debug("Max Cached Reports Limit Reached, Overwriting third recent report\n");
+              char *thirdCachedReport = (char *)Vector_At(profile->cachedReportList, MAX_CACHED_REPORTS-3);
+              Vector_RemoveItem(profile->cachedReportList, thirdCachedReport, NULL);
+              free(thirdCachedReport);
+           }
+           Vector_PushBack(profile->cachedReportList, strdup(jsonReport));
+           profile->reportInProgress = false;
+           /* CID 187010: Dereference before null check */
+           free(jsonReport);
+	   jsonReport= NULL;
+           T2Debug("%s --out\n", __FUNCTION__);
+           return NULL;
+        }
+        if(size > DEFAULT_MAX_REPORT_SIZE)
+        {
+           T2Warning("Report size is exceeding the max limit : %d\n", DEFAULT_MAX_REPORT_SIZE);
+        }
+        if(strcmp(profile->protocol, "HTTP") == 0)
+        {
+           ret = sendReportOverHTTP(profile->t2HTTPDest->URL, jsonReport);
+
+           if(ret == T2ERROR_FAILURE)
+           {
+              if(Vector_Size(profile->cachedReportList) == MAX_CACHED_REPORTS)
+              {
+                 T2Debug("Max Cached Reports Limit Reached, Overwriting third recent report\n");
+                 char *thirdCachedReport = (char *)Vector_At(profile->cachedReportList, MAX_CACHED_REPORTS-3);
+                 Vector_RemoveItem(profile->cachedReportList, thirdCachedReport, NULL);
+                 free(thirdCachedReport);
+              }
+              Vector_PushBack(profile->cachedReportList, strdup(jsonReport));
+
+              T2Info("Report Cached, No. of reportes cached = %d\n", Vector_Size(profile->cachedReportList));
+           }
+           else if(Vector_Size(profile->cachedReportList) > 0)
+           {
+               T2Info("Trying to send  %d cached reports\n", Vector_Size(profile->cachedReportList));
+               ret = sendCachedReportsOverHTTP(profile->t2HTTPDest->URL, profile->cachedReportList);
+           }
+        }
         else
         {
-            if(Vector_Size(profile->paramList) > 0)
-            {
-
-                profileParamVals = getProfileParameterValues(profile->paramList);
-                T2Info("Fetch complete for TR-181 Object/Parameter Values for parameters \n");
-                if(profileParamVals != NULL)
-                {
-                    encodeParamResultInJSON(valArray, profile->paramList, profileParamVals);
-                }
-                Vector_Destroy(profileParamVals, freeProfileValues);
-            }
-            if(Vector_Size(profile->gMarkerList) > 0)
-            {
-                getGrepResults(profile->name, profile->gMarkerList, &grepResultList, profile->bClearSeekMap);
-                T2Info("Grep complete for %d markers \n", Vector_Size(profile->gMarkerList));
-                encodeGrepResultInJSON(valArray, grepResultList);
-                Vector_Destroy(grepResultList, freeGResult);
-            }
-            if(Vector_Size(profile->eMarkerList) > 0)
-            {
-                encodeEventMarkersInJSON(valArray, profile->eMarkerList);
-            }
-            ret = prepareJSONReport(profile->jsonReportObj, &jsonReport);
-            destroyJSONReport(profile->jsonReportObj);
-            profile->jsonReportObj = NULL;
-
-            if(ret != T2ERROR_SUCCESS)
-            {
-                T2Error("Unable to generate report for : %s\n", profile->name);
-                profile->reportInProgress = false;
-                return NULL;
-            }
-            long size = strlen(jsonReport);
-            T2Info("cJSON Report = %s\n", jsonReport);
-            T2Info("Report Size = %ld\n", size);
-            if(profile->isUpdated)
-            {
-                T2Info("Profile is udpated, report is cached to send with updated Profile TIMEOUT\n");
-                if(Vector_Size(profile->cachedReportList) == MAX_CACHED_REPORTS)
-                {
-                    T2Debug("Max Cached Reports Limit Reached, Overwriting third recent report\n");
-                    char *thirdCachedReport = (char *)Vector_At(profile->cachedReportList, MAX_CACHED_REPORTS-3);
-                    Vector_RemoveItem(profile->cachedReportList, thirdCachedReport, NULL);
-                    free(thirdCachedReport);
-                }
-                Vector_PushBack(profile->cachedReportList, strdup(jsonReport));
-                profile->reportInProgress = false;
-		if(jsonReport){
-                        free(jsonReport);
-			jsonReport= NULL;
-		}
-                T2Debug("%s --out\n", __FUNCTION__);
-                return NULL;
-            }
-            else
-            {
-                if(size > DEFAULT_MAX_REPORT_SIZE)
-                {
-                    T2Warning("Report size is exceeding the max limit : %d\n", DEFAULT_MAX_REPORT_SIZE);
-                }
-                if(strcmp(profile->protocol, "HTTP") == 0)
-                {
-                    ret = sendReportOverHTTP(profile->t2HTTPDest->URL, jsonReport);
-
-                    if(ret == T2ERROR_FAILURE)
-                    {
-                        if(Vector_Size(profile->cachedReportList) == MAX_CACHED_REPORTS)
-                        {
-                            T2Debug("Max Cached Reports Limit Reached, Overwriting third recent report\n");
-                            char *thirdCachedReport = (char *)Vector_At(profile->cachedReportList, MAX_CACHED_REPORTS-3);
-                            Vector_RemoveItem(profile->cachedReportList, thirdCachedReport, NULL);
-                            free(thirdCachedReport);
-                        }
-                        Vector_PushBack(profile->cachedReportList, strdup(jsonReport));
-
-                        T2Info("Report Cached, No. of reportes cached = %d\n", Vector_Size(profile->cachedReportList));
-                    }
-                    else if(Vector_Size(profile->cachedReportList) > 0)
-                    {
-                        T2Info("Trying to send  %d cached reports\n", Vector_Size(profile->cachedReportList));
-                        ret = sendCachedReportsOverHTTP(profile->t2HTTPDest->URL, profile->cachedReportList);
-                    }
-                }
-                else
-                {
-                    T2Error("Unsupported report send protocol : %s\n", profile->protocol);
-                }
-            }
+           T2Error("Unsupported report send protocol : %s\n", profile->protocol);
         }
     }
     else

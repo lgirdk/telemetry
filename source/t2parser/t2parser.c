@@ -206,6 +206,11 @@ T2ERROR addMsgPckTriggerCondition(Profile *profile, msgpack_object *value_map) {
     msgpack_object *tcThresholdInt;
     msgpack_object *tcMinThresholdDurationInt;
     uint32_t TcArraySize = 0;
+    char* tcType = NULL;
+    char* tcOperator = NULL;
+    char* tcReference = NULL;
+    int tcThreshold = 0;
+    int tcMinThresholdDuration = 0;
     int i;
 
     if((profile == NULL) || (value_map == NULL)){
@@ -220,39 +225,64 @@ T2ERROR addMsgPckTriggerCondition(Profile *profile, msgpack_object *value_map) {
     if(TcArraySize)
        Vector_Create(&profile->triggerConditionList);
 
-    for (i = 0; i < TcArraySize; i++) {
-
-        char* tcType;
-        char* tcOperator;
-        char* tcReference;
-        int tcThreshold = 0;
-        int tcMinThresholdDuration = 0;
-
+    for( i = 0; i < TcArraySize; i++ ) {
+        
 	tcType = NULL;
 	tcOperator = NULL;
 	tcReference = NULL;
 
-        tcArrayMap = msgpack_get_array_element(TriggerConditionArray, i);
+        tcThreshold = 0;
+        tcMinThresholdDuration = 0;
+
+        TriggerCondition *triggerCondition = (TriggerCondition *) malloc(sizeof(TriggerCondition));
+
+        if(triggerCondition == NULL) {
+            T2Error("%s Error adding MsgPck Trigger Condition to profile %s \n", __FUNCTION__, profile->name);
+            T2Debug("%s ++out\n", __FUNCTION__);
+            return T2ERROR_FAILURE;
+        }
+
+        memset(triggerCondition, 0 , sizeof(TriggerCondition));
+
+	tcArrayMap = msgpack_get_array_element(TriggerConditionArray, i);
 
         tcTypeStr = msgpack_get_map_value(tcArrayMap, "type");
-        if(tcTypeStr)
-        {
-          msgpack_print(tcTypeStr, msgpack_get_obj_name(tcTypeStr));
-          tcType = msgpack_strdup(tcTypeStr);
+        if(tcTypeStr) {
+           msgpack_print(tcTypeStr, msgpack_get_obj_name(tcTypeStr));
+           tcType = msgpack_strdup(tcTypeStr);
+	   /* CID 175341: Explicit null dereferenced */
+	   if(tcType == NULL)
+           {
+	      T2Debug("Null tcType %s ++out\n", __FUNCTION__);
+              free(triggerCondition);
+	      return T2ERROR_FAILURE;
+	   }
         }
 
         tcOperatorStr = msgpack_get_map_value(tcArrayMap, "operator");
-        if(tcOperatorStr)
-        {
-          msgpack_print(tcOperatorStr, msgpack_get_obj_name(tcOperatorStr));
-          tcOperator = msgpack_strdup(tcOperatorStr);
+        if(tcOperatorStr) {
+           msgpack_print(tcOperatorStr, msgpack_get_obj_name(tcOperatorStr));
+           tcOperator = msgpack_strdup(tcOperatorStr);
+	   /* CID 175346: Explicit null dereferenced */
+	   if(tcOperator == NULL)
+           {
+	      T2Debug("Null tcOperator %s ++out\n", __FUNCTION__);
+              free(triggerCondition);
+	      return T2ERROR_FAILURE;
+	   }
         }
 
         tcReferenceStr = msgpack_get_map_value(tcArrayMap, "reference");
-        if(tcReferenceStr)
-        {
-          msgpack_print(tcReferenceStr, msgpack_get_obj_name(tcReferenceStr));
-          tcReference = msgpack_strdup(tcReferenceStr);
+        if(tcReferenceStr) {
+           msgpack_print(tcReferenceStr, msgpack_get_obj_name(tcReferenceStr));
+           tcReference = msgpack_strdup(tcReferenceStr);
+	   /* CID 175347 : Explicit null dereferenced */
+	   if(tcReference == NULL)
+           {
+	      T2Debug("Null tcReference %s ++out\n", __FUNCTION__);
+	      free(triggerCondition);
+              return T2ERROR_FAILURE;
+	   }
         }
 
         tcThresholdInt = msgpack_get_map_value(tcArrayMap, "threshold");
@@ -272,22 +302,13 @@ T2ERROR addMsgPckTriggerCondition(Profile *profile, msgpack_object *value_map) {
         }
 
         T2Debug("Adding MsgPck Trigger Condition:%s type %s operator %s \n", tcReference, tcType, tcOperator);
-        TriggerCondition *triggerCondition = (TriggerCondition *) malloc(sizeof(TriggerCondition));
 
-        if(triggerCondition == NULL){
-            T2Error("%s Error adding MsgPck Trigger Condition to profile %s \n", __FUNCTION__, profile->name);
-            T2Debug("%s ++out\n", __FUNCTION__);
-            if(tcType)
-              free(tcType);
-            if(tcOperator)
-              free(tcOperator);
-            if(tcReference)
-              free(tcReference);
-            return T2ERROR_FAILURE;
-        }
-        triggerCondition->type = strdup(tcType);
-        triggerCondition->oprator = strdup(tcOperator);
-        triggerCondition->reference = strdup(tcReference);
+        if(tcType)
+	   triggerCondition->type = strdup(tcType);
+        if(tcOperator)
+	   triggerCondition->oprator = strdup(tcOperator);
+        if(tcReference)
+	   triggerCondition->reference = strdup(tcReference);
         triggerCondition->threshold = tcThreshold;
         triggerCondition->minThresholdDuration = tcMinThresholdDuration;
 	triggerCondition->isSubscribed = false;
@@ -362,13 +383,17 @@ T2ERROR addTriggerCondition(Profile *profile, cJSON *jprofileTriggerCondition) {
            T2Debug("Adding Trigger Condition:%s type %s operator %s \n", tcReference, tcType, tcOperator); 
            TriggerCondition *triggerCondition = (TriggerCondition *) malloc(sizeof(TriggerCondition));
 
-           if(triggerCondition == NULL){
+           if(triggerCondition == NULL) {
                T2Error("%s ++out Error adding Trigger Condition to profile %s \n", __FUNCTION__, profile->name);
                return T2ERROR_FAILURE;
            }
-           triggerCondition->type = strdup(tcType);
-           triggerCondition->oprator = strdup(tcOperator);
-           triggerCondition->reference = strdup(tcReference);
+	   /*CID 175311, 175312 and 175330 -Explicit null dereferenced */
+           if(tcType)
+	      triggerCondition->type = strdup(tcType);
+           if(tcOperator)
+	      triggerCondition->oprator = strdup(tcOperator);
+           if(tcReference)
+	      triggerCondition->reference = strdup(tcReference);
            triggerCondition->threshold = tcThreshold;
            triggerCondition->minThresholdDuration = tcMinThresholdDuration;
 	   triggerCondition->isSubscribed = false;
@@ -1019,12 +1044,10 @@ T2ERROR verifyMsgPckTriggerCondition(msgpack_object *value_map) {
 	   goto error;
         }
 
-        if(tcType)
-          free(tcType);
-        if(tcOperator)
-          free(tcOperator);
-        if(tcReference)
-          free(tcReference);
+	/*CID 178509, 178510 and 178511: Dereference before null check */
+        free(tcType);
+        free(tcOperator);
+        free(tcReference);
     }
 
 error:

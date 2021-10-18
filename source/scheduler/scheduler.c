@@ -124,7 +124,8 @@ void* TimeoutThread(void *arg)
         }
         else if (n == 0)
         {
-            T2Info("Interrupted before TIMEOUT for profile : %s, minThresholdTime %u\n", tProfile->name, minThresholdTime);
+            /* CID 175316:- Value not atomically updated (ATOMICITY) */
+            T2Info("Interrupted before TIMEOUT for profile : %s \n", tProfile->name);
             if(minThresholdTime) 
             {
 		 memset(&_MinThresholdTimeTs, 0, sizeof(struct timespec));

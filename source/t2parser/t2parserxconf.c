@@ -58,8 +58,8 @@ static int getScheduleInSeconds(const char* cronPattern) {
             }
 
         }
-        if(input)
-            free(input);
+	/* CID 159640 -Dereference before null check */
+        free(input);
     }
     // Convert minutes to seconds
     scheduleIntervalInSec = scheduleIntervalInMin * 60 ;

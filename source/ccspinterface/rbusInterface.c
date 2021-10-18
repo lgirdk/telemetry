@@ -313,6 +313,7 @@ rbusError_t t2PropertyDataSetHandler(rbusHandle_t handle, rbusProperty_t prop, r
                 webConfigString = g_base64_decode(data, &decodedDataLen);
                 if(NULL == webConfigString ||  0 == decodedDataLen ){
                     T2Error("Invalid base64 input string. Ignore processing input configuration.\n");
+		    free(data); //CID 168770: Resource leak
 		    return RBUS_ERROR_INVALID_INPUT;
                 }
 
@@ -396,6 +397,8 @@ rbusError_t t2PropertyDataGetHandler(rbusHandle_t handle, rbusProperty_t propert
             T2Debug("Component name = %s \n", componentName);
         }else {
             T2Error("Component name is empty \n");
+            free((char*)propertyName);
+            propertyName = NULL;  //CID 158138: Resource leak
             return RBUS_ERROR_DESTINATION_RESPONSE_FAILURE;
         }
 

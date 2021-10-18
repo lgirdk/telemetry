@@ -240,7 +240,16 @@ Vector* getCCSPProfileParamValues(Vector *paramList) {
         int paramValCount = 0;
         int iterate = 0;
         profileValues *profVals = (profileValues *) malloc(sizeof(profileValues));
+        if(profVals == NULL) {
+            T2Error("Unable allocate memory for profVals\n");
+            continue;
+        }
         paramNames[0] = strdup(((Param *) Vector_At(paramList, i))->alias);
+        if(paramNames[0] == NULL) {
+            T2Error("Unable allocate memory for paramNames[0]\n");
+            free(profVals);
+            continue;
+        }
         if(T2ERROR_SUCCESS != ccspGetParameterValues(paramNames, 1, &ccspParamValues, &paramValCount)) {
             T2Error("Failed to retrieve param : %s\n", paramNames[0]);
             paramValCount = 0;
@@ -256,8 +265,10 @@ Vector* getCCSPProfileParamValues(Vector *paramList) {
             paramValues = (tr181ValStruct_t**) malloc(sizeof(tr181ValStruct_t*));
             if(paramValues != NULL) {
                 paramValues[0] = (tr181ValStruct_t*) malloc(sizeof(tr181ValStruct_t));
-                paramValues[0]->parameterName = strdup(paramNames[0]);
-                paramValues[0]->parameterValue = strdup("NULL");
+                if(paramValues[0] != NULL) {
+                    paramValues[0]->parameterName = strdup(paramNames[0]);
+                    paramValues[0]->parameterValue = strdup("NULL");
+                }
             }
         }else {
             paramValues = (tr181ValStruct_t**) malloc(paramValCount * sizeof(tr181ValStruct_t*));
@@ -278,6 +289,10 @@ Vector* getCCSPProfileParamValues(Vector *paramList) {
         profVals->paramValues = paramValues;
         // End of populating bus independent parameter value array
         Vector_PushBack(profileValueList, profVals);
+        if(paramNames[0])
+        {
+            free(paramNames[0]);
+        }
     }
     if(paramNames)
         free(paramNames);

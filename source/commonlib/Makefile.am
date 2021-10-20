@@ -41,7 +41,7 @@ libtelemetry_msgsender_la_DEPENDENCIES = ${top_builddir}/source/utils/libutils.l
 
 bin_PROGRAMS = telemetry2_0_client
 telemetry2_0_client_SOURCES = telemetry_client.c telemetry_busmessage_sender.c
-telemetry2_0_client_LDADD = -lrbus ${top_builddir}/source/utils/libutils.la
+telemetry2_0_client_LDADD = -lrbus ${top_builddir}/source/utils/libutils.la -lpthread
 if ENABLE_CCSP_SUPPORT
 telemetry2_0_client_LDADD+=-lccsp_common
 endif

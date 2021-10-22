@@ -58,7 +58,6 @@
 #if defined(DROP_ROOT_PRIV)
 #include "cap.h"
 
-#define NONROOT_DATAMODEL_PARAM  "Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.NonRootSupport.Enable"
 static cap_user appcaps;
 #endif
 
@@ -74,19 +73,21 @@ static bool initT2MtlsEnable = false;
 #if defined(DROP_ROOT_PRIV)
 static void drop_root()
 {
-    char* buf=NULL;
     appcaps.caps = NULL;
     appcaps.user_name = NULL;
-    if(T2ERROR_SUCCESS == getParameterValue(NONROOT_DATAMODEL_PARAM, &buf)){
- 	if (strncmp(buf, "true", strlen("true")) == 0) {
-            T2Info("Dropping root privileges for Telemetry 2.0 Process\n");
-            init_capability();
-            drop_root_caps(&appcaps);
-            update_process_caps(&appcaps);
-            read_capability(&appcaps);
-        }
-        else
-         T2Info("NonRootSupport false, Run Telemetry 2.0 Process as root\n");
+    bool ret = false;
+    ret = isBlocklisted();
+    if(ret) 
+    {
+       T2Info("NonRoot feature is disabled\n");
+    }
+    else 
+    {
+       T2Info("NonRoot feature is enabled, dropping root privileges for Telemetry 2.0 Process\n");
+       init_capability();
+       drop_root_caps(&appcaps);
+       update_process_caps(&appcaps);
+       read_capability(&appcaps);
     }
 }
 #endif

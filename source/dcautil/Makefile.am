@@ -28,6 +28,8 @@ libdcautil_la_LIBADD = ${top_builddir}/source/ccspinterface/libccspinterface.la 
 
 libdcautil_la_CFLAGS += -fPIC -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/dbus-1.0 \
                                 -I${PKG_CONFIG_SYSROOT_DIR}$(libdir)/dbus-1.0/include \
+				-I${PKG_CONFIG_SYSROOT_DIR}$(includedir) \
+				-I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/rbus \
                                 -I${top_srcdir}/include \
                                 -I${top_srcdir}/source/ccspinterface \
                                 -I${top_srcdir}/source/utils \

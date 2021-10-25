@@ -19,19 +19,14 @@
 
 #include <stdbool.h>
 #include <string.h>
-
-#include <rbus/rbus.h>
-#include <rbus/rbus_object.h>
-#include <rbus/rbus_property.h>
-#include <rbus/rbus_value.h>
 #include <stdlib.h>
-
 #include <glib.h>
 #include <glib/gi18n.h>
 
 #include "t2collection.h"
 #include "t2common.h"
 #include "busInterface.h"
+#include "rbusInterface.h"
 #include "telemetry2_0.h"
 #include "t2log_wrapper.h"
 #include "profile.h"
@@ -40,6 +35,8 @@
 #define maxParamLen 128
 
 #define NUM_PROFILE_ELEMENTS 2
+
+#define RBUS_METHOD_TIMEOUT 10
 
 static rbusHandle_t t2bus_handle;
 static TelemetryEventCallback eventCallBack;
@@ -917,3 +914,56 @@ rbusError_t t2TriggerConditionGetHandler(rbusHandle_t handle, rbusProperty_t pro
     return RBUS_ERROR_SUCCESS;
 }
 
+T2ERROR rbusMethodCaller(char *methodName, rbusObject_t* inputParams, char* payload, rbusMethodCallBackPtr rbusMethodCallBack ) {
+    T2Debug("%s ++in\n", __FUNCTION__);
+
+    T2ERROR ret = T2ERROR_FAILURE;
+    int rc = RBUS_ERROR_BUS_ERROR;
+    T2Info("methodName = %s payload = %s \n", methodName, payload);
+
+    if(!t2bus_handle && T2ERROR_SUCCESS != rBusInterface_Init()) {
+        T2Error("%s Failed in getting bus handles \n", __FUNCTION__);
+        T2Debug("%s --out\n", __FUNCTION__);
+        return T2ERROR_FAILURE;
+    }
+    rc = rbusMethod_InvokeAsync(t2bus_handle, methodName, *inputParams, rbusMethodCallBack, RBUS_METHOD_TIMEOUT);
+    if (rc == RBUS_ERROR_SUCCESS) {
+        ret = T2ERROR_SUCCESS ;
+    }else {
+        T2Error("rbusMethod_InvokeAsync invocation from %s failed with error code %d \n", __FUNCTION__ , rc);
+    }
+    T2Debug("%s --out\n", __FUNCTION__);
+    return ret;
+}
+
+bool rbusCheckMethodExists(const char* rbusMethodName) {
+    T2Debug("%s ++in\n", __FUNCTION__);
+
+     rbusError_t rc = RBUS_ERROR_BUS_ERROR;
+     rbusObject_t inParams, outParams;
+     rbusValue_t value;
+
+     T2Info("methodName = %s \n", rbusMethodName);
+
+     if(!t2bus_handle && T2ERROR_SUCCESS != rBusInterface_Init()) {
+         T2Error("%s Failed in getting bus handles \n", __FUNCTION__);
+         T2Debug("%s --out\n", __FUNCTION__);
+         return false;
+     }
+     rbusObject_Init(&inParams, NULL);
+     rbusValue_Init(&value);
+     rbusValue_SetString(value, "");
+     rbusObject_SetValue(inParams, "check", value);
+     rc = rbusMethod_Invoke(t2bus_handle, rbusMethodName, inParams, &outParams);
+     rbusValue_Release(value);
+     rbusObject_Release(inParams);
+
+     T2Debug("%s --out\n", __FUNCTION__);
+     if (rc != RBUS_ERROR_SUCCESS) {
+         T2Debug("rbusMethod_Invoke called: %s with return code \n  error = %s \n", rbusMethodName, rbusError_ToString(rc));
+         T2Info("Rbus method %s doesn't exists \n", rbusMethodName );
+         return false ;
+     }
+     rbusObject_Release(outParams);
+     return true ;
+}

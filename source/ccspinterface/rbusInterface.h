@@ -21,10 +21,18 @@
 #define _RBUSINTERFACE_H_
 
 #include <stdio.h>
+#include <stdbool.h>
 #include <vector.h>
+#include <rbus/rbus.h>
+#include <rbus/rbus_object.h>
+#include <rbus/rbus_property.h>
+#include <rbus/rbus_value.h>
+#include <rbus/rbus_filter.h>
 
 #include "busInterface.h"
 #include "telemetry2_0.h"
+
+typedef void (*rbusMethodCallBackPtr) (rbusHandle_t handle, char const* methodName, rbusError_t retStatus, rbusObject_t params);
 
 T2ERROR getRbusParameterVal(const char* paramName, char **paramValue);
 
@@ -37,5 +45,9 @@ T2ERROR unregisterRbusT2EventListener();
 T2ERROR rbusT2ConsumerReg(Vector *triggerConditionList);
 
 T2ERROR rbusT2ConsumerUnReg(Vector *triggerConditionList);
+
+T2ERROR rbusMethodCaller(char *methodName, rbusObject_t* inputParams, char* payload, rbusMethodCallBackPtr rbusMethodCallBack );
+
+bool rbusCheckMethodExists(const char* rbusMethodName) ;
 
 #endif

@@ -20,6 +20,7 @@
 #include <stdbool.h>
 #include <malloc.h>
 #include <string.h>
+#include <cjson/cJSON.h>
 
 #include "profilexconf.h"
 #include "reportprofiles.h"

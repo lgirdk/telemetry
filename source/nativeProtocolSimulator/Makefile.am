@@ -16,4 +16,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 ##########################################################################
-SUBDIRS = http rbusMethod
+AM_CFLAGS = -D_ANSC_LINUX
+AM_CFLAGS += -D_ANSC_USER
+AM_CFLAGS += -D_ANSC_LITTLE_ENDIAN_
+AM_CFLAGS += -DCCSP_INC_no_asm_sigcontext_h
+
+AM_CPPFLAGS = -Wall -Werror
+ACLOCAL_AMFLAGS = -I m4
+hardware_platform = i686-linux-gnu
+
+bin_PROGRAMS = t2rbusMethodSimulator
+t2rbusMethodSimulator_SOURCES = t2rbusMethodProvider.c 
+
+t2rbusMethodSimulator_CPPFLAGS = -fPIC -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/rbus \
+                                -I${top_srcdir}/include
+                                
+t2rbusMethodSimulator_LDFLAGS = -lpthread -lrbus
+                                

@@ -19,6 +19,7 @@
 
 #include <stdlib.h>
 #include <cjson/cJSON.h>
+#include <pthread.h>
 #include "datamodel.h"
 
 #include "t2collection.h"

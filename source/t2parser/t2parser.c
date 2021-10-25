@@ -25,6 +25,7 @@
 #include "xconfclient.h"
 #include "reportprofiles.h"
 #include "t2log_wrapper.h"
+#include "rbusInterface.h"
 
 static const int MAX_STATIC_PROP_VAL_LEN = 128 ;
 char *msgpack_strdup(msgpack_object *obj);
@@ -92,6 +93,29 @@ static T2ERROR addhttpURIreqParameter(Profile *profile, const char* Hname, const
         httpreqparam->HttpValue = NULL;
 
     Vector_PushBack(profile->t2HTTPDest->RequestURIparamList, httpreqparam);
+    T2Debug("%s --out\n", __FUNCTION__);
+    return T2ERROR_SUCCESS;
+}
+
+static T2ERROR addRbusMethodParameter(Profile *profile, const char* name, const char* value) {
+    T2Debug("%s ++in\n", __FUNCTION__);
+    if(NULL == name || NULL == value )
+        return T2ERROR_SUCCESS ;
+
+    RBUSMethodParam *rbusMethodParam = (RBUSMethodParam *) malloc(sizeof(RBUSMethodParam));
+
+    if(!rbusMethodParam) {
+        T2Error("failed to allocate memory \n");
+        return T2ERROR_FAILURE;
+
+    }
+    rbusMethodParam->name = strdup(name);
+    if (strstr(value, "Profile.") == value)
+        rbusMethodParam->value = getProfileParameter(profile, value);
+    else
+        rbusMethodParam->value = strdup(value);
+
+    Vector_PushBack(profile->t2RBUSDest->rbusMethodParamList, rbusMethodParam);
     T2Debug("%s --out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;
 }
@@ -213,9 +237,9 @@ T2ERROR addMsgPckTriggerCondition(Profile *profile, msgpack_object *value_map) {
     int tcMinThresholdDuration = 0;
     int i;
 
-    if((profile == NULL) || (value_map == NULL)){
-       T2Error("%s NULL value returning \n", __FUNCTION__);
-       return T2ERROR_FAILURE;
+    if((profile == NULL) || (value_map == NULL)) {
+        T2Error("%s NULL value returning \n", __FUNCTION__);
+        return T2ERROR_FAILURE;
     }
     T2Debug("%s ++in\n", __FUNCTION__);
 
@@ -223,13 +247,13 @@ T2ERROR addMsgPckTriggerCondition(Profile *profile, msgpack_object *value_map) {
     MSGPACK_GET_ARRAY_SIZE(TriggerConditionArray, TcArraySize);
 
     if(TcArraySize)
-       Vector_Create(&profile->triggerConditionList);
+        Vector_Create(&profile->triggerConditionList);
 
     for( i = 0; i < TcArraySize; i++ ) {
-        
-	tcType = NULL;
-	tcOperator = NULL;
-	tcReference = NULL;
+
+        tcType = NULL;
+        tcOperator = NULL;
+        tcReference = NULL;
 
         tcThreshold = 0;
         tcMinThresholdDuration = 0;
@@ -242,173 +266,166 @@ T2ERROR addMsgPckTriggerCondition(Profile *profile, msgpack_object *value_map) {
             return T2ERROR_FAILURE;
         }
 
-        memset(triggerCondition, 0 , sizeof(TriggerCondition));
+        memset(triggerCondition, 0, sizeof(TriggerCondition));
 
-	tcArrayMap = msgpack_get_array_element(TriggerConditionArray, i);
+        tcArrayMap = msgpack_get_array_element(TriggerConditionArray, i);
 
         tcTypeStr = msgpack_get_map_value(tcArrayMap, "type");
         if(tcTypeStr) {
-           msgpack_print(tcTypeStr, msgpack_get_obj_name(tcTypeStr));
-           tcType = msgpack_strdup(tcTypeStr);
-	   /* CID 175341: Explicit null dereferenced */
-	   if(tcType == NULL)
-           {
-	      T2Debug("Null tcType %s ++out\n", __FUNCTION__);
-              free(triggerCondition);
-	      return T2ERROR_FAILURE;
-	   }
+            msgpack_print(tcTypeStr, msgpack_get_obj_name(tcTypeStr));
+            tcType = msgpack_strdup(tcTypeStr);
+            /* CID 175341: Explicit null dereferenced */
+            if(tcType == NULL) {
+                T2Debug("Null tcType %s ++out\n", __FUNCTION__);
+                free(triggerCondition);
+                return T2ERROR_FAILURE;
+            }
+
         }
 
         tcOperatorStr = msgpack_get_map_value(tcArrayMap, "operator");
         if(tcOperatorStr) {
-           msgpack_print(tcOperatorStr, msgpack_get_obj_name(tcOperatorStr));
-           tcOperator = msgpack_strdup(tcOperatorStr);
-	   /* CID 175346: Explicit null dereferenced */
-	   if(tcOperator == NULL)
-           {
-	      T2Debug("Null tcOperator %s ++out\n", __FUNCTION__);
-              free(triggerCondition);
-	      return T2ERROR_FAILURE;
-	   }
+
+            msgpack_print(tcOperatorStr, msgpack_get_obj_name(tcOperatorStr));
+            tcOperator = msgpack_strdup(tcOperatorStr);
+            /* CID 175346: Explicit null dereferenced */
+            if(tcOperator == NULL) {
+                T2Debug("Null tcOperator %s ++out\n", __FUNCTION__);
+                free(triggerCondition);
+                return T2ERROR_FAILURE;
+            }
+
         }
 
         tcReferenceStr = msgpack_get_map_value(tcArrayMap, "reference");
         if(tcReferenceStr) {
-           msgpack_print(tcReferenceStr, msgpack_get_obj_name(tcReferenceStr));
-           tcReference = msgpack_strdup(tcReferenceStr);
-	   /* CID 175347 : Explicit null dereferenced */
-	   if(tcReference == NULL)
-           {
-	      T2Debug("Null tcReference %s ++out\n", __FUNCTION__);
-	      free(triggerCondition);
-              return T2ERROR_FAILURE;
-	   }
+            msgpack_print(tcReferenceStr, msgpack_get_obj_name(tcReferenceStr));
+            tcReference = msgpack_strdup(tcReferenceStr);
+            /* CID 175347 : Explicit null dereferenced */
+            if(tcReference == NULL) {
+                T2Debug("Null tcReference %s ++out\n", __FUNCTION__);
+                free(triggerCondition);
+                return T2ERROR_FAILURE;
+            }
+
         }
 
         tcThresholdInt = msgpack_get_map_value(tcArrayMap, "threshold");
-        if(tcThresholdInt)
-        {
-          msgpack_print(tcThresholdInt, msgpack_get_obj_name(tcThresholdInt));
-          MSGPACK_GET_NUMBER(tcThresholdInt, tcThreshold);
-          T2Debug("tcThreshold: %d\n", tcThreshold);
+        if(tcThresholdInt) {
+            msgpack_print(tcThresholdInt, msgpack_get_obj_name(tcThresholdInt));
+            MSGPACK_GET_NUMBER(tcThresholdInt, tcThreshold);
+            T2Debug("tcThreshold: %d\n", tcThreshold);
         }
 
         tcMinThresholdDurationInt = msgpack_get_map_value(tcArrayMap, "minThresholdDuration");
-        if(tcMinThresholdDurationInt)
-        {
-          msgpack_print(tcMinThresholdDurationInt, msgpack_get_obj_name(tcMinThresholdDurationInt));
-          MSGPACK_GET_NUMBER(tcMinThresholdDurationInt, tcMinThresholdDuration);
-	  T2Debug("tcMinThresholdDuration: %d\n", tcMinThresholdDuration);
+        if(tcMinThresholdDurationInt) {
+            msgpack_print(tcMinThresholdDurationInt, msgpack_get_obj_name(tcMinThresholdDurationInt));
+            MSGPACK_GET_NUMBER(tcMinThresholdDurationInt, tcMinThresholdDuration);
+            T2Debug("tcMinThresholdDuration: %d\n", tcMinThresholdDuration);
         }
 
         T2Debug("Adding MsgPck Trigger Condition:%s type %s operator %s \n", tcReference, tcType, tcOperator);
 
         if(tcType)
-	   triggerCondition->type = strdup(tcType);
+            triggerCondition->type = strdup(tcType);
         if(tcOperator)
-	   triggerCondition->oprator = strdup(tcOperator);
+            triggerCondition->oprator = strdup(tcOperator);
         if(tcReference)
-	   triggerCondition->reference = strdup(tcReference);
+            triggerCondition->reference = strdup(tcReference);
+
         triggerCondition->threshold = tcThreshold;
         triggerCondition->minThresholdDuration = tcMinThresholdDuration;
-	triggerCondition->isSubscribed = false;
+        triggerCondition->isSubscribed = false;
 
         Vector_PushBack(profile->triggerConditionList, triggerCondition);
         T2Debug("[[Added MsgPck Trigger Condition:%s]]\n", tcReference);
 
         if(tcType)
-          free(tcType);
+            free(tcType);
         if(tcOperator)
-          free(tcOperator);
+            free(tcOperator);
         if(tcReference)
-          free(tcReference);
+            free(tcReference);
     }
     T2Debug("%s ++out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;
 }
 
 T2ERROR addTriggerCondition(Profile *profile, cJSON *jprofileTriggerCondition) {
-    
+
     T2Debug("%s ++in\n", __FUNCTION__);
     int triggerConditionIndex = 0;
     int triggerCondition_count = 0;
-    if(jprofileTriggerCondition == NULL){
+    if(jprofileTriggerCondition == NULL) {
         T2Debug("%s ++out\n", __FUNCTION__);
-        return T2ERROR_FAILURE; 
+        return T2ERROR_FAILURE;
     }
-        
+
     triggerCondition_count = cJSON_GetArraySize(jprofileTriggerCondition);
     Vector_Create(&profile->triggerConditionList);
-	  
-    for(triggerConditionIndex=0; triggerConditionIndex < triggerCondition_count; triggerConditionIndex++)
-    {
+
+    for( triggerConditionIndex = 0; triggerConditionIndex < triggerCondition_count; triggerConditionIndex++ ) {
         char *tcType = NULL;
         char *tcOperator = NULL;
         int tcThreshold = 0;
         int tcMinThresholdDuration = 0;
         char *tcReference = NULL;
-	 
+
         cJSON* tcSubitem = cJSON_GetArrayItem(jprofileTriggerCondition, triggerConditionIndex);
-		 
-       if(tcSubitem != NULL)
-       {
-           cJSON *jTcSubItemtype = cJSON_GetObjectItem(tcSubitem, "type");
-           if(jTcSubItemtype)
-           {
-               tcType =  jTcSubItemtype->valuestring;
-           }
-           cJSON *jTcSubItemOperator = cJSON_GetObjectItem(tcSubitem, "operator");
-           if(jTcSubItemOperator)
-           {
-               tcOperator =  jTcSubItemOperator->valuestring;
-           }
 
-           cJSON *jTcSubItemThreshold = cJSON_GetObjectItem(tcSubitem, "threshold");
-           if(jTcSubItemThreshold)
-           {
-               tcThreshold =  jTcSubItemThreshold->valueint;
-           }
+        if(tcSubitem != NULL) {
+            cJSON *jTcSubItemtype = cJSON_GetObjectItem(tcSubitem, "type");
+            if(jTcSubItemtype) {
+                tcType = jTcSubItemtype->valuestring;
+            }
+            cJSON *jTcSubItemOperator = cJSON_GetObjectItem(tcSubitem, "operator");
+            if(jTcSubItemOperator) {
+                tcOperator = jTcSubItemOperator->valuestring;
+            }
 
-           cJSON *jTcSubItemMinThresholdDuration = cJSON_GetObjectItem(tcSubitem, "minThresholdDuration");
-           if(jTcSubItemMinThresholdDuration)
-           {
-               tcMinThresholdDuration =  jTcSubItemMinThresholdDuration->valueint;
-           }
+            cJSON *jTcSubItemThreshold = cJSON_GetObjectItem(tcSubitem, "threshold");
+            if(jTcSubItemThreshold) {
+                tcThreshold = jTcSubItemThreshold->valueint;
+            }
 
-           cJSON *jTcSubItemReference = cJSON_GetObjectItem(tcSubitem, "reference");
-           if(jTcSubItemReference)
-           {
-               tcReference =  jTcSubItemReference->valuestring;
-           }
-           T2Debug("Adding Trigger Condition:%s type %s operator %s \n", tcReference, tcType, tcOperator); 
-           TriggerCondition *triggerCondition = (TriggerCondition *) malloc(sizeof(TriggerCondition));
+            cJSON *jTcSubItemMinThresholdDuration = cJSON_GetObjectItem(tcSubitem, "minThresholdDuration");
+            if(jTcSubItemMinThresholdDuration) {
+                tcMinThresholdDuration = jTcSubItemMinThresholdDuration->valueint;
+            }
 
-           if(triggerCondition == NULL) {
-               T2Error("%s ++out Error adding Trigger Condition to profile %s \n", __FUNCTION__, profile->name);
-               return T2ERROR_FAILURE;
-           }
-	   /*CID 175311, 175312 and 175330 -Explicit null dereferenced */
-           if(tcType)
-	      triggerCondition->type = strdup(tcType);
-           if(tcOperator)
-	      triggerCondition->oprator = strdup(tcOperator);
-           if(tcReference)
-	      triggerCondition->reference = strdup(tcReference);
-           triggerCondition->threshold = tcThreshold;
-           triggerCondition->minThresholdDuration = tcMinThresholdDuration;
-	   triggerCondition->isSubscribed = false;
+            cJSON *jTcSubItemReference = cJSON_GetObjectItem(tcSubitem, "reference");
+            if(jTcSubItemReference) {
+                tcReference = jTcSubItemReference->valuestring;
+            }
+            T2Debug("Adding Trigger Condition:%s type %s operator %s \n", tcReference, tcType, tcOperator);
+            TriggerCondition *triggerCondition = (TriggerCondition *) malloc(sizeof(TriggerCondition));
 
-           Vector_PushBack(profile->triggerConditionList, triggerCondition);
-           T2Debug("[[Added Trigger Condition:%s]]\n", tcReference);
-       }
+            if(triggerCondition == NULL) {
+                T2Error("%s ++out Error adding Trigger Condition to profile %s \n", __FUNCTION__, profile->name);
+                return T2ERROR_FAILURE;
+            }
+            /*CID 175311, 175312 and 175330 -Explicit null dereferenced */
+            if(tcType)
+                triggerCondition->type = strdup(tcType);
+            if(tcOperator)
+                triggerCondition->oprator = strdup(tcOperator);
+            if(tcReference)
+                triggerCondition->reference = strdup(tcReference);
+            triggerCondition->threshold = tcThreshold;
+            triggerCondition->minThresholdDuration = tcMinThresholdDuration;
+            triggerCondition->isSubscribed = false;
+
+            Vector_PushBack(profile->triggerConditionList, triggerCondition);
+            T2Debug("[[Added Trigger Condition:%s]]\n", tcReference);
+        }
+
     }
 
     T2Debug("%s ++out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;
 }
 
-T2ERROR verifyTriggerCondition(cJSON *jprofileTriggerCondition)
-{
+T2ERROR verifyTriggerCondition(cJSON *jprofileTriggerCondition) {
     T2Debug("%s ++in\n", __FUNCTION__);
     int triggerConditionIndex = 0;
     int triggerCondition_count = 0;
@@ -418,59 +435,56 @@ T2ERROR verifyTriggerCondition(cJSON *jprofileTriggerCondition)
     char *reference = NULL;
     triggerCondition_count = cJSON_GetArraySize(jprofileTriggerCondition);
 
-    for(triggerConditionIndex=0; triggerConditionIndex < triggerCondition_count; triggerConditionIndex++)
-    {
-	cJSON* tcSubitem = cJSON_GetArrayItem(jprofileTriggerCondition, triggerConditionIndex);
-	if(tcSubitem != NULL){
+    for( triggerConditionIndex = 0; triggerConditionIndex < triggerCondition_count; triggerConditionIndex++ ) {
+        cJSON* tcSubitem = cJSON_GetArrayItem(jprofileTriggerCondition, triggerConditionIndex);
+        if(tcSubitem != NULL) {
             cJSON *jTcSubItemtype = cJSON_GetObjectItem(tcSubitem, "type");
-	    if(jTcSubItemtype == NULL){
-	       T2Debug("Null type %s ++out\n", __FUNCTION__);
-               return T2ERROR_FAILURE;
-	    }
-	    
-	    type = jTcSubItemtype->valuestring;
-            if(strncmp(type, "dataModel", strlen("dataModel")+1) != 0){
-	       T2Debug("Unexpected type %s ++out\n", __FUNCTION__);
-               return T2ERROR_FAILURE;
+            if(jTcSubItemtype == NULL) {
+                T2Debug("Null type %s ++out\n", __FUNCTION__);
+                return T2ERROR_FAILURE;
             }
-          
+
+            type = jTcSubItemtype->valuestring;
+            if(strncmp(type, "dataModel", strlen("dataModel") + 1) != 0) {
+                T2Debug("Unexpected type %s ++out\n", __FUNCTION__);
+                return T2ERROR_FAILURE;
+            }
+
             cJSON *jTcSubItemOperator = cJSON_GetObjectItem(tcSubitem, "operator");
-            if(jTcSubItemOperator == NULL){
-	       T2Debug("Null operator %s ++out\n", __FUNCTION__);
-               return T2ERROR_FAILURE;
-	    }
-
-            operator = jTcSubItemOperator->valuestring; 
-            if((strncmp(operator, "any", strlen("any")+1) != 0) &&
-               (strncmp(operator, "lt", strlen("lt")+1) != 0) &&
-               (strncmp(operator, "gt", strlen("gt")+1) != 0) &&
-               (strncmp(operator, "eq", strlen("eq")+1) != 0)){
-		  T2Debug("Unexpected operator %s ++out\n", __FUNCTION__);
-		  return T2ERROR_FAILURE;
+            if(jTcSubItemOperator == NULL) {
+                T2Debug("Null operator %s ++out\n", __FUNCTION__);
+                return T2ERROR_FAILURE;
             }
 
-            if((strncmp(operator, "any", strlen("any")+1) != 0)){
+            operator = jTcSubItemOperator->valuestring;
+            if((strncmp(operator, "any", strlen("any") + 1) != 0) && (strncmp(operator, "lt", strlen("lt") + 1) != 0)
+                    && (strncmp(operator, "gt", strlen("gt") + 1) != 0) && (strncmp(operator, "eq", strlen("eq") + 1) != 0)) {
+                T2Debug("Unexpected operator %s ++out\n", __FUNCTION__);
+                return T2ERROR_FAILURE;
+            }
+
+            if((strncmp(operator, "any", strlen("any") + 1) != 0)) {
                 cJSON *jTcSubItemThreshold = cJSON_GetObjectItem(tcSubitem, "threshold");
-                if(jTcSubItemThreshold == NULL){
-	           T2Debug("Null threshold %s ++out\n", __FUNCTION__);
-                   return T2ERROR_FAILURE;
+                if(jTcSubItemThreshold == NULL) {
+                    T2Debug("Null threshold %s ++out\n", __FUNCTION__);
+                    return T2ERROR_FAILURE;
                 }
             }
-	    
-	    cJSON *jTcSubItemReference = cJSON_GetObjectItem(tcSubitem, "reference");
-            if(jTcSubItemReference == NULL){
-		T2Debug("Null reference %s ++out\n", __FUNCTION__);
-                return T2ERROR_FAILURE;
-	    }
 
-	    reference = jTcSubItemReference->valuestring;
-            if(strlen(reference) == 0){
-	       T2Debug("Unexpected reference %s ++out\n", __FUNCTION__);
-               return T2ERROR_FAILURE;
-	    }
+            cJSON *jTcSubItemReference = cJSON_GetObjectItem(tcSubitem, "reference");
+            if(jTcSubItemReference == NULL) {
+                T2Debug("Null reference %s ++out\n", __FUNCTION__);
+                return T2ERROR_FAILURE;
+            }
+
+            reference = jTcSubItemReference->valuestring;
+            if(strlen(reference) == 0) {
+                T2Debug("Unexpected reference %s ++out\n", __FUNCTION__);
+                return T2ERROR_FAILURE;
+            }
         }
-    }	
-	
+    }
+
     T2Debug("%s ++out\n", __FUNCTION__);
     return ret;
 }
@@ -499,16 +513,15 @@ T2ERROR processConfiguration(char** configData, char *profileName, char* profile
     if(jprofileParameter) {
         ThisProfileParameter_count = cJSON_GetArraySize(jprofileParameter);
     }
-    if(profileName == NULL || jprofileProtocol == NULL || jprofileEncodingType == NULL || jprofileParameter == NULL
-            || ThisProfileParameter_count == 0 || (profileHash == NULL  && jprofileHash == NULL)) {
+    if(profileName == NULL || jprofileProtocol == NULL || jprofileEncodingType == NULL || jprofileParameter == NULL || ThisProfileParameter_count == 0
+            || (profileHash == NULL && jprofileHash == NULL)) {
         T2Error("Incomplete profile information, unable to create profile\n");
-	cJSON_Delete(json_root);
+        cJSON_Delete(json_root);
         return T2ERROR_FAILURE;
     }
 
-    if(!jprofileHash)
-    {
-        cJSON_AddStringToObject(json_root, "Hash", profileHash);// updating the versionHash to persist the hash along with profile configuration
+    if(!jprofileHash) {
+        cJSON_AddStringToObject(json_root, "Hash", profileHash); // updating the versionHash to persist the hash along with profile configuration
         free(*configData);
         *configData = NULL;
         *configData = cJSON_PrintUnformatted(json_root);
@@ -521,19 +534,42 @@ T2ERROR processConfiguration(char** configData, char *profileName, char* profile
     cJSON *jprofileHTTPRequestURIParameter = NULL;
     int ThisprofileHTTPRequestURIParameter_count = 0;
 
-    if((jprofileProtocol) && (strcmp(jprofileProtocol->valuestring, "HTTP") == 0)) {
-        jprofileHTTP = cJSON_GetObjectItem(json_root, "HTTP");
-        jprofileHTTPURL = cJSON_GetObjectItem(jprofileHTTP, "URL");
-        jprofileHTTPCompression = cJSON_GetObjectItem(jprofileHTTP, "Compression");
-        jprofileHTTPMethod = cJSON_GetObjectItem(jprofileHTTP, "Method");
-        if(jprofileHTTPURL == NULL || jprofileHTTPCompression == NULL || jprofileHTTPMethod == NULL) {
-            T2Error("Incomplete profile information, unable to create profile\n");
-	        cJSON_Delete(json_root);
-            return T2ERROR_FAILURE;
-        }
-        jprofileHTTPRequestURIParameter = cJSON_GetObjectItem(jprofileHTTP, "RequestURIParameter");
-        if(jprofileHTTPRequestURIParameter) {
-            ThisprofileHTTPRequestURIParameter_count = cJSON_GetArraySize(jprofileHTTPRequestURIParameter);
+    cJSON *jprofileRBUSMethod = NULL;
+    cJSON *jprofileRBUSMethodName = NULL ;
+    cJSON *jprofileRBUSMethodParamArr = NULL ;
+    int rbusMethodParamArrCount = 0 ;
+
+    if(jprofileProtocol) {
+        if(strcmp(jprofileProtocol->valuestring, "HTTP") == 0) {
+            jprofileHTTP = cJSON_GetObjectItem(json_root, "HTTP");
+            jprofileHTTPURL = cJSON_GetObjectItem(jprofileHTTP, "URL");
+            jprofileHTTPCompression = cJSON_GetObjectItem(jprofileHTTP, "Compression");
+            jprofileHTTPMethod = cJSON_GetObjectItem(jprofileHTTP, "Method");
+            if(jprofileHTTPURL == NULL || jprofileHTTPCompression == NULL || jprofileHTTPMethod == NULL) {
+                T2Error("Incomplete profile information, unable to create profile\n");
+                cJSON_Delete(json_root);
+                return T2ERROR_FAILURE;
+            }
+            jprofileHTTPRequestURIParameter = cJSON_GetObjectItem(jprofileHTTP, "RequestURIParameter");
+            if(jprofileHTTPRequestURIParameter) {
+                ThisprofileHTTPRequestURIParameter_count = cJSON_GetArraySize(jprofileHTTPRequestURIParameter);
+            }
+        }else if(strcmp(jprofileProtocol->valuestring, "RBUS_METHOD") == 0) {
+            jprofileRBUSMethod = cJSON_GetObjectItem(json_root, "RBUS_METHOD");
+            jprofileRBUSMethodName = cJSON_GetObjectItem(jprofileRBUSMethod, "Method");
+            if (jprofileRBUSMethodName->valuestring && !rbusCheckMethodExists(jprofileRBUSMethodName->valuestring) ) {
+                T2Error("Configured RBUS Method %s doesn't exist . Ignoring profile %s \n", jprofileRBUSMethodName->valuestring, profileName);
+                cJSON_Delete(json_root);
+                return T2ERROR_FAILURE ;
+            }
+            jprofileRBUSMethodParamArr = cJSON_GetObjectItem(jprofileRBUSMethod, "Parameters");
+            if(jprofileRBUSMethodParamArr){
+                rbusMethodParamArrCount = cJSON_GetArraySize(jprofileRBUSMethodParamArr);
+            }
+        }else {
+            T2Error("Unsupported protocol : %s \n", jprofileProtocol->valuestring);
+            cJSON_Delete(json_root);
+            return T2ERROR_FAILURE ;
         }
     }
 
@@ -546,30 +582,29 @@ T2ERROR processConfiguration(char** configData, char *profileName, char* profile
         jprofileJSONReportFormat = cJSON_GetObjectItem(jprofileJSONEncoding, "ReportFormat");
         if(jprofileJSONReportFormat == NULL) {
             T2Error("Incomplete profile information, unable to create profile\n");
-	    cJSON_Delete(json_root);
+            cJSON_Delete(json_root);
             return T2ERROR_FAILURE;
 
         }
         jprofileJSONReportTimestamp = cJSON_GetObjectItem(jprofileJSONEncoding, "ReportTimestamp");
     }
 
-    if (jprofileReportingInterval && jprofileActivationTimeout &&
-            jprofileActivationTimeout->valueint < jprofileReportingInterval->valueint) {
+    if(jprofileReportingInterval && jprofileActivationTimeout && jprofileActivationTimeout->valueint < jprofileReportingInterval->valueint) {
 
         T2Error("activationTimeoutPeriod is less than reporting interval. invalid profile: %s \n", profileName);
         cJSON_Delete(json_root);
         return T2ERROR_FAILURE;
     }
 
-    if(jprofileTriggerCondition){
-	int ret;
-	ret = verifyTriggerCondition(jprofileTriggerCondition);
-	if(ret == T2ERROR_FAILURE){
+    if(jprofileTriggerCondition) {
+        int ret;
+        ret = verifyTriggerCondition(jprofileTriggerCondition);
+        if(ret == T2ERROR_FAILURE) {
             T2Error("TriggerCondition is invalid, unable to create profile\n");
             cJSON_Delete(json_root);
             return T2ERROR_FAILURE;
-	}
-    }	    
+        }
+    }
 
     //PROFILE CREATION
     Profile *profile = (Profile *) malloc(sizeof(Profile));
@@ -588,26 +623,29 @@ T2ERROR processConfiguration(char** configData, char *profileName, char* profile
             if(profile) {
                 free(profile);
             }
-	    cJSON_Delete(json_root);
+            cJSON_Delete(json_root);
             return T2ERROR_FAILURE;
         }
     }
 
     if((strcmp(jprofileProtocol->valuestring, "HTTP") == 0)) {
         profile->t2HTTPDest = (T2HTTP *) malloc(sizeof(T2HTTP));
-        if(profile->t2HTTPDest == NULL) {
-            T2Error("t2HTTPDest malloc error\n");
-            if(profile->jsonEncoding) {
-                free(profile->jsonEncoding);
-            }
-            if(profile) {
-                free(profile);
-            }
-	    cJSON_Delete(json_root);
-            return T2ERROR_FAILURE;
-        }
+    }else if ((strcmp(jprofileProtocol->valuestring, "RBUS_METHOD") == 0)){
+        profile->t2RBUSDest = malloc(sizeof(T2RBUS));
     }
-    
+
+    if ( (profile->t2HTTPDest == NULL) && (profile->t2RBUSDest  == NULL) ){
+        T2Error("t2 protocol destination object malloc error\n");
+        if(profile->jsonEncoding) {
+            free(profile->jsonEncoding);
+        }
+        if(profile) {
+            free(profile);
+        }
+        cJSON_Delete(json_root);
+        return T2ERROR_FAILURE;
+    }
+
     profile->minThresholdDuration = 0;
     profile->name = strdup(profileName);
     if(jprofileDescription) {
@@ -626,18 +664,18 @@ T2ERROR processConfiguration(char** configData, char *profileName, char* profile
     profile->generateNow = false;
     profile->activationTimeoutPeriod = INFINITE_TIMEOUT;
 
-    if (jprofileGenerateNow)
+    if(jprofileGenerateNow)
         profile->generateNow = (cJSON_IsTrue(jprofileGenerateNow) == 1);
 
-    if (profile->generateNow) {
+    if(profile->generateNow) {
         profile->reportingInterval = 0;
-    } else {
+    }else {
         if(jprofileReportingInterval) {
             int reportIntervalInSec = jprofileReportingInterval->valueint;
             profile->reportingInterval = reportIntervalInSec;
         }
 
-        if (jprofileActivationTimeout) {
+        if(jprofileActivationTimeout) {
             profile->activationTimeoutPeriod = jprofileActivationTimeout->valueint;
             T2Debug("[[ profile->activationTimeout:%d]]\n", profile->activationTimeoutPeriod);
         }
@@ -739,6 +777,46 @@ T2ERROR processConfiguration(char** configData, char *profileName, char* profile
         }
     }
 
+    if((profile->t2RBUSDest) && (strcmp(jprofileProtocol->valuestring, "RBUS_METHOD") == 0)) {
+        profile->t2RBUSDest->rbusMethodName = strdup(jprofileRBUSMethodName->valuestring);
+        T2Debug("[[profile->t2RBUSDest->rbusMethodName:%s]]\n", profile->t2RBUSDest->rbusMethodName);
+
+        if(jprofileRBUSMethodParamArr) {
+            char* name = NULL;
+            char* value = NULL;
+            int rbusMethodParamIndex = 0;
+            int rbusParamAdded = 0 ;
+            T2ERROR rbusParamRet = T2ERROR_FAILURE;
+
+            Vector_Create(&(profile->t2RBUSDest->rbusMethodParamList));
+            for( rbusMethodParamIndex = 0; rbusMethodParamIndex < rbusMethodParamArrCount; rbusMethodParamIndex++ ) {
+                name = NULL;
+                value = NULL;
+                cJSON* jRbusParamElement = cJSON_GetArrayItem(jprofileRBUSMethodParamArr, rbusMethodParamIndex);
+                if(jRbusParamElement != NULL) {
+                    cJSON *jName = cJSON_GetObjectItem(jRbusParamElement, "name");
+                    cJSON *jValue = cJSON_GetObjectItem(jRbusParamElement, "value");
+                    if(jName && jValue) {
+                        name = jName->valuestring;
+                        value = jValue->valuestring; // default value for Name
+                    }else {
+                        continue;
+                    }
+                    rbusParamRet = addRbusMethodParameter(profile, name, value);
+                    if(rbusParamRet != T2ERROR_SUCCESS) {
+                        T2Error("%s Error in adding request URIparameterReference: %s for the profile: %s \n", __FUNCTION__, name, profile->name);
+                        continue;
+                    }else {
+                        T2Debug("[[Added  request URIparameterReference: %s]]\n", name);
+                    }
+                    rbusParamAdded++;
+                }
+            }
+            T2Info("Profile Name: %s\nConfigured rbus method param count = %d \n", profile->name, rbusMethodParamArrCount);
+            T2Info("Number of rbus method param added  = %d \n", rbusParamAdded);
+        }
+    }
+
     //Parameter Markers configuration
     Vector_Create(&profile->paramList);
     Vector_Create(&profile->staticParamList);
@@ -816,16 +894,16 @@ T2ERROR processConfiguration(char** configData, char *profileName, char* profile
                 cJSON *jpSubitemname = cJSON_GetObjectItem(pSubitem, "marker");
                 cJSON *jpSubitSearchString = cJSON_GetObjectItem(pSubitem, "search");
                 cJSON *jpSubitemLogFile = cJSON_GetObjectItem(pSubitem, "logFile");
-                if (jpSubitemname){
+                if(jpSubitemname) {
                     header = jpSubitemname->valuestring;
                 }
-                if(jpSubitSearchString){
+                if(jpSubitSearchString) {
                     content = jpSubitSearchString->valuestring;
                 }
-                if(jpSubitemLogFile){
+                if(jpSubitemLogFile) {
                     logfile = jpSubitemLogFile->valuestring;
                 }
-            } else {
+            }else {
                 T2Error("%s Unknown parameter type %s \n", __FUNCTION__, paramtype);
                 continue;
             }
@@ -847,20 +925,19 @@ T2ERROR processConfiguration(char** configData, char *profileName, char* profile
             T2Debug("TC found in profile\n");
         }
         T2Debug("triggerCondition_count %d\n", triggerCondition_count);
-        if(triggerCondition_count)
-        {
+        if(triggerCondition_count) {
             ret = addTriggerCondition(profile, jprofileTriggerCondition); //add
             if(ret != T2ERROR_SUCCESS) {
                 T2Error("%s Error adding Trigger Condition to profile %s \n", __FUNCTION__, profile->name);
             }
         }
-    } 
+    }
 
     // Not included for RDKB-25008 . DCA utils expects the list to be sorted based on logfile names
     T2Info("Number of tr181params/markers successfully added in profile = %lu \n", (unsigned long)profileParamCount);
 
     cJSON_Delete(json_root);
-    json_root = NULL ;
+    json_root = NULL;
     *localProfile = profile;
     T2Debug("%s --out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;
@@ -1092,10 +1169,16 @@ T2ERROR processMsgPackConfiguration(msgpack_object *profiles_array_map, Profile 
     msgpack_object *URL_str;
     msgpack_object *Compression_str;
     msgpack_object *Method_str;
+    msgpack_object *RbusMethod_map;
+    msgpack_object *RbusMethod_str;
     msgpack_object *RequestURIParameter_array;
+    msgpack_object *RbusMethodParameter_array;
     msgpack_object *RequestURIParameter_array_map;
+    msgpack_object *RbusMethodIParameter_array_map;
     msgpack_object *RequestURIParameter_Name_str;
     msgpack_object *RequestURIParameter_Reference_str;
+    msgpack_object *RequestRbusParameter_Name_str;
+    msgpack_object *RequestRbusParameter_Value_str;
     msgpack_object *JSONEncoding_map;
     msgpack_object *ReportFormat_str;
     msgpack_object *ReportTimestamp_str;
@@ -1106,6 +1189,7 @@ T2ERROR processMsgPackConfiguration(msgpack_object *profiles_array_map, Profile 
 
     uint32_t Parameter_array_size = 0;
     uint32_t RequestURIParameter_array_size = 0;
+    uint32_t RbusMethodParameter_array_size = 0;
 
     T2Debug("%s --in\n", __FUNCTION__);
     Profile *profile = (Profile *) malloc(sizeof(Profile));
@@ -1152,6 +1236,31 @@ T2ERROR processMsgPackConfiguration(msgpack_object *profiles_array_map, Profile 
             free(profile);
             T2Error("Malloc error exiting: can not allocate memory to create profile->t2HTTPDest \n");
             return T2ERROR_MEMALLOC_FAILED;
+        }
+    }
+
+    if(0 == msgpack_strcmp(Protocol_str, "RBUS_METHOD")) {
+        profile->t2RBUSDest = (T2RBUS *) malloc(sizeof(RBUSMethodParam));
+        if(NULL == profile->t2RBUSDest) {
+            free(profile->name);
+            free(profile->hash);
+            free(profile);
+            T2Error("Malloc error exiting: can not allocate memory to create profile->t2RBUSDest \n");
+            return T2ERROR_MEMALLOC_FAILED;
+        }
+        RbusMethod_map = msgpack_get_map_value(value_map, "RBUS_METHOD");
+        RbusMethod_str = msgpack_get_map_value(RbusMethod_map, "Method");
+        msgpack_print(RbusMethod_str, msgpack_get_obj_name(RbusMethod_str));
+        profile->t2RBUSDest->rbusMethodName = msgpack_strdup(RbusMethod_str);
+
+        if(profile->t2RBUSDest->rbusMethodName && !rbusCheckMethodExists(profile->t2RBUSDest->rbusMethodName)) {
+            T2Error("Configured RBUS Method %s doesn't exist . Ignoring profile %s \n", profile->t2RBUSDest->rbusMethodName, profile->name);
+            free(profile->t2RBUSDest->rbusMethodName );
+            free(profile->t2RBUSDest);
+            free(profile->name);
+            free(profile->hash);
+            free(profile);
+            return T2ERROR_FAILURE;
         }
     }
 
@@ -1205,7 +1314,10 @@ T2ERROR processMsgPackConfiguration(msgpack_object *profiles_array_map, Profile 
             T2Error("activationTimeoutPeriod is less than reporting interval. invalid profile: %s \n", profile->name);
             free(profile->name);
             free(profile->hash);
-            free(profile->t2HTTPDest);
+            if (profile->t2HTTPDest)
+                free(profile->t2HTTPDest);
+            if (profile->t2RBUSDest)
+                free(profile->t2HTTPDest);
             free(profile->Description);
             free(profile->version);
             free(profile);
@@ -1329,56 +1441,97 @@ T2ERROR processMsgPackConfiguration(msgpack_object *profiles_array_map, Profile 
     T2Debug("Added parameter count:%d \n", profileParamCount);
     addMsgPckTriggerCondition(profile, value_map);
 
-    HTTP_map = msgpack_get_map_value(value_map, "HTTP");
+    if(0 == msgpack_strcmp(Protocol_str, "HTTP")) {
+        HTTP_map = msgpack_get_map_value(value_map, "HTTP");
 
-    URL_str = msgpack_get_map_value(HTTP_map, "URL");
-    msgpack_print(URL_str, msgpack_get_obj_name(URL_str));
-    profile->t2HTTPDest->URL = msgpack_strdup(URL_str);
+        URL_str = msgpack_get_map_value(HTTP_map, "URL");
+        msgpack_print(URL_str, msgpack_get_obj_name(URL_str));
+        profile->t2HTTPDest->URL = msgpack_strdup(URL_str);
 
-    Compression_str = msgpack_get_map_value(HTTP_map, "Compression");
-    msgpack_print(Compression_str, msgpack_get_obj_name(Compression_str));
-    profile->t2HTTPDest->Compression = COMP_NONE; /*in 1911_sprint default none*/
+        Compression_str = msgpack_get_map_value(HTTP_map, "Compression");
+        msgpack_print(Compression_str, msgpack_get_obj_name(Compression_str));
+        profile->t2HTTPDest->Compression = COMP_NONE; /*in 1911_sprint default none*/
 
-    Method_str = msgpack_get_map_value(HTTP_map, "Method");
-    msgpack_print(Method_str, msgpack_get_obj_name(Method_str));
-    profile->t2HTTPDest->Method = HTTP_POST; /*1911_sprint default to POST */
+        Method_str = msgpack_get_map_value(HTTP_map, "Method");
+        msgpack_print(Method_str, msgpack_get_obj_name(Method_str));
+        profile->t2HTTPDest->Method = HTTP_POST; /*1911_sprint default to POST */
 
-    Vector_Create(&(profile->t2HTTPDest->RequestURIparamList));
-    RequestURIParameter_array = msgpack_get_map_value(HTTP_map, "RequestURIParameter");
-    int httpParamCount = 0;
-    MSGPACK_GET_ARRAY_SIZE(RequestURIParameter_array, RequestURIParameter_array_size);
-    for( i = 0; i < RequestURIParameter_array_size; i++ ) {
-        char* href;
-        char* hname;
-        int httpret = 0;
+        Vector_Create(&(profile->t2HTTPDest->RequestURIparamList));
+        RequestURIParameter_array = msgpack_get_map_value(HTTP_map, "RequestURIParameter");
+        int httpParamCount = 0;
+        MSGPACK_GET_ARRAY_SIZE(RequestURIParameter_array, RequestURIParameter_array_size);
+        for( i = 0; i < RequestURIParameter_array_size; i++ ) {
+            char* href;
+            char* hname;
+            int httpret = 0;
 
-        href = NULL;
-        hname = NULL;
-        RequestURIParameter_array_map = msgpack_get_array_element(RequestURIParameter_array, i);
+            href = NULL;
+            hname = NULL;
+            RequestURIParameter_array_map = msgpack_get_array_element(RequestURIParameter_array, i);
 
-        RequestURIParameter_Reference_str = msgpack_get_map_value(RequestURIParameter_array_map, "Reference");
-        msgpack_print(RequestURIParameter_Reference_str, msgpack_get_obj_name(RequestURIParameter_Reference_str));
-        href = msgpack_strdup(RequestURIParameter_Reference_str);
-        if(NULL == href) {
+            RequestURIParameter_Reference_str = msgpack_get_map_value(RequestURIParameter_array_map, "Reference");
+            msgpack_print(RequestURIParameter_Reference_str, msgpack_get_obj_name(RequestURIParameter_Reference_str));
+            href = msgpack_strdup(RequestURIParameter_Reference_str);
+            if(NULL == href) {
 
-            RequestURIParameter_Name_str = msgpack_get_map_value(RequestURIParameter_array_map, "Name");
-            msgpack_print(RequestURIParameter_Name_str, msgpack_get_obj_name(RequestURIParameter_Name_str));
-            hname = msgpack_strdup(RequestURIParameter_Name_str);
-            if(NULL == hname)
-                hname = msgpack_strdup(RequestURIParameter_Reference_str);
+                RequestURIParameter_Name_str = msgpack_get_map_value(RequestURIParameter_array_map, "Name");
+                msgpack_print(RequestURIParameter_Name_str, msgpack_get_obj_name(RequestURIParameter_Name_str));
+                hname = msgpack_strdup(RequestURIParameter_Name_str);
+                if(NULL == hname)
+                    hname = msgpack_strdup(RequestURIParameter_Reference_str);
 
-            httpret = addhttpURIreqParameter(profile, hname, href);
-            if(T2ERROR_SUCCESS != httpret) {
-                T2Error("%s Error in adding request URIparameterReference: %s for the profile: %s \n", __FUNCTION__, (href)? href : "", profile->name);
-            }else {
-                T2Debug("Added  request URIparameterReference: %s \n", (href)? href : "");
-                httpParamCount++;
+                httpret = addhttpURIreqParameter(profile, hname, href);
+                if(T2ERROR_SUCCESS != httpret) {
+                    T2Error("%s Error in adding request URIparameterReference: %s for the profile: %s \n", __FUNCTION__, (href)? href : "", profile->name);
+                }else {
+                    T2Debug("Added  request URIparameterReference: %s \n", (href)? href : "");
+                    httpParamCount++;
+                }
             }
+            free(href);
+            free(hname);
         }
-        free(href);
-        free(hname);
+        T2Debug("Added URI parameter count:%d \n", httpParamCount);
+    } else if ( 0 == msgpack_strcmp(Protocol_str, "RBUS_METHOD") ) {
+
+        RbusMethod_map = msgpack_get_map_value(value_map, "RBUS_METHOD");
+        Vector_Create(&(profile->t2RBUSDest->rbusMethodParamList));
+        RbusMethodParameter_array = msgpack_get_map_value(RbusMethod_map, "Parameters");
+        int rbusMethodParamCount = 0;
+        MSGPACK_GET_ARRAY_SIZE(RbusMethodParameter_array, RbusMethodParameter_array_size);
+
+        for( i = 0; i < RbusMethodParameter_array_size; i++ ) {
+            char* name = NULL;
+            char* value = NULL;
+            int httpret = 0;
+
+            RbusMethodIParameter_array_map = msgpack_get_array_element(RbusMethodParameter_array, i);
+
+            RequestRbusParameter_Name_str = msgpack_get_map_value(RbusMethodIParameter_array_map, "name");
+            msgpack_print(RequestRbusParameter_Name_str, msgpack_get_obj_name(RequestRbusParameter_Name_str));
+            name = msgpack_strdup(RequestRbusParameter_Name_str);
+
+            RequestRbusParameter_Value_str = msgpack_get_map_value(RbusMethodIParameter_array_map, "value");
+            msgpack_print(RequestRbusParameter_Value_str, msgpack_get_obj_name(RequestRbusParameter_Value_str));
+            value = msgpack_strdup(RequestRbusParameter_Value_str);
+
+            if( name && value ) {
+                httpret = addRbusMethodParameter(profile, name, value);
+                if(T2ERROR_SUCCESS != httpret) {
+                    T2Error("%s Error in adding request URIparameterReference: %s for the profile: %s \n", __FUNCTION__, name, profile->name);
+                }else {
+                    T2Debug("Added  request URIparameterReference: %s \n", name);
+                    rbusMethodParamCount++;
+                }
+            }
+            free(name);
+            free(value);
+        }
+        T2Debug("Added Rbus_method parameter count:%d \n", rbusMethodParamCount);
+
+    }else {
+        T2Error("Unsupported report sending protocol \n" );
     }
-    T2Debug("Added URI parameter count:%d \n", httpParamCount);
 
     JSONEncoding_map = msgpack_get_map_value(value_map, "JSONEncoding");
 

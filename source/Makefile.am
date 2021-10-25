@@ -16,7 +16,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 ##########################################################################
-SUBDIRS = utils ccspinterface t2parser xconf-client protocol reportgen scheduler dcautil commonlib bulkdata interChipHelper
+SUBDIRS = utils ccspinterface t2parser xconf-client protocol nativeProtocolSimulator reportgen scheduler dcautil commonlib bulkdata interChipHelper
 
 if ENABLE_CCSP_SUPPORT
 SUBDIRS += t2dm
@@ -47,6 +47,7 @@ telemetry2_0_CPPFLAGS = -fPIC -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/dbus-1.0 
                                 -I${top_srcdir}/source/ccspinterface \
                                 -I${top_srcdir}/source/dcautil \
                                 -I${top_srcdir}/source/protocol/http \
+				-I${top_srcdir}/source/protocol/rbusMethod \
                                 -I${top_srcdir}/source/reportgen \
                                 -I${top_srcdir}/source/scheduler \
                                 -I${top_srcdir}/source/t2parser \

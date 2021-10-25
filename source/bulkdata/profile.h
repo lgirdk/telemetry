@@ -61,6 +61,7 @@ typedef struct _Profile
     Vector *paramList;
     Vector *staticParamList;
     T2HTTP *t2HTTPDest;
+    T2RBUS *t2RBUSDest;
     Vector *eMarkerList;
     Vector *gMarkerList;
     Vector *cachedReportList;

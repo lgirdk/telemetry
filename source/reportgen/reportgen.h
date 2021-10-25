@@ -31,6 +31,12 @@ typedef struct _HTTPReqParam
     char* HttpValue;
 }HTTPReqParam;
 
+typedef struct _RBUSMethodParam
+{
+    char* name;
+    char* value;
+}RBUSMethodParam;
+
 typedef enum
 {
     HTTP_PUT,
@@ -49,6 +55,13 @@ typedef struct _T2HTTP
     HTTPMethod Method;
     Vector *RequestURIparamList;
 }T2HTTP;
+
+
+typedef struct _T2RBUS
+{
+    char *rbusMethodName;
+    Vector *rbusMethodParamList;
+}T2RBUS;
 
 void freeProfileValues(void* data);
 

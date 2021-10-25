@@ -29,6 +29,7 @@
 #include "t2log_wrapper.h"
 #include "busInterface.h"
 #include "curlinterface.h"
+#include "rbusmethodinterface.h"
 #include "scheduler.h"
 #include "persistence.h"
 #include "vector.h"
@@ -98,6 +99,18 @@ static void freeProfile(void *data)
                 Vector_Destroy(profile->t2HTTPDest->RequestURIparamList, freeRequestURIparam);
             }
             free(profile->t2HTTPDest);
+        }
+        if(profile->t2RBUSDest){
+            if(profile->t2RBUSDest->rbusMethodName){
+                memset(profile->t2RBUSDest->rbusMethodName , 0 , strlen(profile->t2RBUSDest->rbusMethodName));
+                free(profile->t2RBUSDest->rbusMethodName);
+                profile->t2RBUSDest->rbusMethodName = NULL ;
+            }
+            if(profile->t2RBUSDest->rbusMethodParamList){
+                // TBD determine whether data is simple string before passing free as cleanup function
+                Vector_Destroy(profile->t2RBUSDest->rbusMethodParamList, free);
+            }
+            free(profile->t2RBUSDest);
         }
         if(profile->eMarkerList)
         {
@@ -280,9 +293,14 @@ static void* CollectAndReport(void* data)
             if(size > DEFAULT_MAX_REPORT_SIZE) {
                 T2Warning("Report size is exceeding the max limit : %d\n", DEFAULT_MAX_REPORT_SIZE);
             }
-            if(strcmp(profile->protocol, "HTTP") == 0) {
-                char *httpUrl = prepareHttpUrl(profile->t2HTTPDest); /* Append URL with http properties */
-                ret = sendReportOverHTTP(httpUrl, jsonReport);
+            if(strcmp(profile->protocol, "HTTP") == 0 || strcmp(profile->protocol, "RBUS_METHOD") == 0 ) {
+                char *httpUrl = NULL ;
+                if ( strcmp(profile->protocol, "HTTP") == 0 ) {
+                    httpUrl = prepareHttpUrl(profile->t2HTTPDest); /* Append URL with http properties */
+                    ret = sendReportOverHTTP(httpUrl, jsonReport);
+                } else {
+                    ret = sendReportsOverRBUSMethod(profile->t2RBUSDest->rbusMethodName, profile->t2RBUSDest->rbusMethodParamList, jsonReport);
+                }
 
                 if(ret == T2ERROR_FAILURE) {
                     if(Vector_Size(profile->cachedReportList) == MAX_CACHED_REPORTS) {
@@ -296,9 +314,16 @@ static void* CollectAndReport(void* data)
                     T2Info("Report Cached, No. of reportes cached = %lu\n", (unsigned long)Vector_Size(profile->cachedReportList));
                 }else if(Vector_Size(profile->cachedReportList) > 0) {
                     T2Info("Trying to send  %lu cached reports\n", (unsigned long)Vector_Size(profile->cachedReportList));
-                    ret = sendCachedReportsOverHTTP(httpUrl, profile->cachedReportList);
+                    if ( strcmp(profile->protocol, "HTTP") == 0 ) {
+                        ret = sendCachedReportsOverHTTP(httpUrl, profile->cachedReportList);
+                    } else {
+                        ret = sendCachedReportsOverRBUSMethod(profile->t2RBUSDest->rbusMethodName, profile->t2RBUSDest->rbusMethodParamList, profile->cachedReportList);
+                    }
                 }
-                free(httpUrl);
+                if (httpUrl) {
+                    free(httpUrl);
+                    httpUrl = NULL ;
+                }
             }
             else
             {

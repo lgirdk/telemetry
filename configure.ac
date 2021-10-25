@@ -30,7 +30,9 @@ AC_CONFIG_SRCDIR([source/commonlib])
 AC_CONFIG_SRCDIR([source/protocol])
 AC_CONFIG_SRCDIR([source/interChipHelper])
 AC_CONFIG_SRCDIR([source/protocol/http])
+AC_CONFIG_SRCDIR([source/protocol/rbusMethod])
 AC_CONFIG_SRCDIR([source/dcautil])
+AC_CONFIG_SRCDIR([source/nativeProtocolSimulator])
 AC_CONFIG_SRCDIR([source/testApp])
 AM_INIT_AUTOMAKE([foreign no-dist-gzip dist-bzip2 1.9])
 LT_INIT
@@ -107,9 +109,11 @@ AC_CONFIG_FILES([Makefile
                  source/commonlib/Makefile
                  source/interChipHelper/Makefile
                  source/protocol/Makefile
+                 source/nativeProtocolSimulator/Makefile
                  source/dcautil/Makefile
                  source/testApp/Makefile
-                 source/protocol/http/Makefile])
+                 source/protocol/http/Makefile
+                 source/protocol/rbusMethod/Makefile])
 
 AM_COND_IF([ENABLE_CCSP_SUPPORT], [AC_CONFIG_FILES([source/t2dm/Makefile])])
 AM_COND_IF([ENABLE_CCSP_SUPPORT], [AC_CONFIG_SRCDIR([source/t2dm])])

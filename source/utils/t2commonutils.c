@@ -14,6 +14,7 @@
  * limitations under the License.
   *********************************************************************************/
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 
 #include "t2log_wrapper.h"

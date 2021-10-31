@@ -150,6 +150,7 @@ void sig_handler(int sig)
     else if(sig == SIGUSR2 || sig == EXEC_RELOAD)
     {
         T2Info(("EXEC_RELOAD received!\n"));
+        stopXConfClient();
         if(T2ERROR_SUCCESS == startXConfClient()) {
             T2Info("XCONF config reload - SUCCESS \n");
         }else {

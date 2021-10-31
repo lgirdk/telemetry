@@ -248,6 +248,7 @@ T2ERROR ReportProfiles_setProfileXConf(ProfileXConf *profile) {
         return T2ERROR_FAILURE;
     }
 
+    T2ER_StopDispatchThread();
     T2ER_StartDispatchThread();
 
     T2Debug("%s --out\n", __FUNCTION__);
@@ -529,8 +530,10 @@ static T2ERROR deleteAllReportProfiles() {
         ProfileXConf_updateMarkerComponentMap();
 
     /* Restart DispatchThread */
-    if (ProfileXConf_isSet())
+    if (ProfileXConf_isSet()) {
+        T2ER_StopDispatchThread();
         T2ER_StartDispatchThread();
+    }
 
     T2Debug("%s --out\n", __FUNCTION__);
 

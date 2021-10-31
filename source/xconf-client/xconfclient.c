@@ -782,6 +782,14 @@ T2ERROR initXConfClient()
     return T2ERROR_SUCCESS;
 }
 
+T2ERROR stopXConfClient()
+{
+    T2Debug("%s ++in\n", __FUNCTION__);
+    pthread_detach(xcrThread);
+    T2Debug("%s --out\n", __FUNCTION__);
+    return T2ERROR_SUCCESS;
+}
+
 T2ERROR startXConfClient()
 {
     T2Debug("%s ++in\n", __FUNCTION__);

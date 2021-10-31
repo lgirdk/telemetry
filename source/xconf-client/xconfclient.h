@@ -102,4 +102,6 @@ T2ERROR initXConfClient();
 
 T2ERROR startXConfClient();
 
+T2ERROR stopXConfClient();
+
 #endif /* _XCONF_CLIENT_H_ */

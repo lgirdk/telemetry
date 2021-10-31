@@ -273,6 +273,10 @@ static int addToVector(GList *pchead, Vector* grepResultList) {
                         GrepResult* grepResult = (GrepResult*) malloc(sizeof(GrepResult));
                         grepResult->markerName = strdup(tmp->header);
                         grepResult->markerValue = strdup(tmp_str);
+			if(tmp->header){
+                                free(tmp->header);
+                                tmp->header = NULL;
+                        }
                         T2Debug("Adding OCCURENCE to result list %s : %s \n", grepResult->markerName, grepResult->markerValue);
                         Vector_PushBack(grepResultList, grepResult);
                     }
@@ -281,6 +285,10 @@ static int addToVector(GList *pchead, Vector* grepResultList) {
                     	GrepResult* grepResult = (GrepResult*) malloc(sizeof(GrepResult));
                         grepResult->markerName = strdup(tmp->header);
                         grepResult->markerValue = strdup(tmp->data);
+			if(tmp->header){
+                                free(tmp->header);
+                                tmp->header = NULL;
+                        }
 			if(tmp->data){
 				free(tmp->data);
 				tmp->data = NULL;

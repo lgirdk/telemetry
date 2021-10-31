@@ -68,7 +68,9 @@ T2ERROR initT2MarkerComponentMap()
     markerCompMap = hash_map_create();
     pthread_mutex_init(&t2MarkersMutex, NULL);
     pthread_mutex_init(&t2CompListMutex, NULL);
-    Vector_Create(&componentList);
+    if(componentList == NULL) {
+        Vector_Create(&componentList);
+    }
     T2Debug("%s --out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;
 }
@@ -77,11 +79,14 @@ T2ERROR clearT2MarkerComponentMap()
 {
     T2Debug("%s ++in\n", __FUNCTION__);
     pthread_mutex_lock(&t2MarkersMutex);
-    hash_map_clear(markerCompMap, freeT2Marker);
+    hash_map_destroy(markerCompMap, freeT2Marker);
+    markerCompMap = NULL;
+    markerCompMap = hash_map_create();
     pthread_mutex_unlock(&t2MarkersMutex);  
-
+    pthread_mutex_lock(&t2CompListMutex);
     Vector_Destroy(componentList, freeT2ComponentList);
     componentList = NULL ;
+    pthread_mutex_unlock(&t2CompListMutex);
     T2Debug("%s --out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;
 }
@@ -98,14 +103,23 @@ T2ERROR destroyT2MarkerComponentMap()
     return T2ERROR_SUCCESS;
 }
 
-T2ERROR updateEventMap(const char* markerName , T2Marker* t2Marker )
-{
-    char *eventName = hash_map_get(markerCompMap, markerName );
-    if( NULL == eventName ) {
-        if(!markerCompMap)
-            markerCompMap = hash_map_create();
-        hash_map_put(markerCompMap, strdup(markerName), (void *)t2Marker);
+T2ERROR updateEventMap(const char* markerName, T2Marker* t2Marker) {
+    T2Debug("%s ++in\n", __FUNCTION__);
+    pthread_mutex_lock(&t2MarkersMutex);
+    if(!markerCompMap) {
+        markerCompMap = hash_map_create();
+        hash_map_put(markerCompMap, strdup(markerName), (void *) t2Marker);
+    }else {
+        T2Marker *eventName = hash_map_get(markerCompMap, markerName);
+        if(NULL == eventName) {
+            hash_map_put(markerCompMap, strdup(markerName), (void *) t2Marker);
+        }
+	else{
+		free(eventName);
+	}
     }
+    pthread_mutex_unlock(&t2MarkersMutex);
+    T2Debug("%s --out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;
 }
 
@@ -117,6 +131,7 @@ static void updateComponentList(const char* componentName) {
         T2Debug("%s --out\n", __FUNCTION__);
         return;
     }
+    pthread_mutex_lock(&t2CompListMutex);
     if(!componentList) {
         T2Error("Component name list is not initialized . Re-initializing \n");
         Vector_Create(&componentList);
@@ -130,12 +145,14 @@ static void updateComponentList(const char* componentName) {
         for( ; i < length; i++ ) {
             char* tempName = Vector_At(componentList, i);
             if(strncmp(tempName, componentName, MAX_EVENT_MARKER_NAME_LEN) == 0) {
+                pthread_mutex_unlock(&t2CompListMutex);
                 T2Debug("%s --out\n", __FUNCTION__);
                 return;
             }
         }
         Vector_PushBack(componentList, (void*) strdup(componentName));
     }
+    pthread_mutex_unlock(&t2CompListMutex);
     //T2Debug("%s --out\n", __FUNCTION__);
     return;
 }
@@ -144,6 +161,7 @@ T2ERROR addT2EventMarker(const char* markerName, const char* compName, const cha
 {
     pthread_mutex_lock(&t2MarkersMutex);
     T2Marker *t2Marker = (T2Marker *)hash_map_get(markerCompMap, markerName);
+    pthread_mutex_unlock(&t2MarkersMutex);
     if(t2Marker)
     {
         T2Debug("Found a matching T2Marker \n");
@@ -190,7 +208,9 @@ T2ERROR addT2EventMarker(const char* markerName, const char* compName, const cha
 }
 
 void getComponentsWithEventMarkers(Vector **eventComponentList){
+    pthread_mutex_lock(&t2CompListMutex);
     *eventComponentList = componentList ;
+    pthread_mutex_unlock(&t2CompListMutex);
 }
 
 /**

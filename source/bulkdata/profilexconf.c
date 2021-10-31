@@ -84,6 +84,11 @@ static void freeProfileXConf()
             Vector_Destroy(singleProfile->paramList, freeParam);
         }
 
+        if(singleProfile->jsonReportObj) {
+            cJSON_free(singleProfile->jsonReportObj);
+            singleProfile->jsonReportObj = NULL;
+        }
+
         // Data elements from this list is copied in new profile. So do not destroy the vector
         free(singleProfile->cachedReportList);
         free(singleProfile);

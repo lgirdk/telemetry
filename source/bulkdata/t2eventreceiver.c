@@ -308,7 +308,7 @@ T2ERROR T2ER_StopDispatchThread()
     pthread_cond_signal(&erCond);
     pthread_mutex_unlock(&erMutex);
 
-    pthread_join(erThread, NULL);
+    pthread_detach(erThread);
     flushCacheFromFile();
     pthread_mutex_unlock(&sTDMutex);
     T2Debug("%s --out\n", __FUNCTION__);

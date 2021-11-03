@@ -84,7 +84,7 @@ T2ERROR fetchLocalConfigs(const char* path, Vector *configList)
             close(fp);
             Vector_PushBack(configList, config);
 
-            T2Debug("Config data size = %d\n", strlen(config->configData));
+            T2Debug("Config data size = %lu\n", (unsigned long)strlen(config->configData));
             T2Debug("Config data = %s\n", config->configData);
         }
         else
@@ -95,7 +95,7 @@ T2ERROR fetchLocalConfigs(const char* path, Vector *configList)
         }
     }
 
-    T2Info("Returning %d local configurations \n", Vector_Size(configList));
+    T2Info("Returning %lu local configurations \n", (unsigned long)Vector_Size(configList));
     closedir(dir);
     T2Debug("%s --out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;

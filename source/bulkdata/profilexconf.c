@@ -179,7 +179,7 @@ static void* CollectAndReportXconf(void* data)
         if(Vector_Size(profile->gMarkerList) > 0)
         {
            getGrepResults(profile->name, profile->gMarkerList, &grepResultList, profile->bClearSeekMap);
-           T2Info("Grep complete for %d markers \n", Vector_Size(profile->gMarkerList));
+           T2Info("Grep complete for %lu markers \n", (unsigned long)Vector_Size(profile->gMarkerList));
            encodeGrepResultInJSON(valArray, grepResultList);
            Vector_Destroy(grepResultList, freeGResult);
         }
@@ -239,11 +239,11 @@ static void* CollectAndReportXconf(void* data)
               }
               Vector_PushBack(profile->cachedReportList, strdup(jsonReport));
 
-              T2Info("Report Cached, No. of reportes cached = %d\n", Vector_Size(profile->cachedReportList));
+              T2Info("Report Cached, No. of reportes cached = %lu\n", (unsigned long)Vector_Size(profile->cachedReportList));
            }
            else if(Vector_Size(profile->cachedReportList) > 0)
            {
-               T2Info("Trying to send  %d cached reports\n", Vector_Size(profile->cachedReportList));
+               T2Info("Trying to send  %lu cached reports\n", (unsigned long)Vector_Size(profile->cachedReportList));
                ret = sendCachedReportsOverHTTP(profile->t2HTTPDest->URL, profile->cachedReportList);
            }
         }
@@ -295,7 +295,7 @@ T2ERROR ProfileXConf_init()
           config = Vector_At(configList, 0);
           ProfileXConf *profile = 0;
           T2Debug("Processing config with name : %s\n", config->name);
-          T2Debug("Config Size = %d\n", strlen(config->configData));
+          T2Debug("Config Size = %lu\n", (unsigned long)strlen(config->configData));
           if(T2ERROR_SUCCESS == processConfigurationXConf(config->configData, &profile))
           {
               if(T2ERROR_SUCCESS == ProfileXConf_set(profile))

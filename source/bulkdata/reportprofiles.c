@@ -791,7 +791,11 @@ void ReportProfiles_ProcessReportProfilesMsgPackBlob(char *msgpack_blob , int ms
     execData *execDataPf = NULL;
     subdoc_version=(uint64_t)version->via.u64;
     transac_id=(uint16_t)transaction_id->via.u64;
+#ifdef _64BIT_ARCH_SUPPORT_
+    T2Debug("subdocversion is %lu transac_id in integer is %u"
+#else
     T2Debug("subdocversion is %llu transac_id in integer is %u"
+#endif
             " entry_count is %d \n",subdoc_version,transac_id,entry_count);
 
     execDataPf = (execData*) malloc (sizeof(execData));
@@ -812,8 +816,8 @@ void ReportProfiles_ProcessReportProfilesMsgPackBlob(char *msgpack_blob , int ms
     execDataPf->executeBlobRequest = Process_Telemetry_WebConfigRequest;
     execDataPf->rollbackFunc = NULL;
     execDataPf->freeResources = msgpack_free_blob;
-    T2Debug("subdocversion is %d transac_id in integer is %d entry_count is %d subdoc_name is %s"
-            " calcTimeout is %p\n",execDataPf->version,execDataPf->txid,execDataPf->numOfEntries,
+    T2Debug("subdocversion is %d transac_id in integer is %d entry_count is %lu subdoc_name is %s"
+            " calcTimeout is %p\n",execDataPf->version,execDataPf->txid,(ULONG)execDataPf->numOfEntries,
             execDataPf->subdoc_name,execDataPf->calcTimeout);
 
     PushBlobRequest(execDataPf);

@@ -595,7 +595,7 @@ static int parseMarkerList(char* profileName, Vector* vMarkerList, Vector* grepR
     int var = 0;
 
     size_t vCount = Vector_Size(vMarkerList);
-    T2Debug("vMarkerList for profile %s is of count = %d \n", profileName, vCount);
+    T2Debug("vMarkerList for profile %s is of count = %lu \n", profileName, (unsigned long)vCount);
 
     // Get logfile -> seek value map associated with the profile
     gsProfile = (GrepSeekProfile *)getLogSeekMapForProfile(profileName);

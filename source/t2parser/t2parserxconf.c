@@ -275,7 +275,7 @@ T2ERROR processConfigurationXConf(char* configData, ProfileXConf **localProfile)
     // Legacy DCA utils expects the list to be sorted based on logfile names
     Vector_Sort(profile->gMarkerList,  sizeof(GrepMarker*), compareLogFileNames);
 
-    T2Info("Number of tr181params/markers successfully added in profile = %d \n", profileParamCount);
+    T2Info("Number of tr181params/markers successfully added in profile = %lu \n", (unsigned long)profileParamCount);
 
     cJSON_Delete(json_root);
 

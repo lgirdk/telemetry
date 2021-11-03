@@ -293,7 +293,7 @@ T2ERROR sendCachedReportsOverHTTP(char *httpUrl, Vector *reportList)
         char* payload = (char *)Vector_At(reportList, 0);
         if(T2ERROR_FAILURE == sendReportOverHTTP(httpUrl, payload))
         {
-            T2Error("Failed to send cached report, left with %d reports in cache \n", Vector_Size(reportList));
+            T2Error("Failed to send cached report, left with %lu reports in cache \n", (unsigned long)Vector_Size(reportList));
             return T2ERROR_FAILURE;
         }
         Vector_RemoveItem(reportList, payload, NULL);

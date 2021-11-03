@@ -157,7 +157,7 @@ Vector* getRbusProfileParamValues(Vector *paramList) {
     }
     char** paramNames = (char **) malloc(paramList->count * sizeof(char*));
 
-    T2Debug("TR-181 Param count : %d\n", paramList->count);
+    T2Debug("TR-181 Param count : %lu\n", (unsigned long)paramList->count);
     for( ; i < paramList->count; i++ ) { // Loop through paramlist from profile
 
         tr181ValStruct_t **paramValues = NULL;

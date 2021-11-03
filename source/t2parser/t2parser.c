@@ -857,7 +857,7 @@ T2ERROR processConfiguration(char** configData, char *profileName, char* profile
     } 
 
     // Not included for RDKB-25008 . DCA utils expects the list to be sorted based on logfile names
-    T2Info("Number of tr181params/markers successfully added in profile = %d \n", profileParamCount);
+    T2Info("Number of tr181params/markers successfully added in profile = %lu \n", (unsigned long)profileParamCount);
 
     cJSON_Delete(json_root);
     json_root = NULL ;

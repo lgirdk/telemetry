@@ -293,9 +293,9 @@ static void* CollectAndReport(void* data)
                     }
                     Vector_PushBack(profile->cachedReportList, jsonReport);
 
-                    T2Info("Report Cached, No. of reportes cached = %d\n", Vector_Size(profile->cachedReportList));
+                    T2Info("Report Cached, No. of reportes cached = %lu\n", (unsigned long)Vector_Size(profile->cachedReportList));
                 }else if(Vector_Size(profile->cachedReportList) > 0) {
-                    T2Info("Trying to send  %d cached reports\n", Vector_Size(profile->cachedReportList));
+                    T2Info("Trying to send  %lu cached reports\n", (unsigned long)Vector_Size(profile->cachedReportList));
                     ret = sendCachedReportsOverHTTP(httpUrl, profile->cachedReportList);
                 }
                 free(httpUrl);
@@ -741,7 +741,7 @@ static void loadReportProfilesFromDisk()
          config = Vector_At(configList, configIndex);
          Profile *profile = 0;
          T2Debug("Processing config with name : %s\n", config->name);
-         T2Debug("Config Size = %d\n", strlen(config->configData));
+         T2Debug("Config Size = %lu\n", (unsigned long)strlen(config->configData));
          if(T2ERROR_SUCCESS == processConfiguration(&config->configData, config->name, NULL, &profile))
          {
              if(T2ERROR_SUCCESS == addProfile(profile))
@@ -758,7 +758,7 @@ static void loadReportProfilesFromDisk()
              }
          }
      }
-     T2Info("Completed processing %d profiles on the disk,trying to fetch new/updated profiles\n", Vector_Size(configList));
+     T2Info("Completed processing %lu profiles on the disk,trying to fetch new/updated profiles\n", (unsigned long)Vector_Size(configList));
      Vector_Destroy(configList, freeReportProfileConfig);
 
     T2Debug("%s --out\n", __FUNCTION__);

@@ -261,7 +261,25 @@ static void t2DaemonHelperModeInit( ) {
     T2Info("Telemetry 2.0 Process Terminated\n");
 }
 #endif //End of  _COSA_INTEL_USG_ATOM_
-
+static int getBridgeMode()
+{
+    T2Debug("%s ++in\n",__FUNCTION__);
+    char buf[8] = {0};
+    int isBridgeMode = 0;
+    if( 0 == telemetry_syscfg_get("bridge_mode", buf, sizeof( buf )))
+    {
+        if (strcmp(buf, "0") != 0)
+        {
+            // in bridge mode
+            isBridgeMode = 1;
+        }          
+    }
+    else
+    {
+        T2Error(("syscfg_get failed in %s\n",__FUNCTION__));
+    }
+    return isBridgeMode;
+}
 static int checkTelemetryStatus (void)
 {
     T2Debug("%s ++in\n",__FUNCTION__);
@@ -270,10 +288,15 @@ static int checkTelemetryStatus (void)
     int res = 0;
 
     if (telemetry_syscfg_get("telemetry_enable", buf, sizeof(buf)) == 0)
-    {
-        if (strcmp(buf, "true") == 0)
+    { 
+        int isBridgeMode = getBridgeMode();
+        if ((strcmp(buf, "true") == 0) && (isBridgeMode == 0))
         {
             res = 1;
+        }
+        else 
+        {
+            T2Info("Device is in Bridge mode.So exiting telemetry.\n");
         }
         T2Info("telemetry_enable value is : %s \n",buf);
     }

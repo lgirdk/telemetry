@@ -318,12 +318,43 @@ static void t2DaemonHelperModeInit( ) {
 }
 #endif
 
+static int getBridgeMode (void)
+{
+    T2Debug("%s ++in\n",__FUNCTION__);
+    char buf[8] = {0};
+    int isBridgeMode = 0;
+
+#if defined(_PUMA6_ATOM_)
+    telemetry_get_shell_output("/usr/bin/rpcclient2 \"syscfg get bridge_mode\" | sed '/RPC/d;/^$/d'", buf, sizeof(buf));
+    if (strcmp(buf, "0") != 0)
+    {
+        isBridgeMode = 1;
+    }
+#else
+    if( 0 == telemetry_syscfg_get("bridge_mode", buf, sizeof( buf )))
+    {
+        if (strcmp(buf, "0") != 0)
+        {
+            // in bridge mode
+            isBridgeMode = 1;
+        }          
+    }
+    else
+    {
+        T2Error(("syscfg_get failed in %s\n",__FUNCTION__));
+    }
+#endif
+
+    return isBridgeMode;
+}
+
 static int checkTelemetryStatus (void)
 {
     char buf[6];
 
     if ((telemetry_syscfg_get("telemetry_enable", buf, sizeof(buf)) == 0) &&
-        (strcmp(buf, "true") == 0))
+        (strcmp(buf, "true") == 0) &&
+        (getBridgeMode() == 0))
     {
         return 0;
     }

@@ -267,3 +267,21 @@ int getcurrenttime (char *current_time_string, int timestampparams)
     return 0;
 }
 
+void telemetry_get_shell_output (char *cmd, char *buf, size_t len)
+{
+    FILE *fp;
+
+    if (len > 0)
+        buf[0] = 0;
+    fp = popen (cmd, "r");
+    if (fp == NULL)
+        return;
+    buf = fgets (buf, len, fp);
+    pclose (fp);
+    if ((len > 0) && (buf != NULL)) {
+        len = strlen (buf);
+        if ((len > 0) && (buf[len - 1] == '\n'))
+            buf[len - 1] = 0;
+    }
+}
+

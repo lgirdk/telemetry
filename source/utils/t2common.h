@@ -133,5 +133,6 @@ bool getDevicePropertyData(const char *dev_prop_name, char *out_data, unsigned i
 int telemetry_syscfg_get (char *temp, char *buf, int buf_size);
 int telemetry_syscfg_set (char *temp, char *buf);
 int getcurrenttime (char *current_time_string, int timestampparams);
+void telemetry_get_shell_output (char *cmd, char *buf, size_t len);
 
 #endif /* _T2COMMON_H_ */

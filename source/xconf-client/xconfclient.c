@@ -1079,6 +1079,9 @@ static void* getUpdatedConfigurationThread(void *data)
                 if(T2ERROR_SUCCESS == processConfigurationXConf(configData, &profile))
                 {
                     clearPersistenceFolder(XCONFPROFILE_PERSISTENCE_PATH);
+
+                    unregisterProfileFromScheduler(profile->name);
+
                     if(T2ERROR_SUCCESS != saveConfigToFile(XCONFPROFILE_PERSISTENCE_PATH, XCONF_CONFIG_FILE, configData)) // Should be removed once XCONF sends new UUID for each update.
                     {
                         T2Error("Unable to update an existing config file : %s\n", profile->name);

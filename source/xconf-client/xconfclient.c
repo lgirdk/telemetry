@@ -913,6 +913,8 @@ static void* getUpdatedConfigurationThread(void *data)
                 {
                     T2Info("Profile exists already, updating the config in file system\n");
 
+                    unregisterProfileFromScheduler(profile->name);
+
                     if(T2ERROR_SUCCESS != saveConfigToFile(XCONFPROFILE_PERSISTENCE_PATH, XCONF_CONFIG_FILE, configData)) // Should be removed once XCONF sends new UUID for each update.
                     {
                         T2Error("Unable to update an existing config file : %s\n", profile->name);

@@ -138,6 +138,22 @@ T2ERROR getRbusParameterVal(const char* paramName, char **paramValue) {
     } else {
         stringValue = rbusValue_ToString(paramValue_t, NULL, 0);
     }
+
+    #if defined(ENABLE_RDKV_SUPPORT)
+    // Workaround as video platforms doesn't have a TR param which gives Firmware name
+    // Existing dashboards doesn't like version with file name exentsion
+    // Workaround stays until initiative for unified new TR param for version name gets implemented across board
+    if(0 == strncmp(paramName, "Device.DeviceInfo.X_COMCAST-COM_FirmwareFilename" , maxParamLen )){
+        char* temp = NULL ;
+        temp = strstr(stringValue, "-signed.bin");
+        if(!temp){
+            temp = strstr(stringValue, ".bin");
+        }
+        if(temp)
+            *temp = '\0';
+    }
+    #endif
+
     T2Debug("%s = %s\n", paramName, stringValue);
     *paramValue = stringValue;
     rbusValue_Release(paramValue_t);
@@ -205,6 +221,20 @@ Vector* getRbusProfileParamValues(Vector *paramList) {
                             stringValue = (char*)rbusProperty_GetName(nextProperty);
                             paramValues[iterate]->parameterName = strdup(stringValue);
                             paramValues[iterate]->parameterValue = rbusValue_ToString(value, NULL, 0);
+                            #if defined(ENABLE_RDKV_SUPPORT)
+                            // Workaround as video platforms doesn't have a TR param which gives Firmware name
+                            // Existing dashboards doesn't like version with file name exentsion
+                            // Workaround stays until initiative for unified new TR param for version name gets implemented across board
+                            if(0 == strncmp(stringValue, "Device.DeviceInfo.X_COMCAST-COM_FirmwareFilename" , maxParamLen )) {
+                                char* temp = NULL;
+                                temp = strstr(paramValues[iterate]->parameterValue, "-signed.bin");
+                                if(!temp) {
+                                    temp = strstr(paramValues[iterate]->parameterValue, ".bin");
+                                }
+                                if(temp)
+                                    *temp = '\0';
+                            }
+                            #endif
                         }
                     }
                     nextProperty = rbusProperty_GetNext(nextProperty);

@@ -65,7 +65,25 @@ void logHandler(
     int threadId,
     char* message)
 {
-  T2Debug("Rbus log: %s\n", message);
+  switch (level)
+    {
+        case RBUS_LOG_FATAL:
+            T2Error("%s:%d %s\n", file, line, message);
+            break;
+        case RBUS_LOG_ERROR:
+            T2Error("%s:%d %s\n", file, line, message);
+            break;
+        case RBUS_LOG_WARN:
+            T2Warning("%s:%d %s\n", file, line, message);
+            break;
+        case RBUS_LOG_INFO:
+            T2Info("%s:%d %s\n", file, line, message);
+            break;
+        case RBUS_LOG_DEBUG:
+            T2Debug("%s:%d %s\n", file, line, message);
+            break;
+    }
+    return;
 }
 
 static T2ERROR rBusInterface_Init( ) {
@@ -74,7 +92,7 @@ static T2ERROR rBusInterface_Init( ) {
     int ret = RBUS_ERROR_SUCCESS;   
   
     //rbus_setLogLevel(RBUS_LOG_DEBUG);
-    //rbus_registerLogHandler(logHandler);
+    rbus_registerLogHandler(logHandler);
   
     ret = rbus_open(&t2bus_handle, COMPONENT_NAME);
     if(ret != RBUS_ERROR_SUCCESS) {

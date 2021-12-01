@@ -141,7 +141,7 @@ T2ERROR getRbusParameterVal(const char* paramName, char **paramValue) {
     // Workaround as video platforms doesn't have a TR param which gives Firmware name
     // Existing dashboards doesn't like version with file name exentsion
     // Workaround stays until initiative for unified new TR param for version name gets implemented across board
-    if(0 == strncmp(paramName, "Device.DeviceInfo.X_COMCAST-COM_FirmwareFilename" , maxParamLen )){
+    if(0 == strncmp(paramName, "Device.DeviceInfo.X_COMCAST-COM_FirmwareFilename" , maxParamLen ) || 0 == strncmp(paramName, "Device.DeviceInfo.X_RDKCENTRAL-COM_FirmwareFilename" , maxParamLen )){
         char* temp = NULL ;
         temp = strstr(stringValue, "-signed.bin");
         if(!temp){
@@ -237,7 +237,7 @@ Vector* getRbusProfileParamValues(Vector *paramList) {
                             // Workaround as video platforms doesn't have a TR param which gives Firmware name
                             // Existing dashboards doesn't like version with file name exentsion
                             // Workaround stays until initiative for unified new TR param for version name gets implemented across board
-                            if(0 == strncmp(stringValue, "Device.DeviceInfo.X_COMCAST-COM_FirmwareFilename" , maxParamLen )) {
+			    if(0 == strncmp(stringValue, "Device.DeviceInfo.X_RDKCENTRAL-COM_FirmwareFilename" , maxParamLen ) || 0 == strncmp(stringValue, "Device.DeviceInfo.X_COMCAST-COM_FirmwareFilename" , maxParamLen )) {
                                 char* temp = NULL;
                                 temp = strstr(paramValues[iterate]->parameterValue, "-signed.bin");
                                 if(!temp) {

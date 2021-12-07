@@ -1369,9 +1369,9 @@ T2ERROR processMsgPackConfiguration(msgpack_object *profiles_array_map, Profile 
 
             httpret = addhttpURIreqParameter(profile, hname, href);
             if(T2ERROR_SUCCESS != httpret) {
-                T2Error("%s Error in adding request URIparameterReference: %s for the profile: %s \n", __FUNCTION__, href, profile->name);
+                T2Error("%s Error in adding request URIparameterReference: %s for the profile: %s \n", __FUNCTION__, (href)? href : "", profile->name);
             }else {
-                T2Debug("Added  request URIparameterReference: %s \n", href);
+                T2Debug("Added  request URIparameterReference: %s \n", (href)? href : "");
                 httpParamCount++;
             }
         }

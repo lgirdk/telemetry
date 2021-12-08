@@ -139,6 +139,7 @@ static T2ERROR initJSONReportXconf(cJSON** jsonObj, cJSON **valArray)
 
 static void* CollectAndReportXconf(void* data)
 {
+    pthread_mutex_lock(&plMutex);
     ProfileXConf* profile = singleProfile;
 
     Vector *profileParamVals = NULL;
@@ -161,6 +162,7 @@ static void* CollectAndReportXconf(void* data)
         {
             T2Error("Failed to initialize JSON Report\n");
             profile->reportInProgress = false;
+            pthread_mutex_unlock(&plMutex);
             return NULL;
         }
         if(Vector_Size(profile->paramList) > 0)
@@ -193,6 +195,7 @@ static void* CollectAndReportXconf(void* data)
         {
            T2Error("Unable to generate report for : %s\n", profile->name);
            profile->reportInProgress = false;
+           pthread_mutex_unlock(&plMutex);
            return NULL;
         }
         long size = strlen(jsonReport);
@@ -214,6 +217,7 @@ static void* CollectAndReportXconf(void* data)
            free(jsonReport);
 	   jsonReport= NULL;
            T2Debug("%s --out\n", __FUNCTION__);
+           pthread_mutex_unlock(&plMutex);
            return NULL;
         }
         if(size > DEFAULT_MAX_REPORT_SIZE)
@@ -262,6 +266,7 @@ static void* CollectAndReportXconf(void* data)
     }
 
     profile->reportInProgress = false;
+    pthread_mutex_unlock(&plMutex);
     T2Debug("%s --out\n", __FUNCTION__);
     return NULL;
 }

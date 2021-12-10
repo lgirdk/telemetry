@@ -694,39 +694,38 @@ static void loadReportProfilesFromDisk()
     /* CID: 157386 Time of check time of use (TOCTOU) */
     FILE *fp;
     fp = fopen (filePath, "rb");
-    if(fp == NULL){
-       T2Debug("%s: File open error %s\n", __FUNCTION__, filePath);
-       return;
-    }
-    T2Info("Msgpack: loadReportProfilesFromDisk \n");
-    struct __msgpack__ msgpack;
-    fseek(fp, 0L, SEEK_END);
-    msgpack.msgpack_blob_size = ftell(fp);
-    if(msgpack.msgpack_blob_size < 0)
-    {
-       T2Error("Unable to detect the file pointer position for file %s\n", filePath);
-       fclose(fp);
-       return;
-    }
-    msgpack.msgpack_blob = malloc(sizeof(char) * msgpack.msgpack_blob_size);
-    if (NULL == msgpack.msgpack_blob) {
-        T2Error("Unable to allocate %d bytes of memory at Line %d on %s \n",
+    if(fp != NULL){
+        T2Info("Msgpack: loadReportProfilesFromDisk \n");
+        struct __msgpack__ msgpack;
+        fseek(fp, 0L, SEEK_END);
+        msgpack.msgpack_blob_size = ftell(fp);
+        if(msgpack.msgpack_blob_size < 0)
+        {
+          T2Error("Unable to detect the file pointer position for file %s\n", filePath);
+          fclose(fp);
+          return;
+        }
+        msgpack.msgpack_blob = malloc(sizeof(char) * msgpack.msgpack_blob_size);
+        if (NULL == msgpack.msgpack_blob) {
+          T2Error("Unable to allocate %d bytes of memory at Line %d on %s \n",
                     msgpack.msgpack_blob_size, __LINE__, __FILE__);
+          fclose (fp);
+          return;
+        }
+        fseek(fp, 0L, SEEK_SET);
+        if(fread(msgpack.msgpack_blob, sizeof(char), msgpack.msgpack_blob_size, fp) < msgpack.msgpack_blob_size)
+        {
+          T2Error("fread is returning fewer bytes than expected from the file %s\n", filePath);
+          free(msgpack.msgpack_blob);
+          fclose(fp);
+          return;
+        }
         fclose (fp);
+        __ReportProfiles_ProcessReportProfilesMsgPackBlob((void *)&msgpack);
+        free(msgpack.msgpack_blob);
         return;
     }
-    fseek(fp, 0L, SEEK_SET);
-    if(fread(msgpack.msgpack_blob, sizeof(char), msgpack.msgpack_blob_size, fp) < msgpack.msgpack_blob_size)
-    {
-       T2Error("fread is returning fewer bytes than expected from the file %s\n", filePath);
-       free(msgpack.msgpack_blob);
-       fclose(fp);
-       return;
-    }
-    fclose (fp);
-    __ReportProfiles_ProcessReportProfilesMsgPackBlob((void *)&msgpack);
-    free(msgpack.msgpack_blob);
-    return;
+    T2Info("JSON: loadReportProfilesFromDisk \n");
 #endif
 	
     int configIndex = 0;

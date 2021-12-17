@@ -74,7 +74,7 @@ T2ERROR getMtlsCerts(char **certName, char **phrase) {
 
     if(access(dynamicMtlsCert, F_OK) != -1) { // Dynamic cert
         *certName = strdup(dynamicMtlsCert);
-        T2Info("Using Dynamic Certs for mTls connection\n");
+        T2Info("Using xpki Dynamic Certs connection certname: %s\n", dynamicMtlsCert);
 
         FILE *fp;
         fp = v_secure_popen("r", "/usr/bin/rdkssacli \"{STOR=GET,SRC=kquhqtoczcbx,DST=/dev/stdout}\"");
@@ -96,7 +96,7 @@ T2ERROR getMtlsCerts(char **certName, char **phrase) {
         }
         ret = T2ERROR_SUCCESS;
     }else if(access(staticMtlsCert, F_OK) != -1) { // Static cert
-        T2Info("Using Static Certs for mTls connection\n");
+        T2Info("Using xpki Static Certs connection certname: %s\n", staticMtlsCert);
         *certName = strdup(staticMtlsCert);
 
 	/* CID: 189984 Time of check time of use (TOCTOU) */
@@ -108,7 +108,7 @@ T2ERROR getMtlsCerts(char **certName, char **phrase) {
         }
 
         if(!filePointer) {
-	   T2Error("Certs not found\n");
+	   T2Error("Certs %s not found\n", *certName);
 	}
 	else {
            if(NULL != fgets(buf, sizeof(buf) - 1, filePointer)) {

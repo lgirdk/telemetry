@@ -90,7 +90,6 @@ T2ERROR initTelemetry()
 static void terminate() {
     uninitXConfClient();
     ReportProfiles_uninit();
-    rdk_logger_deinit();
     curl_global_cleanup();
     if(0 != remove("/tmp/.t2ReadyToReceiveEvents")){
         T2Info("%s Unable to remove ready to receive event flag \n", __FUNCTION__);
@@ -101,6 +100,7 @@ static void terminate() {
     if(0 != remove(T2_CONFIG_READY)){
         T2Info("%s Unable to remove config initialization complete flag \n", __FUNCTION__);
     }
+    rdk_logger_deinit();
 }
 
 static void _print_stack_backtrace(void)

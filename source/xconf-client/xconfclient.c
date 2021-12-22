@@ -813,7 +813,7 @@ static void* getUpdatedConfigurationThread(void *data)
     if(configURL)
         free(configURL);
     stopFetchRemoteConfiguration = true;
-    pthread_detach(pthread_self());
+    // pthread_detach(pthread_self()); commenting this line as thread will detached by stopXConfClient
     T2Debug("%s --out\n", __FUNCTION__);
     return NULL;
 }

@@ -87,7 +87,6 @@ static void terminate() {
     uninitXConfClient();
     ReportProfiles_uninit();
     rdk_logger_deinit();
-    curl_global_cleanup();
     if(0 != remove("/tmp/.t2ReadyToReceiveEvents")){
         T2Info("%s Unable to remove ready to receive event flag \n", __FUNCTION__);
     }
@@ -266,7 +265,6 @@ int main(int argc, char* argv[])
 
     printf("Starting Telemetry 2.0 Process\n");
 
-    curl_global_init(CURL_GLOBAL_ALL);
     // Create child process
     process_id = fork();
     if (process_id < 0) {

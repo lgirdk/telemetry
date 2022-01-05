@@ -26,6 +26,9 @@
 #include <string.h>
 #include <ifaddrs.h>
 #include <stdbool.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/wait.h>
 #include <curl/curl.h>
 
 #include "curlinterface.h"
@@ -47,48 +50,6 @@ static void sendOverHTTPInit(){
 	pthread_mutex_init(&curlFileMutex, NULL);
 }
 
-#if defined(ENABLE_RDKB_SUPPORT)
-/**
- * Return address type assigned to interface as IPv6 only if
- * a global IPv6 IP is assigned .
- */
-static ADDRESS_TYPE getAddressType(const char *cif) {
-    struct ifaddrs *ifap, *ifa;
-    int ret = 0;
-    int family;
-    char host[NI_MAXHOST] = {'\0'};
-    ADDRESS_TYPE addressType = ADDR_IPV4;
-
-    getifaddrs(&ifap);
-    if(getifaddrs(&ifap) == -1) {
-        return ADDR_UNKNOWN;
-    }
-
-    for( ifa = ifap; ifa; ifa = ifa->ifa_next ) {
-        if(ifa->ifa_name == NULL || strcmp(ifa->ifa_name, cif))
-        continue;
-
-        family = ifa->ifa_addr->sa_family;
-        if(family != AF_INET6)
-        continue;
-
-        ret = getnameinfo(ifa->ifa_addr, sizeof(struct sockaddr_in6), host, NI_MAXHOST, NULL, 0, NI_NUMERICHOST);
-        if(ret == 0) {
-            struct sockaddr_in6 *ipv6Addr = (struct sockaddr_in6 *) ifa->ifa_addr ;
-            if(ipv6Addr->sin6_scope_id != 0 || strncmp(host, "::1", NI_MAXHOST) == 0) {
-                T2Debug("Address %s is link local or localhost . Cannot be considered as valid Ipv6 address .\n", host);
-                continue;
-            } else {
-                addressType = ADDR_IPV6;
-                break;
-            }
-        }
-    }
-
-    freeifaddrs(ifap);
-    return addressType;
-}
-#endif
 
 static size_t writeToFile(void *ptr, size_t size, size_t nmemb, void *stream) {
     size_t written = fwrite(ptr, size, nmemb, (FILE *) stream);
@@ -120,30 +81,7 @@ static T2ERROR setHeader(CURL *curl, const char* destURL, struct curl_slist **he
     }
 
 #if defined(ENABLE_RDKB_SUPPORT)
-    if(getAddressType(INTERFACE) == ADDR_UNKNOWN)
-    {
-        T2Error("Unknown Address Type - returning failure\n");
-        return T2ERROR_FAILURE;
-    }
-#if defined(_HUB4_PRODUCT_REQ_)
-    else if((getAddressType(INTERFACE) == ADDR_IPV4) && (getAddressType("brlan0") != ADDR_IPV6)) 
-    {
-#else
-    else if(getAddressType(INTERFACE) == ADDR_IPV4)
-    {
-#endif
-        code = curl_easy_setopt(curl, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V4);
-        if(code != CURLE_OK){
-           T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
-        }
-    }	
-    else {
-        code = curl_easy_setopt(curl, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V6);
-        if(code != CURLE_OK){
-           T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
-        }
-    }
-    /* CID 125287: Unchecked return value from library */
+     /* CID 125287: Unchecked return value from library */
     code = curl_easy_setopt(curl, CURLOPT_INTERFACE, INTERFACE);
     if(code != CURLE_OK){
        T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
@@ -209,81 +147,112 @@ static T2ERROR setPayload(CURL *curl, const char* payload)
     return T2ERROR_SUCCESS;
 }
 
-T2ERROR sendReportOverHTTP(char *httpUrl, char* payload)
-{
+T2ERROR sendReportOverHTTP(char *httpUrl, char* payload) {
     CURL *curl = NULL;
     FILE *fp = NULL;
     CURLcode res, code = CURLE_OK;
     T2ERROR ret = T2ERROR_FAILURE;
     long http_code;
     struct curl_slist *headerList = NULL;
-    char *pCertFile = NULL ;
-    char *pKeyFile = NULL ;
+    char *pCertFile = NULL;
+    char *pKeyFile = NULL;
+
+    pid_t childPid;
+    int sharedPipeFds[2];
 
     T2Debug("%s ++in\n", __FUNCTION__);
-    curl = curl_easy_init();
-    if (curl) {
-        if(setHeader(curl, httpUrl, &headerList) != T2ERROR_SUCCESS)
-        {
-            T2Error("Failed to Set HTTP Header\n");
+
+    if(pipe(sharedPipeFds) != 0) {
+        T2Error("Failed to create pipe !!! exiting...\n");
+        T2Debug("%s --out\n", __FUNCTION__);
+        return T2ERROR_FAILURE;
+    }
+
+    if((childPid = fork()) < 0) {
+        T2Error("Failed to fork !!! exiting...\n");
+        T2Debug("%s --out\n", __FUNCTION__);
+        return T2ERROR_FAILURE;
+    }
+
+    /**
+     * Openssl has growing RSS which gets cleaned up only with OPENSSL_cleanup .
+     * This cleanup is not thread safe and classified as run once per application life cycle.
+     * Forking the libcurl calls so that it executes and terminates to release memory per execution.
+     */
+    if(childPid == 0) {
+
+        curl = curl_easy_init();
+        if(curl) {
+            if(setHeader(curl, httpUrl, &headerList) != T2ERROR_SUCCESS) {
+                T2Error("Failed to Set HTTP Header\n");
+                curl_easy_cleanup(curl);
+                return ret;
+            }
+
+            if(isMtlsEnabled() == true) {
+                if(T2ERROR_SUCCESS == getMtlsCerts(&pCertFile, &pKeyFile)) {
+                    setMtlsHeaders(curl, pCertFile, pKeyFile);
+                }else {
+                    T2Error("mTLS_cert get failed\n");
+                    curl_easy_cleanup(curl); // CID 189985: Resource leak
+                    return T2ERROR_FAILURE;
+                }
+            }
+
+            setPayload(curl, payload);
+
+            pthread_once(&curlFileMutexOnce, sendOverHTTPInit);
+            pthread_mutex_lock(&curlFileMutex);
+
+            fp = fopen(CURL_OUTPUT_FILE, "wb");
+            if(fp) {
+                /* CID 143029 Unchecked return value from library */
+                code = curl_easy_setopt(curl, CURLOPT_WRITEDATA, fp);
+                if(code != CURLE_OK) {
+                    T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
+                }
+                res = curl_easy_perform(curl);
+                curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
+                if(res != CURLE_OK) {
+                    fprintf(stderr, "curl failed: %s\n", curl_easy_strerror(res));
+                    T2Error("Failed to send report over HTTP, HTTP Response Code : %ld\n", http_code);
+                }else {
+                    T2Info("Report Sent Successfully over HTTP : %ld\n", http_code);
+                    ret = T2ERROR_SUCCESS;
+                }
+
+                fclose(fp);
+            }
+            if(NULL != pCertFile)
+                free(pCertFile);
+
+            if(NULL != pKeyFile)
+                free(pKeyFile);
+            curl_slist_free_all(headerList);
             curl_easy_cleanup(curl);
-            return ret;
+
+            pthread_mutex_unlock(&curlFileMutex);
+        }else {
+            T2Error("Unable to initialize Curl\n");
         }
 
-        if(isMtlsEnabled() == true)
-	{
-          if (T2ERROR_SUCCESS == getMtlsCerts(&pCertFile, &pKeyFile)){
-              setMtlsHeaders(curl, pCertFile, pKeyFile);
-          } else {
-              T2Error("mTLS_cert get failed\n");
-              curl_easy_cleanup(curl); // CID 189985: Resource leak
-	      return T2ERROR_FAILURE;
-          }
-	}
+        close(sharedPipeFds[0]);
+        write(sharedPipeFds[1], &ret, sizeof(T2ERROR));
+        close(sharedPipeFds[1]);
+        exit(0);
 
-        setPayload(curl, payload);
+    }else {
 
-        pthread_once(&curlFileMutexOnce, sendOverHTTPInit);
-        pthread_mutex_lock(&curlFileMutex);
-
-        fp = fopen(CURL_OUTPUT_FILE, "wb");
-        if (fp) {
-	    /* CID 143029 Unchecked return value from library */
-            code = curl_easy_setopt(curl, CURLOPT_WRITEDATA, fp);
-	    if(code != CURLE_OK){
-	       T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
-            } 
-            res = curl_easy_perform(curl);
-            curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
-            if (res != CURLE_OK)
-            {
-                fprintf(stderr, "curl failed: %s\n", curl_easy_strerror(res));
-                T2Error("Failed to send report over HTTP, HTTP Response Code : %ld\n", http_code);
-            }
-            else
-            {
-                T2Info("Report Sent Successfully over HTTP : %ld\n", http_code);
-                ret = T2ERROR_SUCCESS;
-            }
-
-            fclose(fp);
-        }
-        if(NULL != pCertFile)
-            free(pCertFile);
-
-        if(NULL != pKeyFile)
-            free(pKeyFile);
-        curl_slist_free_all(headerList);
-        curl_easy_cleanup(curl);
-
-        pthread_mutex_unlock(&curlFileMutex);
+        T2ERROR ret = T2ERROR_FAILURE;
+        wait(NULL);
+        // Get the return status via IPC from child process
+        close(sharedPipeFds[1]);
+        read(sharedPipeFds[0], &ret, sizeof(T2ERROR));
+        close(sharedPipeFds[0]);
+        T2Debug("%s --out\n", __FUNCTION__);
+        return ret;
     }
-    else
-    {
-        T2Error("Unable to initialize Curl\n");
-    }
-    T2Debug("%s --out\n", __FUNCTION__);
-    return ret;
+
 }
 
 T2ERROR sendCachedReportsOverHTTP(char *httpUrl, Vector *reportList)

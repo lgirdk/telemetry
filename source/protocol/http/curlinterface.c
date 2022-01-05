@@ -121,6 +121,9 @@ static T2ERROR setHeader(CURL *curl, const char* destURL, struct curl_slist **he
     }
 
 #if defined(ENABLE_RDKB_SUPPORT)
+
+#if 0
+
     if(getAddressType(INTERFACE) == ADDR_UNKNOWN)
     {
         T2Error("Unknown Address Type - returning failure\n");
@@ -144,6 +147,9 @@ static T2ERROR setHeader(CURL *curl, const char* destURL, struct curl_slist **he
            T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
         }
     }
+
+#endif
+
     /* CID 125287: Unchecked return value from library */
     code = curl_easy_setopt(curl, CURLOPT_INTERFACE, INTERFACE);
     if(code != CURLE_OK){

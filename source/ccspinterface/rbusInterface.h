@@ -50,4 +50,6 @@ T2ERROR rbusMethodCaller(char *methodName, rbusObject_t* inputParams, char* payl
 
 bool rbusCheckMethodExists(const char* rbusMethodName) ;
 
+T2ERROR T2RbusReportEventConsumer(char* reference, bool subscription);
+
 #endif

@@ -85,6 +85,7 @@ typedef struct _TriggerCondition
     int minThresholdDuration;
     char* reference;
     bool isSubscribed;
+    bool report;
 }TriggerCondition;
 
 void freeParam(void *data);

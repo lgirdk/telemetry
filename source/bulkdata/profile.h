@@ -98,11 +98,13 @@ void sendLogUploadInterruptToScheduler();
 
 void NotifyTimeout(const char* profileName, bool isClearSeekMap);
 
+void getMarkerCompRbusSub(bool subscription);
+
 bool isProfileEnabled(const char *profileName);
 
 T2ERROR registerTriggerConditionConsumer();
 
-T2ERROR triggerReportOnCondtion(const char *referenceName);
+T2ERROR triggerReportOnCondtion(const char *referenceName, const char *referenceValue);
 
 unsigned int getMinThresholdDuration(char *profileName);
 

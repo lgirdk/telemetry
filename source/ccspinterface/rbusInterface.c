@@ -714,6 +714,20 @@ T2ERROR publishEventsProfileUpdates() {
     
 }
 
+void reportEventHandler(
+    rbusHandle_t handle,
+    rbusEvent_t const* event,
+    rbusEventSubscription_t* subscription)
+{
+    (void)handle;
+    T2Debug("in Function %s \n", __FUNCTION__);
+    T2Debug("Called the callback for the prop");
+    const char* eventName = event->name;
+    rbusValue_t newValue = rbusObject_GetValue(event->data, "value");
+    const char* eventValue = rbusValue_ToString(newValue,NULL,0);
+    eventCallBack((char*) strdup(eventName),(char*) strdup(eventValue) );
+}
+
 void triggerCondtionReceiveHandler(
     rbusHandle_t handle,
     rbusEvent_t const* event,
@@ -724,25 +738,26 @@ void triggerCondtionReceiveHandler(
     rbusValue_t newValue = rbusObject_GetValue(event->data, "value");
     rbusValue_t oldValue = rbusObject_GetValue(event->data, "oldValue");
     rbusValue_t filter = rbusObject_GetValue(event->data, "filter");
-
-    T2Debug("Consumer receiver event for param %s\n", event->name);
+    const char* eventName = event->name;
+    const char* eventValue = rbusValue_ToString(newValue,NULL,0);
+    T2Debug("Consumer receiver event for param %s\n and the value %s\n", event->name, eventValue);
 
     if(newValue){
-        T2Debug("  New Value: \n");
+        T2Debug("  New Value: %s \n", rbusValue_ToString(newValue,NULL,0));
     }
     if(oldValue){
-        T2Debug("  Old Value: \n");
+        T2Debug("  Old Value: %s \n",  rbusValue_ToString(oldValue,NULL,0));
     }
 
     if(filter) {
       T2Debug("Filter event\n");
       if(rbusValue_GetBoolean(filter) == 1) {
-        triggerReportOnCondtion(event->name);
+        triggerReportOnCondtion(eventName, eventValue);
       }
     }
     else {
       T2Debug("ValueChange event\n");
-      triggerReportOnCondtion(event->name);
+      triggerReportOnCondtion(eventName, eventValue);
     }  
 
 }
@@ -896,6 +911,45 @@ T2ERROR T2RbusConsumer(TriggerCondition *triggerCondition)
         rbusFilter_Release(filter);
     }
     return ret;
+}
+
+T2ERROR T2RbusReportEventConsumer(char* reference, bool subscription)
+{
+    T2Debug("%s ++in\n", __FUNCTION__);
+    int rc = RBUS_ERROR_SUCCESS;
+    if (!subscription){
+        rc = rbusEvent_Unsubscribe(
+        t2bus_handle,
+        reference);
+        if (rc != RBUS_ERROR_SUCCESS)
+            T2Debug("--in %s there is an issue in unsubscribe \n", __FUNCTION__);
+        T2Debug("%s --out\n", __FUNCTION__);
+        return rc;
+    }
+    else{
+        int ret = T2ERROR_SUCCESS;
+        char user_data[32] = {0};
+        //char componentName[] = "t2consumer";
+        T2Debug("--in %s\n", __FUNCTION__);
+        if(!t2bus_handle && T2ERROR_SUCCESS != rBusInterface_Init()){
+            T2Debug("Consumer: rbus_open failed\n");
+            T2Debug("%s --out\n", __FUNCTION__);
+            return T2ERROR_FAILURE;
+        }
+        strcpy(user_data,"Not used");
+        rc = rbusEvent_Subscribe(
+        t2bus_handle,
+        reference,
+        reportEventHandler,
+        user_data,
+        0);
+        if (rc != RBUS_ERROR_SUCCESS){
+            T2Error(" %s Subscribe failed\n",__FUNCTION__);
+            ret = T2ERROR_FAILURE;
+        }
+        T2Debug("%s --out\n", __FUNCTION__);
+        return ret;
+    }
 }
 
 rbusError_t t2TriggerConditionGetHandler(rbusHandle_t handle, rbusProperty_t property, rbusGetHandlerOptions_t* opts)

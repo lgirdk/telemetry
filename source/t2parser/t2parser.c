@@ -229,6 +229,7 @@ T2ERROR addMsgPckTriggerCondition(Profile *profile, msgpack_object *value_map) {
     msgpack_object *tcReferenceStr;
     msgpack_object *tcThresholdInt;
     msgpack_object *tcMinThresholdDurationInt;
+    msgpack_object *tcReportbool;
     uint32_t TcArraySize = 0;
     char* tcType = NULL;
     char* tcOperator = NULL;
@@ -236,6 +237,7 @@ T2ERROR addMsgPckTriggerCondition(Profile *profile, msgpack_object *value_map) {
     int tcThreshold = 0;
     int tcMinThresholdDuration = 0;
     int i;
+    bool tcReport;
 
     if((profile == NULL) || (value_map == NULL)) {
         T2Error("%s NULL value returning \n", __FUNCTION__);
@@ -257,6 +259,7 @@ T2ERROR addMsgPckTriggerCondition(Profile *profile, msgpack_object *value_map) {
 
         tcThreshold = 0;
         tcMinThresholdDuration = 0;
+        tcReport = true;
 
         TriggerCondition *triggerCondition = (TriggerCondition *) malloc(sizeof(TriggerCondition));
 
@@ -324,6 +327,14 @@ T2ERROR addMsgPckTriggerCondition(Profile *profile, msgpack_object *value_map) {
             T2Debug("tcMinThresholdDuration: %d\n", tcMinThresholdDuration);
         }
 
+        tcReportbool = msgpack_get_map_value(tcArrayMap, "report");
+        if(tcReportbool)
+        {
+          msgpack_print(tcReportbool, msgpack_get_obj_name(tcReportbool));
+          MSGPACK_GET_NUMBER(tcReportbool, tcReport);
+          T2Debug("tcReport: %s\n", (tcReport?"True":"False"));
+        }
+
         T2Debug("Adding MsgPck Trigger Condition:%s type %s operator %s \n", tcReference, tcType, tcOperator);
 
         if(tcType)
@@ -336,6 +347,7 @@ T2ERROR addMsgPckTriggerCondition(Profile *profile, msgpack_object *value_map) {
         triggerCondition->threshold = tcThreshold;
         triggerCondition->minThresholdDuration = tcMinThresholdDuration;
         triggerCondition->isSubscribed = false;
+        triggerCondition->report = tcReport;
 
         Vector_PushBack(profile->triggerConditionList, triggerCondition);
         T2Debug("[[Added MsgPck Trigger Condition:%s]]\n", tcReference);
@@ -370,6 +382,7 @@ T2ERROR addTriggerCondition(Profile *profile, cJSON *jprofileTriggerCondition) {
         int tcThreshold = 0;
         int tcMinThresholdDuration = 0;
         char *tcReference = NULL;
+        bool tcReport = true;
 
         cJSON* tcSubitem = cJSON_GetArrayItem(jprofileTriggerCondition, triggerConditionIndex);
 
@@ -404,6 +417,12 @@ T2ERROR addTriggerCondition(Profile *profile, cJSON *jprofileTriggerCondition) {
                 T2Error("%s ++out Error adding Trigger Condition to profile %s \n", __FUNCTION__, profile->name);
                 return T2ERROR_FAILURE;
             }
+
+            cJSON *jTcSubItemReport = cJSON_GetObjectItem(tcSubitem, "report");
+            if(jTcSubItemReport) {
+                tcReport = cJSON_IsTrue(jTcSubItemReport);
+            }
+
             /*CID 175311, 175312 and 175330 -Explicit null dereferenced */
             if(tcType)
                 triggerCondition->type = strdup(tcType);
@@ -414,7 +433,7 @@ T2ERROR addTriggerCondition(Profile *profile, cJSON *jprofileTriggerCondition) {
             triggerCondition->threshold = tcThreshold;
             triggerCondition->minThresholdDuration = tcMinThresholdDuration;
             triggerCondition->isSubscribed = false;
-
+            triggerCondition->report = tcReport;
             Vector_PushBack(profile->triggerConditionList, triggerCondition);
             T2Debug("[[Added Trigger Condition:%s]]\n", tcReference);
         }
@@ -833,6 +852,7 @@ T2ERROR processConfiguration(char** configData, char *profileName, char* profile
     int skipFrequency = 0;
     size_t profileParamCount = 0;
     int ProfileParameterIndex = 0;
+    char* method = NULL;
 
     for( ProfileParameterIndex = 0; ProfileParameterIndex < ThisProfileParameter_count; ProfileParameterIndex++ ) {
         header = NULL;
@@ -872,6 +892,21 @@ T2ERROR processConfiguration(char** configData, char *profileName, char* profile
                     if(!jpSubitemname) {
                         header = jpSubitemreference->valuestring; /*Default Name can be reference*/
                     }
+                }
+                cJSON *jpMethod = cJSON_GetObjectItem(pSubitem, "method");
+                if (jpMethod)
+                {
+                   method = jpMethod->valuestring;
+                   T2Debug("Method property is present and the value is %s\n",method);
+                   if(!(strcmp(method, "subscribe")))
+                   {
+                      T2Info("Method is subscribe converting the parmeter to event type\n");
+                      paramtype = "event";
+                      header = jpSubitemreference->valuestring;
+                      content =  T2REPORTCOMPONENT;
+                      if(jpSubitemname)
+                          logfile = jpSubitemname->valuestring;
+                   }
                 }
             }else if(!(strcmp(paramtype, "event"))) {
 

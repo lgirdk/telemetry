@@ -209,6 +209,27 @@ T2ERROR profileWithNameExists(const char *profileName, bool *bProfileExists)
     return T2ERROR_PROFILE_NOT_FOUND;
 }
 
+void getMarkerCompRbusSub(bool subscription){
+    T2Debug("%s ++in\n", __FUNCTION__);
+    Vector* eventMarkerListForComponent = NULL;
+    getComponentMarkerList(T2REPORTCOMPONENT, (void**)&eventMarkerListForComponent);
+    int length = Vector_Size(eventMarkerListForComponent);
+    int i;
+        if(length > 0)  {
+            for(i = 0; i < length; ++i ) {
+                char* markerName = (char *) Vector_At(eventMarkerListForComponent, i);
+                if(markerName) {
+                    int ret = T2RbusReportEventConsumer(markerName,subscription);
+                    T2Debug("%d T2RbusEventReg with name = %s: subscription = %s ret %d \n", i, markerName,(subscription?"Subscribe":"Un-Subscribe"),ret);
+                }
+                else
+                    T2Error("Error while retrieving Marker Name at index : %d \n",i);
+            }
+            Vector_Destroy(eventMarkerListForComponent, free);
+        }
+    T2Debug("%s --out\n", __FUNCTION__);
+}
+
 static void* CollectAndReport(void* data)
 {
     if(data == NULL)
@@ -223,6 +244,7 @@ static void* CollectAndReport(void* data)
     Vector *grepResultList = NULL;
     cJSON *valArray = NULL;
     char* jsonReport = NULL;
+    cJSON *triggercondition = NULL;
 
     struct timespec startTime;
     struct timespec endTime;
@@ -243,7 +265,11 @@ static void* CollectAndReport(void* data)
             profile->reportInProgress = false;
             return NULL;
         }
-
+        if(profile->triggerReportOnCondition && (profile->jsonReportObj != NULL))
+        {
+            triggercondition=profile->jsonReportObj;
+            profile->jsonReportObj = NULL;
+        }
         if(T2ERROR_SUCCESS != initJSONReportProfile(&profile->jsonReportObj, &valArray))
         {
             T2Error("Failed to initialize JSON Report\n");
@@ -277,6 +303,8 @@ static void* CollectAndReport(void* data)
             {
                 encodeEventMarkersInJSON(valArray, profile->eMarkerList);
             }
+            if(profile->triggerReportOnCondition && (triggercondition != NULL))
+                cJSON_AddItemToArray(valArray, triggercondition);
             ret = prepareJSONReport(profile->jsonReportObj, &jsonReport);
             destroyJSONReport(profile->jsonReportObj);
             profile->jsonReportObj = NULL;
@@ -914,8 +942,18 @@ T2ERROR registerTriggerConditionConsumer()
     return ret;
 }
 
+void appendTriggerCondition (Profile *tempProfile, const char *referenceName, const char *referenceValue){
+    T2Debug("%s ++in\n", __FUNCTION__);
+    cJSON *temparrayItem = cJSON_CreateObject();
+    cJSON_AddStringToObject(temparrayItem, "reference",referenceName);
+    cJSON_AddStringToObject(temparrayItem, "value", referenceValue);
+    cJSON *temparrayItem1 = cJSON_CreateObject();
+    cJSON_AddItemToObject(temparrayItem1, "TriggerConditionResult", temparrayItem);
+    tempProfile->jsonReportObj=temparrayItem1;
+    T2Debug("%s --out\n", __FUNCTION__);
+}
 
-T2ERROR triggerReportOnCondtion(const char *referenceName)
+T2ERROR triggerReportOnCondtion(const char *referenceName, const char *referenceValue)
 {
     T2Debug("%s ++in\n", __FUNCTION__);
 
@@ -935,6 +973,8 @@ T2ERROR triggerReportOnCondtion(const char *referenceName)
 	             T2Debug("Triggering report on condition for %s with %s operator, %d threshold\n",
 				     triggerCondition->reference, triggerCondition->oprator, triggerCondition->threshold);
                      tempProfile->triggerReportOnCondition = true;
+                     if(triggerCondition->report)
+                         appendTriggerCondition(tempProfile, referenceName, referenceValue);
                      tempProfile->minThresholdDuration = triggerCondition->minThresholdDuration;
                      SendInterruptToTimeoutThread(tempProfile->name);
                      T2Debug("%s --out\n", __FUNCTION__);

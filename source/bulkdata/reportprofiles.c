@@ -430,8 +430,10 @@ T2ERROR initReportProfiles()
 
     if(ProfileXConf_isSet() || getProfileCount() > 0) {
 
-        if(isRbusEnabled())
+        if(isRbusEnabled()){
             createComponentDataElements();
+            getMarkerCompRbusSub(true);
+        }
         T2ER_StartDispatchThread();
     }
 
@@ -447,7 +449,8 @@ T2ERROR ReportProfiles_uninit( ) {
         return T2ERROR_FAILURE;
     }
     rpInitialized = false;
-
+    if(isRbusEnabled())
+        getMarkerCompRbusSub(false); // remove Rbus subscription
     uninitMtls();
     T2ER_Uninit();
     destroyT2MarkerComponentMap();
@@ -572,7 +575,9 @@ void ReportProfiles_ProcessReportProfilesBlob(cJSON *profiles_root) {
 
     hash_map_t *profileHashMap = getProfileHashMap();
     hash_map_t *receivedProfileHashMap = hash_map_create();
-
+    // Rbus subscription of Tr181 datamodel events
+    if(isRbusEnabled())
+        getMarkerCompRbusSub(false);
     // Populate profile hash map for current configuration
     for( profileIndex = 0; profileIndex < profiles_count; profileIndex++ ) {
         cJSON* singleProfile = cJSON_GetArrayItem(profilesArray, profileIndex);
@@ -679,6 +684,7 @@ void ReportProfiles_ProcessReportProfilesBlob(cJSON *profiles_root) {
         createComponentDataElements();
         // Notify registered components that profile has received an update
         publishEventsProfileUpdates();
+        getMarkerCompRbusSub(true);
     }
     hash_map_destroy(receivedProfileHashMap, freeReportProfileHashMap);
     hash_map_destroy(profileHashMap, freeProfilesHashMap);

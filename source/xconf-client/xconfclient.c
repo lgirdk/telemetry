@@ -47,6 +47,7 @@
 #define IFINTERFACE      "erouter0"
 #define XCONF_CONFIG_FILE  "DCMresponse.txt"
 #define PROCESS_CONFIG_COMPLETE_FLAG "/tmp/t2DcmComplete"
+#define HTTP_RESPONSE_FILE "/tmp/httpOutput.txt"
 
 static const int MAX_URL_LEN = 1024;
 static const int MAX_URL_ARG_LEN = 128;
@@ -379,7 +380,6 @@ static T2ERROR doHttpGet(char* httpsUrl, char **data) {
 
     pid_t childPid;
     int sharedPipeFdStatus[2];
-    int sharedPipeFdData[2];
     int sharedPipeFdDataLen[2];
 
     if(NULL == httpsUrl) {
@@ -389,12 +389,6 @@ static T2ERROR doHttpGet(char* httpsUrl, char **data) {
 
     if(pipe(sharedPipeFdStatus) != 0) {
         T2Error("Failed to create pipe for status !!! exiting...\n");
-        T2Debug("%s --out\n", __FUNCTION__);
-        return T2ERROR_FAILURE;
-    }
-
-    if(pipe(sharedPipeFdData) != 0) {
-        T2Error("Failed to create pipe for data !!! exiting...\n");
         T2Debug("%s --out\n", __FUNCTION__);
         return T2ERROR_FAILURE;
     }
@@ -506,9 +500,14 @@ static T2ERROR doHttpGet(char* httpsUrl, char **data) {
                 write(sharedPipeFdDataLen[1], &len, sizeof(size_t));
                 close(sharedPipeFdDataLen[1]);
 
-                close(sharedPipeFdData[0]);
-                write(sharedPipeFdData[1], httpResponse->data, len + 1);
-                close(sharedPipeFdData[1]);
+                FILE *httpOutput = fopen(HTTP_RESPONSE_FILE, "w+");
+                if(httpOutput){
+                    T2Debug("Update config data in response file %s \n", HTTP_RESPONSE_FILE);
+                    fputs(httpResponse->data, httpOutput);
+                    fclose(httpOutput);
+                } else{
+                    T2Error("Unable to open %s file \n", HTTP_RESPONSE_FILE);
+                }
 
                 free(httpResponse->data);
                 free(httpResponse);
@@ -541,6 +540,7 @@ static T2ERROR doHttpGet(char* httpsUrl, char **data) {
             ret = T2ERROR_FAILURE;
             goto status_return ;
         }
+
         ret = T2ERROR_SUCCESS ;
         status_return :
 
@@ -570,9 +570,12 @@ static T2ERROR doHttpGet(char* httpsUrl, char **data) {
                 ret = T2ERROR_FAILURE;
             }else {
                 memset(*data, '\0', len + 1);
-                close(sharedPipeFdData[1]);
-                read(sharedPipeFdData[0], *data, len + 1);
-                close(sharedPipeFdStatus[0]);
+                FILE *httpOutput = fopen(HTTP_RESPONSE_FILE, "r+");
+                if(httpOutput){
+                    fgets(*data, len + 1, httpOutput);
+                    T2Debug("Configuration obtained from http server : \n %s \n", *data);
+                    fclose(httpOutput);
+                }
             }
         }
         T2Debug("%s --out\n", __FUNCTION__);

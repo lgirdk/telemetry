@@ -37,13 +37,7 @@ void T2Log(unsigned int level, const char *msg, ...)
   char *pTempChar = NULL;
   int ret = 0;
   // Allow runtime debug log enable to unmask hard to simulate field issues
-  if (access( ENABLE_DEBUG_FLAG, F_OK) != -1)
-      rdkLogLevel = RDK_LOG_DEBUG;
-  else
-      rdkLogLevel = RDK_LOG_INFO;
 
-  if( level <= rdkLogLevel)
-  {
     va_start(arg, msg);
     int messageLen = vsnprintf(NULL, 0, msg, arg);
     va_end(arg);
@@ -90,5 +84,4 @@ void T2Log(unsigned int level, const char *msg, ...)
       }
     }
     va_end(arg);
-  }
 }

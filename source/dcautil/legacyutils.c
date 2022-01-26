@@ -20,6 +20,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <pthread.h>
 
 #include "t2log_wrapper.h"
 #include "legacyutils.h"
@@ -296,6 +297,48 @@ void clearConfVal(void) {
     if(DEVICE_TYPE)
         free(DEVICE_TYPE);
     T2Debug("%s --out \n", __FUNCTION__);
+}
+
+void updateLastSeekval(hash_map_t *logSeekMap, char **prev_file, char* filename) {
+
+    FILE *pcurrentLogFile = NULL;
+    char* currentLogFile = NULL;
+    long fileSize = 0;
+
+    if((NULL == PERSISTENT_PATH) || (NULL == LOG_PATH) || (NULL == filename) || (NULL == logSeekMap)) {
+        T2Debug("Path variables are empty");
+        return;
+    }
+
+    if((NULL == *prev_file) || (strcmp(*prev_file, filename) != 0)) {
+        if(NULL == *prev_file){
+             *prev_file = strdup(filename);
+             if(*prev_file == NULL){
+               T2Error("Insufficient memory available to allocate duplicate string %s\n", filename);
+             }
+        }
+        else {
+          updateLogSeek(logSeekMap, *prev_file);
+          free(*prev_file);
+          *prev_file = strdup(filename);
+          if(*prev_file == NULL){
+               T2Error("Insufficient memory available to allocate duplicate string %s\n", filename);
+           }
+       }
+    }
+
+    int logname_len = strlen(LOG_PATH) + strlen(filename) + 1;
+    currentLogFile = malloc(logname_len);
+    if(currentLogFile) {
+        snprintf(currentLogFile, logname_len, "%s%s", LOG_PATH, filename);
+        pcurrentLogFile = fopen(currentLogFile, "rb");
+        if(pcurrentLogFile) {
+            fileSize = fsize(pcurrentLogFile);
+            LAST_SEEK_VALUE = fileSize;
+            fclose(pcurrentLogFile);
+        }
+        free(currentLogFile);
+    }
 }
 
 /**

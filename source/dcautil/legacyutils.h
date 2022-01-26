@@ -46,7 +46,7 @@
 #define LEN 14
 
 #define USLEEP_SEC 100
-#define MAX_PROCESS 10
+#define MAX_PROCESS 1
 #define RDK_EC_MAXLEN 5 /* RDK Error code maximum length */
 
 #define INCLUDE_PROPERTIES "/etc/include.properties"
@@ -85,6 +85,8 @@ void updatePropsFromIncludeFile(char *logpath, char *perspath);
 void initProperties(char *logpath, char *perspath);
 
 T2ERROR updateLogSeek(hash_map_t *logSeekMap, char *name);
+
+void updateLastSeekval(hash_map_t *logSeekMap, char **prev_file, char* filename);
 
 /* JSON functions */
 void initSearchResultJson(cJSON **root, cJSON **sr);

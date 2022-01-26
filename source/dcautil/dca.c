@@ -585,28 +585,27 @@ void getDType(char *filename, MarkerType mType, DType_t *dtype) {
  *  @return -1 on failure, 0 on success
  */
 static int parseMarkerList(char* profileName, Vector* vMarkerList, Vector* grepResultList) {
-
     T2Debug("%s ++in \n", __FUNCTION__);
 
     char *filename = NULL, *prevfile = NULL;
     int pcIndex = 0;
     GList *pchead = NULL, *rdkec_head = NULL;
-    GrepSeekProfile* gsProfile = NULL ;
+    GrepSeekProfile* gsProfile = NULL;
     int var = 0;
 
     size_t vCount = Vector_Size(vMarkerList);
-    T2Debug("vMarkerList for profile %s is of count = %lu \n", profileName, (unsigned long)vCount);
+    T2Debug("vMarkerList for profile %s is of count = %lu \n", profileName, (unsigned long )vCount);
 
     // Get logfile -> seek value map associated with the profile
-    gsProfile = (GrepSeekProfile *)getLogSeekMapForProfile(profileName);
-    if (NULL == gsProfile) {
+    gsProfile = (GrepSeekProfile *) getLogSeekMapForProfile(profileName);
+    if(NULL == gsProfile) {
         T2Debug("logSeekMap is null, add logSeekMap for %s \n", profileName);
         gsProfile = (GrepSeekProfile *) addToProfileSeekMap(profileName);
     }
 
-    if(NULL == gsProfile){
+    if(NULL == gsProfile) {
         T2Error("%s Unable to retrive / create logSeekMap for profile %s \n", __FUNCTION__, profileName);
-        return -1 ;
+        return -1;
     }
 
     int profileExecCounter = gsProfile->execCounter;
@@ -638,46 +637,44 @@ static int parseMarkerList(char* profileName, Vector* vMarkerList, Vector* grepR
         if(tmp_skip_interval <= 0)
             tmp_skip_interval = 0;
 
-        if (profileExecCounter % (tmp_skip_interval+1) == 0)
+        if(profileExecCounter % (tmp_skip_interval + 1) == 0)
             is_skip_param = 0;
         else
             is_skip_param = 1;
 
         if(NULL == filename) {
             filename = strdup(temp_file);
-            if(filename == NULL){
-                   T2Error("Insufficient memory available to allocate duplicate string %s\n", temp_file);
-             }
-            pchead = NULL;
-            if(is_skip_param == 0 && (0 == insertPCNode(&pchead, temp_pattern, temp_header, dtype, 0, NULL))) {
-                pcIndex = 1;
+            if(filename == NULL) {
+                T2Error("Insufficient memory available to allocate duplicate string %s\n", temp_file);
             }
         }else {
-            if((0 == strcmp(filename, temp_file)) && pcIndex <= MAX_PROCESS) {
-                if(is_skip_param == 0 && (0 == insertPCNode(&pchead, temp_pattern, temp_header, dtype, 0, NULL))) {
-                    pcIndex++;
-                }
-            }else {
-                processPattern(&prevfile, filename, &rdkec_head, pchead, pcIndex, grepResultList, gsProfile->logFileSeekMap);
-                pchead = NULL;
+            if(0 != strcmp(filename, temp_file)) {
                 free(filename);
                 filename = strdup(temp_file);
-                if(filename == NULL){
-                   T2Error("Insufficient memory available to allocate duplicate string %s\n", temp_file);
-                }
-                if(is_skip_param == 0 && (0 == insertPCNode(&pchead, temp_pattern, temp_header, dtype, 0, NULL))) {
-                    pcIndex = 1;
+                if(filename == NULL) {
+                    T2Error("Insufficient memory available to allocate duplicate string %s\n", temp_file);
                 }
             }
         }
+
+        // TODO optimize the list search in US
+        if(is_skip_param == 0) {
+            if(0 == insertPCNode(&pchead, temp_pattern, temp_header, dtype, 0, NULL)) {
+                pcIndex = 1;
+                processPattern(&prevfile, filename, &rdkec_head, pchead, pcIndex, grepResultList, gsProfile->logFileSeekMap);
+                pchead = NULL;
+            }
+        }else {
+            T2Debug("Current iteration for this parameter needs to be excluded, but the seek values needs to be updated in case of logfile based marker\n");
+            // TODO optimize seek update logic for skip intervals
+            updateLastSeekval(gsProfile->logFileSeekMap, &prevfile, filename);
+        }
+
     }  // End of adding list to node
 
-    if(NULL != filename) {
-        processPattern(&prevfile, filename, &rdkec_head, pchead, pcIndex, grepResultList, gsProfile->logFileSeekMap);
-        T2Debug("Updating logseek after processPattern for %s \n ", filename);
+    if(filename) {
         updateLogSeek(gsProfile->logFileSeekMap, filename);
     }
-    pchead = NULL;
 
     gsProfile->execCounter += 1;
 

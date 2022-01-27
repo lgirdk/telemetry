@@ -303,7 +303,6 @@ T2ERROR processConfigurationXConf(char* configData, ProfileXConf **localProfile)
         addParameter(profile, "StbIp", TR181_DEVICE_WAN_IPv6, NULL, -1);
         addParameter(profile, "PartnerId", TR181_DEVICE_PARTNER_ID, NULL, -1);
         addParameter(profile, "Version", TR181_DEVICE_FW_VERSION, NULL, -1);
-        addParameter(profile, "AccountId", TR181_DEVICE_ACCOUNT_ID, NULL, -1);
     }
     free(paramValue);
     paramValue = NULL;
@@ -320,7 +319,6 @@ T2ERROR processConfigurationXConf(char* configData, ProfileXConf **localProfile)
 #endif
     addParameter(profile, "PartnerId", TR181_DEVICE_PARTNER_ID, NULL, -1);
     addParameter(profile, "Version", TR181_DEVICE_FW_VERSION, NULL, -1);
-    addParameter(profile, "AccountId", TR181_DEVICE_ACCOUNT_ID, NULL, -1);
 #endif
     int markerIndex = 0;
     char* header = NULL;

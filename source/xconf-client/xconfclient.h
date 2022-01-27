@@ -40,7 +40,6 @@
 #define TR181_DEVICE_PARTNER_ID                     "Device.DeviceInfo.X_RDKCENTRAL-COM_Syndication.PartnerId"
 #endif
 
-#define TR181_DEVICE_ACCOUNT_ID                     "Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.AccountInfo.AccountID"
 #define TR181_CONFIG_URL                            "Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.Telemetry.ConfigURL"
 
 #if defined(ENABLE_RDKB_SUPPORT)

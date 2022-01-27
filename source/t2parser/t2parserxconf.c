@@ -317,7 +317,6 @@ T2ERROR processConfigurationXConf(char* configData, ProfileXConf **localProfile)
 #endif
     addParameter(profile, "PartnerId", TR181_DEVICE_PARTNER_ID, NULL, -1);
     addParameter(profile, "Version", TR181_DEVICE_FW_VERSION, NULL, -1);
-    addParameter(profile, "AccountId", TR181_DEVICE_ACCOUNT_ID, NULL, -1);
 
     int markerIndex = 0;
     char* header = NULL;

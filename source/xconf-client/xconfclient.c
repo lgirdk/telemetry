@@ -297,18 +297,6 @@ static T2ERROR appendRequestParams(char *buf, const int maxArgLen) {
           goto error;
     }
 
-    if(T2ERROR_SUCCESS == getParameterValue(TR181_DEVICE_ACCOUNT_ID, &paramVal)) {
-        memset(tempBuf, 0, MAX_URL_ARG_LEN);
-        write_size = snprintf(tempBuf, MAX_URL_ARG_LEN, "accountId=%s&", paramVal);
-        strncat(buf, tempBuf, avaBufSize);
-        avaBufSize = avaBufSize - write_size;
-        free(paramVal);
-        paramVal = NULL;
-    } else {
-          T2Error("Failed to get Value for %s\n", TR181_DEVICE_ACCOUNT_ID);
-          goto error;
-    }
-
     if(T2ERROR_SUCCESS == getParameterValue(TR181_DEVICE_CM_MAC, &paramVal)) {
         memset(tempBuf, 0, MAX_URL_ARG_LEN);
         write_size = snprintf(tempBuf, MAX_URL_ARG_LEN, "ecmMacAddress=%s&", paramVal);

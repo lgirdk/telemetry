@@ -21,6 +21,7 @@ AM_CFLAGS += -D_ANSC_USER
 AM_CFLAGS += -D_ANSC_LITTLE_ENDIAN_
 
 lib_LTLIBRARIES = libinterChipHelper.la
+
 libinterChipHelper_la_SOURCES = interChipHelper.c
 
 libinterChipHelper_la_CPPFLAGS = -fPIC -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/ccsp \

@@ -21,6 +21,7 @@ AM_CFLAGS += -D_ANSC_USER
 AM_CFLAGS += -D_ANSC_LITTLE_ENDIAN_
 
 lib_LTLIBRARIES = libxconfclient.la
+
 libxconfclient_la_SOURCES = xconfclient.c persistence.c
 libxconfclient_la_LDFLAGS = -shared -fPIC -lcjson -lcurl
 libxconfclient_la_LIBADD = ${top_builddir}/source/t2parser/libt2parser.la ${top_builddir}/source/ccspinterface/libccspinterface.la

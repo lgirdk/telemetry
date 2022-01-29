@@ -30,11 +30,10 @@ AM_CFLAGS += -D_ANSC_USER
 AM_CFLAGS += -D_ANSC_LITTLE_ENDIAN_
 AM_CFLAGS += -DCCSP_INC_no_asm_sigcontext_h
 
-AM_CPPFLAGS = -Wall -Werror
 ACLOCAL_AMFLAGS = -I m4
-hardware_platform = i686-linux-gnu
 
 bin_PROGRAMS = telemetry2_0
+
 telemetry2_0_SOURCES = telemetry2_0.c
 telemetry2_0_CFLAGS = -DFEATURE_SUPPORT_RDKLOG
 telemetry2_0_CPPFLAGS = -fPIC -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/dbus-1.0 \

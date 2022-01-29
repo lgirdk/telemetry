@@ -50,10 +50,8 @@
 #include "breakpad_wrapper.h"
 #endif
 
-#ifdef _ANSC_LINUX
 #include <semaphore.h>
 #include <fcntl.h>
-#endif
 #include <mqueue.h>
 
 PDSLH_CPE_CONTROLLER_OBJECT     pDslhCpeController      = NULL;

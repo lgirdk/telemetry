@@ -16,11 +16,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 ##########################################################################
-AM_CFLAGS = -D_ANSC_LINUX
-AM_CFLAGS += -D_ANSC_USER
-AM_CFLAGS += -D_ANSC_LITTLE_ENDIAN_
+AM_CFLAGS =
 
 lib_LTLIBRARIES = libbulkdata.la
+
 libbulkdata_la_SOURCES = reportprofiles.c profile.c profilexconf.c t2eventreceiver.c t2markers.c t2common.c datamodel.c
 libbulkdata_la_LDFLAGS = -shared -fPIC -lcjson -lmsgpackc
 libbulkdata_la_LIBADD = ${top_builddir}/source/utils/libutils.la ${top_builddir}/source/dcautil/libdcautil.la ${top_builddir}/source/protocol/http/libhttp.la ${top_builddir}/source/protocol/rbusMethod/librbusmethod.la ${top_builddir}/source/ccspinterface/libccspinterface.la ${top_builddir}/source/reportgen/libreportgen.la ${top_builddir}/source/scheduler/libscheduler.la

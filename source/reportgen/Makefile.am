@@ -16,11 +16,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 ##########################################################################
-AM_CFLAGS = -D_ANSC_LINUX
-AM_CFLAGS += -D_ANSC_USER
-AM_CFLAGS += -D_ANSC_LITTLE_ENDIAN_
+AM_CFLAGS =
 
 lib_LTLIBRARIES = libreportgen.la
+
 libreportgen_la_SOURCES = reportgen.c
 libreportgen_la_LDFLAGS = -shared -fPIC -lcjson
 libreportgen_la_CPPFLAGS = -fPIC -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/dbus-1.0 \

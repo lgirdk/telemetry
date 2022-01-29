@@ -16,17 +16,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 ##########################################################################
-AM_CFLAGS = -D_ANSC_LINUX
-AM_CFLAGS += -D_ANSC_USER
-AM_CFLAGS += -D_ANSC_LITTLE_ENDIAN_
+AM_CFLAGS =
 
 lib_LTLIBRARIES = libccspinterface.la
+
 libccspinterface_la_SOURCES = busInterface.c rbusInterface.c
 libccspinterface_la_CFLAGS = $(GLIB_CFLAGS)
 libccspinterface_la_LDFLAGS = -shared -fPIC -lrbus $(GLIB_LIBS)
 if ENABLE_CCSP_SUPPORT
-libccspinterface_la_LDFLAGS+=-lccsp_common
-libccspinterface_la_SOURCES+= ccspinterface.c
+libccspinterface_la_LDFLAGS += -lccsp_common
+libccspinterface_la_SOURCES += ccspinterface.c
 endif
 
 libccspinterface_la_CPPFLAGS = -fPIC $(CPPFLAGS) -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/dbus-1.0 \

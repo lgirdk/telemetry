@@ -21,6 +21,7 @@ AM_CFLAGS += -D_ANSC_USER
 AM_CFLAGS += -D_ANSC_LITTLE_ENDIAN_
 
 lib_LTLIBRARIES = libt2parser.la
+
 libt2parser_la_SOURCES = t2parser.c t2parserxconf.c
 libt2parser_la_LIBADD = ${top_builddir}/source/ccspinterface/libccspinterface.la ${top_builddir}/source/utils/libutils.la
 libt2parser_la_CPPFLAGS = -fPIC -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/dbus-1.0 \

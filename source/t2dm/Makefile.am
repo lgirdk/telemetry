@@ -21,13 +21,12 @@ AM_CFLAGS += -D_ANSC_USER
 AM_CFLAGS += -D_ANSC_LITTLE_ENDIAN_
 
 ACLOCAL_AMFLAGS = -I m4
-hardware_platform = i686-linux-gnu
 
 lib_LTLIBRARIES = libT2_tr181.la
 libT2_tr181_la_SOURCES = cosa_telemetry_dml.c cosa_telemetry_internal.c plugin_main_apis.c plugin_main.c
 libT2_tr181_la_LDFLAGS = -shared -fPIC -lcjson -lpthread -lrt
 if ENABLE_CCSP_SUPPORT
-libT2_tr181_la_LDFLAGS+=-lccsp_common
+libT2_tr181_la_LDFLAGS += -lccsp_common
 endif
 libT2_tr181_la_CPPFLAGS = -DFEATURE_SUPPORT_RDKLOG -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/dbus-1.0 \
                           -I${PKG_CONFIG_SYSROOT_DIR}$(libdir)/dbus-1.0/include \

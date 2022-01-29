@@ -21,6 +21,7 @@ AM_CFLAGS += -D_ANSC_USER
 AM_CFLAGS += -D_ANSC_LITTLE_ENDIAN_
 
 bin_PROGRAMS = testModules testCommonLib
+
 testModules_SOURCES = testModules.c busInterfaceTests.c ../t2ssp/ssp_main.c ../t2ssp/ssp_action.c ../t2ssp/ssp_messagebus_interface.c ../t2ssp/dm_pack_datamodel.c
 testModules_LDFLAGS = -lcjson -lccsp_common -lwebconfig_framework
 testModules_CPPFLAGS = -fPIC -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/dbus-1.0 \

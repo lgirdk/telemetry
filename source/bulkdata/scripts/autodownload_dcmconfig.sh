@@ -28,8 +28,8 @@ fi
 T2_0_BIN_PID=`pidof $T2_0_BIN`
 
 if [ -n "${T2_0_BIN_PID}" ]; then
-    # Singal 15 (SIGTERM) is handled in telemetry2_0 process to download DCMResponse.txt file
-    kill -15 $T2_0_BIN_PID
+    # Singal 12 (SIGUSR2) is handled in telemetry2_0 process to download DCMResponse.txt file
+    kill -12 $T2_0_BIN_PID
 else
     echo "Not able to get $T2_0_BIN pid!!!"
 fi

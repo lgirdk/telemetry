@@ -363,12 +363,28 @@ static bool initRFC( ) {
         }
     }
     if((isRFCT2Enable == false) && bus_handle) {
-        //Check for PamdM status  before getting RFC_T2_ENABLE_PARAM value
-        if ((access(PAM_FILE,  F_OK) != 0)) //PAM_FILE does not exist
-        {          
-          EVENT_DEBUG("file pam_initialized doesn't exist..return !!! \n");
+
+        // Check for PamdM status before getting RFC_T2_ENABLE_PARAM value
+        if ((access(PAM_FILE, F_OK) != 0))
+        {
+          EVENT_DEBUG("file % doesn't exist..return !!!\n", PAM_FILE);
           return false;
         }
+
+        // Check for wifi-agent status before getting RFC_T2_ENABLE_PARAM value
+        if (access("/tmp/wifi_initialized", F_OK) != 0)
+        {
+          EVENT_DEBUG("file %s doesn't exist..return !!!\n", "/tmp/wifi_initialized");
+          return false;
+        }
+
+#ifndef _LG_MV3_
+        if (access("/tmp/cfg_file_applied", F_OK) != 0)
+        {
+          EVENT_DEBUG("file %s doesn't exist..return !!!\n", "/tmp/cfg_file_applied");
+          return false;
+        }
+#endif
 
         if(T2ERROR_SUCCESS == getParamValue(RFC_T2_ENABLE_PARAM, &paramValue) ) {
             if(paramValue != NULL && (strncasecmp(paramValue, "true", 4) == 0)) {

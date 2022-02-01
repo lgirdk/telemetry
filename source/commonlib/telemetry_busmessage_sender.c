@@ -114,6 +114,7 @@ static void initMutex() {
         pthread_mutex_init(&sMutex, &mutexAttr);
         pthread_mutex_init(&fMutex, &mutexAttr);
         pthread_mutex_init(&dMutex, &mutexAttr);
+        pthread_mutex_init(&eventMutex, &mutexAttr);
         pthread_mutex_init(&FileCacheMutex, &mutexAttr);
         pthread_mutex_init(&markerListMutex, &mutexAttr);
         pthread_mutex_init(&loggerMutex, &mutexAttr);
@@ -342,8 +343,8 @@ static bool initRFC( ) {
         }
     }
     if((isRFCT2Enable == false) && bus_handle) {
-        //Check for PamdM status  before getting RFC_T2_ENABLE_PARAM value
-        if ((access(PAM_FILE,  F_OK) != 0)) //PAM_FILE does not exist
+        //Check for PamdM and wifi-agent status  before getting RFC_T2_ENABLE_PARAM value
+        if ((access(PAM_FILE,  F_OK) != 0) || (access( "/tmp/wifi_initialized", F_OK ) != 0)) //PAM_FILE does not exist
         {          
           EVENT_DEBUG("file pam_initialized doesn't exist..return !!! \n");
           return false;

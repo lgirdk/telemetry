@@ -293,7 +293,7 @@ static int getBridgeMode()
     char buf[8] = {0};
     int isBridgeMode = 0;
 #if defined(_COSA_INTEL_USG_ATOM_)
-    _get_shell_output ("/usr/bin/rpcclient2 \"syscfg get bridge_mode\" | grep -v RPC", buf, sizeof(buf));
+    _get_shell_output ("/usr/bin/rpcclient2 \"syscfg get bridge_mode\" | sed '/RPC/d;/^$/d'", buf, sizeof(buf));
     if (strcmp(buf, "0") != 0)
     {
         isBridgeMode = 1;

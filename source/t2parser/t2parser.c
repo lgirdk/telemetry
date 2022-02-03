@@ -532,8 +532,7 @@ T2ERROR processConfiguration(char** configData, char *profileName, char* profile
     if(jprofileParameter) {
         ThisProfileParameter_count = cJSON_GetArraySize(jprofileParameter);
     }
-    if(profileName == NULL || jprofileProtocol == NULL || jprofileEncodingType == NULL || jprofileParameter == NULL || ThisProfileParameter_count == 0
-            || (profileHash == NULL && jprofileHash == NULL)) {
+    if(profileName == NULL || jprofileProtocol == NULL || jprofileEncodingType == NULL || jprofileParameter == NULL || (profileHash == NULL && jprofileHash == NULL)) {
         T2Error("Incomplete profile information, unable to create profile\n");
         cJSON_Delete(json_root);
         return T2ERROR_FAILURE;

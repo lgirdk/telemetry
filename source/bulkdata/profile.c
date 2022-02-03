@@ -306,7 +306,7 @@ static void* CollectAndReport(void* data)
             if(profile->triggerReportOnCondition && (triggercondition != NULL))
                 cJSON_AddItemToArray(valArray, triggercondition);
             ret = prepareJSONReport(profile->jsonReportObj, &jsonReport);
-            destroyJSONReport(profile->jsonReportObj);
+	    destroyJSONReport(profile->jsonReportObj);
             profile->jsonReportObj = NULL;
 
             if(ret != T2ERROR_SUCCESS)
@@ -317,6 +317,18 @@ static void* CollectAndReport(void* data)
             }
             long size = strlen(jsonReport);
             T2Info("cJSON Report = %s\n", jsonReport);
+	    cJSON *root = cJSON_Parse(jsonReport);
+	    if(root != NULL){
+		     cJSON *array = cJSON_GetObjectItem(root, "Report");
+		     if(cJSON_GetArraySize(array) == 0){
+			     T2Warning("Array size of Report is %d. Report is empty. Cannot send empty report\n", cJSON_GetArraySize(array));
+			     profile->reportInProgress = false;
+			     cJSON_Delete(root);
+			     return NULL;
+		     }
+		     cJSON_Delete(root);
+	    }
+
             T2Info("Report Size = %ld\n", size);
             if(size > DEFAULT_MAX_REPORT_SIZE) {
                 T2Warning("Report size is exceeding the max limit : %d\n", DEFAULT_MAX_REPORT_SIZE);
@@ -329,25 +341,26 @@ static void* CollectAndReport(void* data)
                 } else {
                     ret = sendReportsOverRBUSMethod(profile->t2RBUSDest->rbusMethodName, profile->t2RBUSDest->rbusMethodParamList, jsonReport);
                 }
+                if(strcmp(profile->protocol, "HTTP") == 0 ) { /* Adding this condition to avoid caching of reports and retry attempts for RBUS_METHOD protocol */
+                    if(ret == T2ERROR_FAILURE) {
+                        if(Vector_Size(profile->cachedReportList) == MAX_CACHED_REPORTS) {
+                            T2Debug("Max Cached Reports Limit Reached, Overwriting third recent report\n");
+                            char *thirdCachedReport = (char *) Vector_At(profile->cachedReportList, MAX_CACHED_REPORTS - 3);
+                            Vector_RemoveItem(profile->cachedReportList, thirdCachedReport, NULL);
+                            free(thirdCachedReport);
+                        }
+                        Vector_PushBack(profile->cachedReportList, jsonReport);
 
-                if(ret == T2ERROR_FAILURE) {
-                    if(Vector_Size(profile->cachedReportList) == MAX_CACHED_REPORTS) {
-                        T2Debug("Max Cached Reports Limit Reached, Overwriting third recent report\n");
-                        char *thirdCachedReport = (char *) Vector_At(profile->cachedReportList, MAX_CACHED_REPORTS - 3);
-                        Vector_RemoveItem(profile->cachedReportList, thirdCachedReport, NULL);
-                        free(thirdCachedReport);
+                        T2Info("Report Cached, No. of reportes cached = %lu\n", (unsigned long)Vector_Size(profile->cachedReportList));
+                    }else if(Vector_Size(profile->cachedReportList) > 0) {
+                        T2Info("Trying to send  %lu cached reports\n", (unsigned long)Vector_Size(profile->cachedReportList));
+                        if ( strcmp(profile->protocol, "HTTP") == 0 ) {
+                            ret = sendCachedReportsOverHTTP(httpUrl, profile->cachedReportList);
+                        } else {
+                            ret = sendCachedReportsOverRBUSMethod(profile->t2RBUSDest->rbusMethodName, profile->t2RBUSDest->rbusMethodParamList, profile->cachedReportList);
+                        }
                     }
-                    Vector_PushBack(profile->cachedReportList, jsonReport);
-
-                    T2Info("Report Cached, No. of reportes cached = %lu\n", (unsigned long)Vector_Size(profile->cachedReportList));
-                }else if(Vector_Size(profile->cachedReportList) > 0) {
-                    T2Info("Trying to send  %lu cached reports\n", (unsigned long)Vector_Size(profile->cachedReportList));
-                    if ( strcmp(profile->protocol, "HTTP") == 0 ) {
-                        ret = sendCachedReportsOverHTTP(httpUrl, profile->cachedReportList);
-                    } else {
-                        ret = sendCachedReportsOverRBUSMethod(profile->t2RBUSDest->rbusMethodName, profile->t2RBUSDest->rbusMethodParamList, profile->cachedReportList);
-                    }
-                }
+	        }
                 if (httpUrl) {
                     free(httpUrl);
                     httpUrl = NULL ;

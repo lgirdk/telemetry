@@ -395,7 +395,7 @@ T2ERROR initReportProfiles()
 #endif
             {
                 T2Debug("Enabling datamodel for report profiles in RBUS mode \n");
-                regDEforProfileDataModel(datamodel_processProfile, datamodel_MsgpackProcessProfile);
+                regDEforProfileDataModel(datamodel_processProfile, datamodel_MsgpackProcessProfile, datamodel_getSavedJsonProfilesasString, datamodel_getSavedMsgpackProfilesasString);
             }
 #if defined(CCSP_SUPPORT_ENABLED)
             else {

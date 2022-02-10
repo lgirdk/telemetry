@@ -20,8 +20,9 @@
 #include <stdlib.h>
 #include <cjson/cJSON.h>
 #include <pthread.h>
+#include <string.h>
 #include "datamodel.h"
-
+#include "persistence.h"
 #include "t2collection.h"
 #include "reportprofiles.h"
 #include "t2log_wrapper.h"
@@ -129,6 +130,91 @@ T2ERROR datamodel_processProfile(char *JsonBlob)
     }
     pthread_mutex_unlock(&rpMutex);
     return T2ERROR_SUCCESS;
+}
+
+/**
+ * Caller is responsible for freeing the allocated memory in passed reference
+ */
+void datamodel_getSavedJsonProfilesasString(char** SavedProfiles)
+{
+    T2Debug("%s ++in\n", __FUNCTION__);
+    int configIndex = 0;
+    Vector *configList = NULL;
+    Config *config = NULL;
+    Vector_Create(&configList);
+    fetchLocalConfigs(REPORTPROFILES_PERSISTENCE_PATH, configList);
+    if (Vector_Size(configList) > 0)
+    {
+        cJSON *valArray = NULL;
+        cJSON *jsonObj = cJSON_CreateObject();
+        cJSON_AddItemToObject(jsonObj, "Profiles", valArray = cJSON_CreateArray());
+        for(; configIndex < Vector_Size(configList); configIndex++)
+        {
+            config = Vector_At(configList, configIndex);
+            T2Debug("Processing config with name : %s\n", config->name);
+            cJSON *temparrayItem = cJSON_CreateObject();
+            cJSON_AddStringToObject(temparrayItem, "name",config->name);
+            cJSON *tempObject = cJSON_Parse(config->configData);
+            cJSON *temp = cJSON_GetObjectItem(tempObject , "Hash");
+            cJSON_AddStringToObject(temparrayItem,"Hash", temp->valuestring);
+            cJSON_DeleteItemFromObject(tempObject,"Hash");
+            cJSON_AddItemToObject(temparrayItem, "value",tempObject);
+            cJSON_AddItemToArray(valArray, temparrayItem);  
+        }
+        char* temp = cJSON_PrintUnformatted(jsonObj);
+        *SavedProfiles = strdup(temp);
+        free(temp);
+        cJSON_Delete(jsonObj);
+    }
+    Vector_Destroy(configList,free);
+    T2Debug("%s --out\n", __FUNCTION__);
+}
+
+/**
+ * Caller is responsible for freeing the allocated memory in passed reference
+ */
+int datamodel_getSavedMsgpackProfilesasString(char** SavedProfiles)
+{
+    T2Debug("%s ++in\n", __FUNCTION__);
+    #if defined(FEATURE_SUPPORT_WEBCONFIG)
+    char filePath[REPORTPROFILES_FILE_PATH_SIZE] = {'\0'};
+    snprintf(filePath, sizeof(filePath), "%s%s", REPORTPROFILES_PERSISTENCE_PATH, MSGPACK_REPORTPROFILES_PERSISTENT_FILE);
+    FILE *fp;
+    fp = fopen (filePath, "rb");
+    if(fp != NULL){
+        T2Info("Msgpack: loadReportProfilesFromDisk \n");
+        struct __msgpack__ msgpack;
+        fseek(fp, 0L, SEEK_END);
+        msgpack.msgpack_blob_size = ftell(fp);
+        if(msgpack.msgpack_blob_size < 0)
+        {
+          T2Error("Unable to detect the file pointer position for file %s\n", filePath);
+          fclose(fp);
+          return 0;
+        }
+        msgpack.msgpack_blob = malloc(sizeof(char) * msgpack.msgpack_blob_size);
+        if (NULL == msgpack.msgpack_blob) {
+          T2Error("Unable to allocate %d bytes of memory at Line %d on %s \n",
+                    msgpack.msgpack_blob_size, __LINE__, __FILE__);
+          fclose (fp);
+          return 0;
+        }
+        fseek(fp, 0L, SEEK_SET);
+        if(fread(msgpack.msgpack_blob, sizeof(char), msgpack.msgpack_blob_size, fp) < msgpack.msgpack_blob_size)
+        {
+          T2Error("fread is returning fewer bytes than expected from the file %s\n", filePath);
+          free(msgpack.msgpack_blob);
+          fclose(fp);
+          return 0;
+        }
+        fclose (fp);
+        T2Debug("%s --out\n", __FUNCTION__);
+        *SavedProfiles=msgpack.msgpack_blob;
+        return msgpack.msgpack_blob_size;
+    }
+    #endif
+    T2Debug("%s --out\n", __FUNCTION__);
+    return 0;
 }
 
 T2ERROR datamodel_MsgpackProcessProfile(char *str , int strSize)

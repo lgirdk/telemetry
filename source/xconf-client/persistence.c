@@ -55,7 +55,7 @@ T2ERROR fetchLocalConfigs(const char* path, Vector *configList)
         int         status;
         char absfilepath[256] = {'\0'};
 
-        if(entry->d_name[0] == '.')
+        if(entry->d_name[0] == '.' || (strcmp(entry->d_name,MSGPACK_REPORTPROFILES_PERSISTENT_FILE) == 0))
             continue;
 
         snprintf(absfilepath,sizeof(absfilepath), "%s%s", path, entry->d_name);

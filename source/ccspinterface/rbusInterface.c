@@ -43,7 +43,8 @@ static TelemetryEventCallback eventCallBack;
 static T2EventMarkerListCallback getMarkerListCallBack;
 static dataModelCallBack dmProcessingCallBack;
 static dataModelMsgPckCallBack dmMsgPckProcessingCallBack = NULL;
-
+static dataModelSavedJsonCallBack dmSavedJsonProcessingCallBack;
+static dataModelSavedMsgPackCallBack dmSavedMsgPackProcessingCallBack;
 static hash_map_t *compTr181ParamMap = NULL;
 
 static char* reportProfileVal = NULL ;
@@ -432,18 +433,44 @@ rbusError_t t2PropertyDataGetHandler(rbusHandle_t handle, rbusProperty_t propert
         rbusValue_Init(&value);
         if(reportProfileVal)
             rbusValue_SetString(value, reportProfileVal);
-        else
-            rbusValue_SetString(value, "");
+        else if(!reportProfilemsgPckVal){
+            T2Info("Check the persistant folder for Active Profiles\n");
+            char* temp = NULL;
+            (*dmSavedJsonProcessingCallBack)(&temp);
+            if (temp != NULL){    
+                T2Info("Profiles from persistant folder %s \n",temp);
+                rbusValue_SetString(value, temp);
+                free(temp);
+            }
+            else
+                rbusValue_SetString(value, "");
+        }
+	else
+	    rbusValue_SetString(value, "");
         rbusProperty_SetValue(property, value);
         rbusValue_Release(value);
-
     }else if(strncmp(propertyName, T2_REPORT_PROFILE_PARAM_MSG_PCK, maxParamLen) == 0) {
         rbusValue_t value;
         rbusValue_Init(&value);
         if(reportProfilemsgPckVal)
             rbusValue_SetString(value, reportProfilemsgPckVal);
-        else
-            rbusValue_SetString(value, "");
+        else if (!reportProfileVal) {
+            char* temp = NULL;
+            int size;
+            char* text;
+            size = (*dmSavedMsgPackProcessingCallBack)(&temp);
+            if (temp != NULL && size > 0){
+                text = g_base64_encode (temp, size);
+                T2Info("Profiles from persistant folder profile.msgpack \n");
+                rbusValue_SetString(value, text);
+                free(text);
+		free(temp);
+            }
+            else
+                rbusValue_SetString(value, "");
+        }
+	else
+	    rbusValue_SetString(value, "");
         rbusProperty_SetValue(property, value);
         rbusValue_Release(value);
 
@@ -654,13 +681,15 @@ void unregisterDEforCompEventList(){
  * Data element over bus will be Device.X_RDKCENTRAL-COM_T2.ReportProfiles,
  *    Device.X_RDKCENTRAL-COM_T2.ReportProfilesMsgPack
  */
-T2ERROR regDEforProfileDataModel(dataModelCallBack dmCallBackHandler,  dataModelMsgPckCallBack dmMsgPckCallBackHandler) {
+T2ERROR regDEforProfileDataModel(dataModelCallBack dmCallBackHandler,  dataModelMsgPckCallBack dmMsgPckCallBackHandler, dataModelSavedJsonCallBack dmSavedJsonCallBack, dataModelSavedMsgPackCallBack dmSavedMsgPackCallBack) {
 
     T2Debug("%s ++in\n", __FUNCTION__);
     char deNameSpace[125] = { '\0' };
     char deMsgPck[125] = { '\0' };
     rbusError_t ret = RBUS_ERROR_SUCCESS;
     T2ERROR status = T2ERROR_SUCCESS;
+    dmSavedJsonProcessingCallBack = dmSavedJsonCallBack;
+    dmSavedMsgPackProcessingCallBack = dmSavedMsgPackCallBack;
 
     snprintf(deNameSpace, 124 , "%s", T2_REPORT_PROFILE_PARAM);
     snprintf(deMsgPck, 124 , "%s", T2_REPORT_PROFILE_PARAM_MSG_PCK);

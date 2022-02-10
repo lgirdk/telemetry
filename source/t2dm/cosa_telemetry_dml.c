@@ -78,12 +78,23 @@
 ULONG Telemetry_GetParamStringValue(ANSC_HANDLE hInsContext, char* ParamName, char* pValue, ULONG* pUlSize)
 {
     PCOSA_DATAMODEL_TELEMETRY pMyObject = (PCOSA_DATAMODEL_TELEMETRY) g_pCosaBEManager->hTelemetry;
-
+    
     if (strcmp(ParamName, "ReportProfiles") == 0)
     {
-        if (pMyObject->JsonBlob == NULL)
-            return 0;
-
+        char* temp = NULL;
+        if (pMyObject->JsonBlob == NULL){
+            if (pMyObject->MsgpackBlob != NULL)
+		return 0;
+	    datamodel_getSavedJsonProfilesasString(&temp);
+            if (temp != NULL){
+                pMyObject->JsonBlob = (char *)AnscAllocateMemory( AnscSizeOfString(temp) + 1 );
+                strncpy(pMyObject->JsonBlob, temp, strlen(temp));
+                pMyObject->JsonBlob[strlen(temp)] = '\0';
+                free(temp);
+            }
+	    else
+                return 0;
+        }
         if(*pUlSize < strlen(pMyObject->JsonBlob))
         {
             *pUlSize = strlen(pMyObject->JsonBlob);
@@ -97,9 +108,25 @@ ULONG Telemetry_GetParamStringValue(ANSC_HANDLE hInsContext, char* ParamName, ch
 
     if (strcmp(ParamName, "ReportProfilesMsgPack") == 0)
     {
-        if (pMyObject->MsgpackBlob == NULL)
-            return 0;
-
+        char* temp = NULL;
+        int size;
+      
+        if (pMyObject->MsgpackBlob == NULL){
+            if (pMyObject->JsonBlob != NULL)
+		return 0;
+	    size = datamodel_getSavedMsgpackProfilesasString (&temp);
+            if (temp != NULL && size > 0){
+                ULONG stringSize = size;
+                char* Unpack = AnscBase64Encode(temp, stringSize);
+                pMyObject->MsgpackBlob = (char *)AnscAllocateMemory( AnscSizeOfString(Unpack) + 1 );
+                strncpy(pMyObject->MsgpackBlob, Unpack, strlen(Unpack));
+                pMyObject->MsgpackBlob[strlen(Unpack)] = '\0';
+                free(temp);
+		free(Unpack);
+            }
+	    else
+               return 0;
+        }
         if(*pUlSize < strlen(pMyObject->MsgpackBlob))
         {
             *pUlSize = strlen(pMyObject->MsgpackBlob);
@@ -138,8 +165,15 @@ BOOL Telemetry_SetParamStringValue(ANSC_HANDLE hInsContext, char* ParamName, cha
         pMyObject->JsonBlob = (char *)AnscAllocateMemory( AnscSizeOfString(pString) + 1 );
         strncpy(pMyObject->JsonBlob, pString, strlen(pString));
         pMyObject->JsonBlob[strlen(pString)] = '\0';
-
-        return TRUE;
+        /**
+         * New profiles were set via JSON blob. Free up the static mem holding stale message pack blob in sync with Rbus mode
+         */
+        if (pMyObject->MsgpackBlob != NULL)
+        {
+            AnscFreeMemory((ANSC_HANDLE) (pMyObject->MsgpackBlob));
+            pMyObject->MsgpackBlob = NULL;
+        }
+	return TRUE;
     }
 
     if (strcmp(ParamName, "ReportProfilesMsgPack") == 0)
@@ -162,8 +196,15 @@ BOOL Telemetry_SetParamStringValue(ANSC_HANDLE hInsContext, char* ParamName, cha
         pMyObject->MsgpackBlob = (char *)AnscAllocateMemory( AnscSizeOfString(pString) + 1 );
         strncpy(pMyObject->MsgpackBlob, pString, strlen(pString));
         pMyObject->MsgpackBlob[strlen(pString)] = '\0';
-	
-        return TRUE;
+        /**
+         * New profiles were set via msgpack blob. Free up the static mem holding stale JSON blob in sync with Rbus mode
+         */
+        if (pMyObject->JsonBlob != NULL)
+        {
+            AnscFreeMemory((ANSC_HANDLE) (pMyObject->JsonBlob));
+            pMyObject->JsonBlob = NULL;
+        }
+	return TRUE;
     }
 
     return FALSE;

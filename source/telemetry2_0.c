@@ -100,6 +100,10 @@ static void terminate() {
     if(0 != remove(T2_CONFIG_READY)){
         T2Info("%s Unable to remove config initialization complete flag \n", __FUNCTION__);
     }
+    if(0 != remove("/tmp/telemetry_initialized")){
+       T2Info("%s Unable to remove telemetry initialization complete flag \n", __FUNCTION__);
+    }
+
     rdk_logger_deinit();
 }
 
@@ -215,6 +219,10 @@ static void t2DaemonMainModeInit( ) {
         exit(0);
     }
 
+    FILE *fd;
+    if ((fd = fopen ("/tmp/telemetry_initialized", "w")) != NULL) {
+        fclose(fd);
+    }
 
     T2Info("Telemetry 2.0 Component Init Success\n");
 

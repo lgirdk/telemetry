@@ -116,6 +116,7 @@ static void terminate()
     remove("/tmp/.t2ReadyToReceiveEvents");
     remove("/tmp/telemetry_initialized_bootup");
     remove(T2_CONFIG_READY);
+    remove("/tmp/telemetry_initialized");
 }
 
 static void _print_stack_backtrace(void)
@@ -264,6 +265,10 @@ static void t2DaemonMainModeInit( ) {
         exit(0);
     }
 
+    FILE *fd;
+    if ((fd = fopen ("/tmp/telemetry_initialized", "w")) != NULL) {
+        fclose(fd);
+    }
 
     T2Info("Telemetry 2.0 Component Init Success\n");
 

@@ -124,6 +124,10 @@ static void terminate()
     if(remove(T2_CONFIG_READY) != 0) {
         T2Error("removing the file T2_CONFIG_READY failed!\n");
     }
+
+    if(remove("/tmp/telemetry_initialized") != 0) {
+        T2Error("removing the file /tmp/telemetry_initialized failed!\n");
+    }
 }
 static void _print_stack_backtrace(void)
 {
@@ -271,6 +275,10 @@ static void t2DaemonMainModeInit( ) {
         exit(0);
     }
 
+    FILE *fd;
+    if ((fd = fopen ("/tmp/telemetry_initialized", "w")) != NULL) {
+        fclose(fd);
+    }
 
     T2Info("Telemetry 2.0 Component Init Success\n");
 

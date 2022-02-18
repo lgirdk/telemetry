@@ -69,7 +69,7 @@ T2ERROR fetchLocalConfigs(const char* path, Vector *configList)
 
         status = fstat(fp, &filestat);
         if(status == 0) {
-            T2Info("Filename : %s Size : %ld\n", entry->d_name, filestat.st_size);
+            T2Info("Filename : %s Size : %ld\n", entry->d_name, (long int)filestat.st_size);
 
             Config *config = (Config *)malloc(sizeof(Config));
             memset(config, 0 , sizeof(Config));
@@ -80,7 +80,7 @@ T2ERROR fetchLocalConfigs(const char* path, Vector *configList)
             config->configData[filestat.st_size] = '\0';
 
             if(read_size != filestat.st_size)
-                T2Error("read size = %d filestat.st_size = %lu\n", read_size, filestat.st_size);
+                T2Error("read size = %d filestat.st_size = %lu\n", read_size, (unsigned long)filestat.st_size);
             close(fp);
             Vector_PushBack(configList, config);
 

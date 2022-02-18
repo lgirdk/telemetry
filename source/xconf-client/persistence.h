@@ -26,6 +26,9 @@
 #if defined(ENABLE_RDKB_SUPPORT)
 #define XCONFPROFILE_PERSISTENCE_PATH "/nvram/.t2persistentfolder/"
 #define REPORTPROFILES_PERSISTENCE_PATH "/nvram/.t2reportprofiles/"
+#elif defined(DEVICE_EXTENDER)
+#define XCONFPROFILE_PERSISTENCE_PATH ""
+#define REPORTPROFILES_PERSISTENCE_PATH "/usr/opensync/data/.t2reportprofiles/"
 #else
 #define XCONFPROFILE_PERSISTENCE_PATH "/opt/.t2persistentfolder/"
 #define REPORTPROFILES_PERSISTENCE_PATH "/opt/.t2reportprofiles/"

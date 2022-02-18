@@ -26,6 +26,8 @@
 
 #if defined(ENABLE_RDKB_SUPPORT)
 #define ENABLE_DEBUG_FLAG "/nvram/enable_t2_debug"
+#elif defined(DEVICE_EXTENDER)
+#define ENABLE_DEBUG_FLAG "/usr/opensync/data/enable_t2_debug"
 #else
 #define ENABLE_DEBUG_FLAG "/opt/enable_t2_debug"
 #endif

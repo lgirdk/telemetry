@@ -16,12 +16,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
 */
-#ifdef __GNUC__
-#ifndef _BUILD_ANDROID
-#include <execinfo.h>
-#endif
-#endif
-
 #include "telemetry2_0.h"
 
 #include <stdio.h>
@@ -33,7 +27,13 @@
 #include <pthread.h>
 #include <signal.h>
 #include <curl/curl.h>
+#ifdef __GNUC__
+#ifndef _BUILD_ANDROID
+#ifdef __GLIBC__
 #include <execinfo.h>
+#endif
+#endif
+#endif
 #ifdef DUAL_CORE_XB3
 #include <sys/inotify.h>
 #endif
@@ -66,6 +66,7 @@ T2ERROR initTelemetry()
 
     if(T2ERROR_SUCCESS == initReportProfiles())
     {
+        #ifndef DEVICE_EXTENDER
         if(T2ERROR_SUCCESS == initXConfClient())
         {
             ret = T2ERROR_SUCCESS;
@@ -73,6 +74,10 @@ T2ERROR initTelemetry()
         }
         else
             T2Error("Failed to initializeXConfClient\n");
+        #endif
+        #if defined(DEVICE_EXTENDER)
+        ret = T2ERROR_SUCCESS;
+        #endif
     }
     else
         T2Error("Failed to initialize ReportProfiles\n");
@@ -84,7 +89,10 @@ T2ERROR initTelemetry()
 
 
 static void terminate() {
+
+    #ifndef DEVICE_EXTENDER
     uninitXConfClient();
+    #endif
     ReportProfiles_uninit();
     rdk_logger_deinit();
     if(0 != remove("/tmp/.t2ReadyToReceiveEvents")){
@@ -102,6 +110,7 @@ static void _print_stack_backtrace(void)
 {
 #ifdef __GNUC__
 #ifndef _BUILD_ANDROID
+#ifdef __GLIBC__
     void* tracePtrs[100];
     char** funcNames = NULL;
     int i, count = 0;
@@ -121,6 +130,7 @@ static void _print_stack_backtrace(void)
     }
 #endif
 #endif
+#endif
 }
 
 void sig_handler(int sig)
@@ -129,7 +139,9 @@ void sig_handler(int sig)
     if ( sig == SIGINT ) {
         signal(SIGINT, sig_handler); /* reset it to this function */
         T2Info(("SIGINT received!\n"));
+        #ifndef DEVICE_EXTENDER
         uninitXConfClient();
+        #endif
         ReportProfiles_uninit();
         exit(0);
     }
@@ -149,12 +161,14 @@ void sig_handler(int sig)
     else if(sig == SIGUSR2 || sig == EXEC_RELOAD)
     {
         T2Info(("EXEC_RELOAD received!\n"));
+        #ifndef DEVICE_EXTENDER
         stopXConfClient();
         if(T2ERROR_SUCCESS == startXConfClient()) {
             T2Info("XCONF config reload - SUCCESS \n");
         }else {
             T2Info("XCONF config reload - IN PROGRESS ... Ignore current reload request \n");
         }
+        #endif
 
     }
     else if ( sig == SIGTERM || sig == SIGKILL )

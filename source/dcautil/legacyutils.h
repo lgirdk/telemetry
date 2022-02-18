@@ -53,7 +53,11 @@
 #define DEVICE_PROPERTIES "/etc/device.properties"
 
 #define DEFAULT_SEEK_PREFIX "/opt/.telemetry/tmp/rtl_"
+#if defined(DEVICE_EXTENDER)
+#define DEFAULT_LOG_PATH "/var/log/messages"
+#else
 #define DEFAULT_LOG_PATH "/opt/logs/"
+#endif
 
 typedef struct _GrepSeekProfile {
     hash_map_t *logFileSeekMap;

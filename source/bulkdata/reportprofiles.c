@@ -22,6 +22,8 @@
 #include <string.h>
 #include <stdio.h>
 #include <stddef.h>
+#include <limits.h>
+#include <sys/types.h>
 
 #include "reportprofiles.h"
 
@@ -47,7 +49,11 @@
 //Including Webconfig Framework For Telemetry 2.0 As part of RDKB-28897
 #define SUBDOC_COUNT    1
 #define SUBDOC_NAME "telemetry"
+#if defined(DEVICE_EXTENDER)
+#define WEBCONFIG_BLOB_VERSION "/usr/opensync/data/telemetry_webconfig_blob_version.txt"
+#else
 #define WEBCONFIG_BLOB_VERSION "/nvram/telemetry_webconfig_blob_version.txt"
+#endif
 
 //Used in check_component_crash to inform Webconfig about telemetry component crash
 #define TELEMETRY_INIT_FILE_BOOTUP "/tmp/telemetry_initialized_bootup"
@@ -373,7 +379,9 @@ T2ERROR initReportProfiles()
     drop_root();
     #endif
 
+    #ifndef DEVICE_EXTENDER
     ProfileXConf_init();
+    #endif
     t2Version = strdup("2.0.1"); // Setting the version to 2.0.1
     {
         T2Debug("T2 Version = %s\n", t2Version);
@@ -468,7 +476,9 @@ T2ERROR ReportProfiles_uninit( ) {
         uninitProfileList();
     }
 
+    #ifndef DEVICE_EXTENDER
     ProfileXConf_uninit();
+    #endif
     free(bulkdata.protocols);
     bulkdata.protocols = NULL ;
     free(bulkdata.encodingTypes);
@@ -641,7 +651,6 @@ void ReportProfiles_ProcessReportProfilesBlob(cJSON *profiles_root) {
                 Profile *profile = 0;
                 free(existingProfileHash);
                 if(T2ERROR_SUCCESS == processConfiguration(&(profileEntry->config), profileName, profileEntry->hash, &profile)) { //CHECK if process configuration should have locking mechanism
-
                     if(T2ERROR_SUCCESS != saveConfigToFile(REPORTPROFILES_PERSISTENCE_PATH, profile->name, profileEntry->config))
                     {
                         T2Error("Unable to save profile : %s to disk\n", profile->name);
@@ -662,7 +671,6 @@ void ReportProfiles_ProcessReportProfilesBlob(cJSON *profiles_root) {
             Profile *profile = 0;
 
             if(T2ERROR_SUCCESS == processConfiguration(&(profileEntry->config), profileName, profileEntry->hash, &profile)) { //CHECK if process configuration should have locking mechanism
-
                 if(T2ERROR_SUCCESS != saveConfigToFile(REPORTPROFILES_PERSISTENCE_PATH, profile->name, profileEntry->config))
                 {
                     T2Error("Unable to save profile : %s to disk\n", profile->name);
@@ -819,7 +827,7 @@ void ReportProfiles_ProcessReportProfilesMsgPackBlob(char *msgpack_blob , int ms
     execDataPf->rollbackFunc = NULL;
     execDataPf->freeResources = msgpack_free_blob;
     T2Debug("subdocversion is %d transac_id in integer is %d entry_count is %lu subdoc_name is %s"
-            " calcTimeout is %p\n",execDataPf->version,execDataPf->txid,(ULONG)execDataPf->numOfEntries,
+            " calcTimeout is %p\n",execDataPf->version,execDataPf->txid,(ulong) execDataPf->numOfEntries,
             execDataPf->subdoc_name,execDataPf->calcTimeout);
 
     PushBlobRequest(execDataPf);

@@ -96,6 +96,19 @@ AC_ARG_ENABLE([ccspsupport],
 
 AM_CONDITIONAL([ENABLE_CCSP_SUPPORT], [test x$ENABLE_CCSP_SUPPORT = xtrue])
 
+ENABLE_DEVICE_EXTENDER=false
+AC_ARG_ENABLE([deviceextender],
+              AS_HELP_STRING([--enable-deviceextender],[enable device extender (default is no)]),
+              [
+                case "${enableval}" in
+                 yes) ENABLE_DEVICE_EXTENDER=true;;
+                  no) AC_MSG_ERROR([device extender support is disabled]) ;;
+                   *) AC_MSG_ERROR([bad value ${enableval} for --enable-deviceextender]) ;;
+                esac
+              ],
+              [echo "Extender device  support is disabled"])
+
+AM_CONDITIONAL([ENABLE_DEVICE_EXTENDER], [test x$ENABLE_DEVICE_EXTENDER = xtrue])
 
 AC_CONFIG_FILES([Makefile
                  source/Makefile

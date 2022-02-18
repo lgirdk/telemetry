@@ -259,7 +259,7 @@ static void* CollectAndReportXconf(void* data)
     }
     clock_gettime(CLOCK_REALTIME, &endTime);
     getLapsedTime(&elapsedTime, &endTime, &startTime);
-    T2Info("Elapsed Time for : %s = %lu.%lu (Sec.NanoSec)\n", profile->name, elapsedTime.tv_sec, elapsedTime.tv_nsec);
+    T2Info("Elapsed Time for : %s = %lu.%lu (Sec.NanoSec)\n", profile->name, (unsigned long)elapsedTime.tv_sec, elapsedTime.tv_nsec);
     if(jsonReport)
     {
         free(jsonReport);

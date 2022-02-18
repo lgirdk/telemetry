@@ -130,7 +130,7 @@ void* TimeoutThread(void *arg)
             {
 		 memset(&_MinThresholdTimeTs, 0, sizeof(struct timespec));
                  clock_gettime(CLOCK_REALTIME, &_MinThresholdTimeTs);
-		 T2Debug("minThresholdTime left %ld -\n", (_MinThresholdTimeTs.tv_sec - _MinThresholdTimeStart.tv_sec));
+		 T2Debug("minThresholdTime left %ld -\n", (long int)(_MinThresholdTimeTs.tv_sec - _MinThresholdTimeStart.tv_sec));
                  if(minThresholdTime < (_MinThresholdTimeTs.tv_sec - _MinThresholdTimeStart.tv_sec)){
                       minThresholdTime = 0;
 		      T2Debug("minThresholdTime reset done\n");

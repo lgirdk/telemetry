@@ -155,10 +155,6 @@ ssp_create_t2
     {
         return ANSC_STATUS_RESOURCES;
     }
-    else
-    {
-        AnscZeroMemory(pT2FcContext, sizeof(CCSP_FC_CONTEXT));
-    }
 
     pDslhCpeController = DslhCreateCpeController(NULL, NULL, NULL);
 

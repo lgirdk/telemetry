@@ -220,7 +220,18 @@ Vector* getRbusProfileParamValues(Vector *paramList) {
                         if(paramValues[iterate]) {
                             stringValue = (char*)rbusProperty_GetName(nextProperty);
                             paramValues[iterate]->parameterName = strdup(stringValue);
-                            paramValues[iterate]->parameterValue = rbusValue_ToString(value, NULL, 0);
+
+                            rbusValueType_t rbusValueType = rbusValue_GetType(value);
+                            if(rbusValueType == RBUS_BOOLEAN) {
+                                if(rbusValue_GetBoolean(value)) {
+                                    paramValues[iterate]->parameterValue = strdup("true");
+                                }else {
+                                    paramValues[iterate]->parameterValue = strdup("false");
+                                }
+                            }else {
+                                paramValues[iterate]->parameterValue = rbusValue_ToString(value, NULL, 0);
+                            }
+
                             #if defined(ENABLE_RDKV_SUPPORT)
                             // Workaround as video platforms doesn't have a TR param which gives Firmware name
                             // Existing dashboards doesn't like version with file name exentsion

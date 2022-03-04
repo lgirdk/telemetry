@@ -81,7 +81,7 @@ T2ERROR initReportProfiles();
 
 T2ERROR ReportProfiles_uninit();
 
-void ReportProfiles_ProcessReportProfilesBlob(cJSON *profiles_root);
+void ReportProfiles_ProcessReportProfilesBlob(cJSON *profiles_root , bool rprofiletypes);
 
 void ReportProfiles_Interrupt();
 

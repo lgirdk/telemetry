@@ -78,7 +78,6 @@
 ULONG Telemetry_GetParamStringValue(ANSC_HANDLE hInsContext, char* ParamName, char* pValue, ULONG* pUlSize)
 {
     PCOSA_DATAMODEL_TELEMETRY pMyObject = (PCOSA_DATAMODEL_TELEMETRY) g_pCosaBEManager->hTelemetry;
-    
     if (strcmp(ParamName, "ReportProfiles") == 0)
     {
         char* temp = NULL;
@@ -110,7 +109,7 @@ ULONG Telemetry_GetParamStringValue(ANSC_HANDLE hInsContext, char* ParamName, ch
     {
         char* temp = NULL;
         int size;
-      
+
         if (pMyObject->MsgpackBlob == NULL){
             if (pMyObject->JsonBlob != NULL)
 		return 0;
@@ -137,7 +136,22 @@ ULONG Telemetry_GetParamStringValue(ANSC_HANDLE hInsContext, char* ParamName, ch
         *pUlSize = strlen(pMyObject->MsgpackBlob);
         return 0;
     }
-   
+
+    if (strcmp(ParamName, "Temp_ReportProfiles") == 0)
+    {
+        if (pMyObject->JsonTmpBlob == NULL)
+            return 0;
+
+        if(*pUlSize < strlen(pMyObject->JsonTmpBlob))
+        {
+            *pUlSize = strlen(pMyObject->JsonTmpBlob);
+            return 1;
+        }
+
+        AnscCopyString(pValue, pMyObject->JsonTmpBlob);
+        *pUlSize = strlen(pMyObject->JsonTmpBlob);
+        return 0;
+    }
     return -1;
 }
 
@@ -151,7 +165,7 @@ BOOL Telemetry_SetParamStringValue(ANSC_HANDLE hInsContext, char* ParamName, cha
     }
     if (strcmp(ParamName, "ReportProfiles") == 0)
     {
-        if(T2ERROR_SUCCESS != datamodel_processProfile(pString))
+        if(T2ERROR_SUCCESS != datamodel_processProfile(pString , T2_RP))
         {
             return FALSE;
         }
@@ -205,6 +219,25 @@ BOOL Telemetry_SetParamStringValue(ANSC_HANDLE hInsContext, char* ParamName, cha
             pMyObject->JsonBlob = NULL;
         }
 	return TRUE;
+    }
+
+    if (strcmp(ParamName, "Temp_ReportProfiles") == 0)
+    {
+        if(T2ERROR_SUCCESS != datamodel_processProfile(pString , T2_TEMP_RP))
+        {
+            return FALSE;
+        }
+
+        if (pMyObject->JsonTmpBlob != NULL)
+        {
+            AnscFreeMemory((ANSC_HANDLE) (pMyObject->JsonTmpBlob));
+            pMyObject->JsonTmpBlob = NULL;
+        }
+
+        pMyObject->JsonTmpBlob = (char *)AnscAllocateMemory( AnscSizeOfString(pString) + 1 );
+        strncpy(pMyObject->JsonTmpBlob, pString, strlen(pString));
+        pMyObject->JsonTmpBlob[strlen(pString)] = '\0';
+        return TRUE;
     }
 
     return FALSE;

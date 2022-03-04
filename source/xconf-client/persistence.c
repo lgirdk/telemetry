@@ -48,6 +48,13 @@ T2ERROR fetchLocalConfigs(const char* path, Vector *configList)
 
         return T2ERROR_FAILURE;
     }
+    if(strcmp(path , SHORTLIVED_PROFILES_PATH) == 0)
+    {
+        T2Debug("%s alreay created : \n", SHORTLIVED_PROFILES_PATH);
+        T2Debug("clearing short lived profile from the disk \n");
+        clearPersistenceFolder(SHORTLIVED_PROFILES_PATH);        
+	return T2ERROR_SUCCESS;
+    }
 
     while ((entry = readdir(dir)) != NULL)
     {

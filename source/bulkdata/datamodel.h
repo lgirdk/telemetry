@@ -20,13 +20,14 @@
 #ifndef  _DATAMODEL_H_
 #define  _DATAMODEL_H_
 
+#include <stdbool.h>
 #include "telemetry2_0.h"
 
 T2ERROR datamodel_init(void);
 
 void datamodel_unInit(void);
 
-T2ERROR datamodel_processProfile(char *JsonBlob);
+T2ERROR datamodel_processProfile(char *JsonBlob , bool rprofiletypes);
 
 void datamodel_getSavedJsonProfilesasString(char** SavedProfiles);
 

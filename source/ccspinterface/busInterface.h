@@ -50,7 +50,7 @@ typedef void (*TelemetryEventCallback)(char* eventInfo, char* user_data);
 
 typedef void (*T2EventMarkerListCallback)(const char* componentName, void **eventMarkerList);
 
-typedef T2ERROR (*dataModelCallBack)(char* dataBlob);
+typedef T2ERROR (*dataModelCallBack)(char* dataBlob , bool rprofiletypes);
 
 typedef T2ERROR (*dataModelMsgPckCallBack)(char *str , int strSize);
 

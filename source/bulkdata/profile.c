@@ -753,6 +753,7 @@ void sendLogUploadInterruptToScheduler()
 
 static void loadReportProfilesFromDisk()
 {
+    fetchLocalConfigs(SHORTLIVED_PROFILES_PATH , NULL);  //API used for creating /tmp/t2reportprofiles dir
 #if defined(FEATURE_SUPPORT_WEBCONFIG)
     T2Info("loadReportProfilesFromDisk \n");
     char filePath[REPORTPROFILES_FILE_PATH_SIZE] = {'\0'};
@@ -793,7 +794,7 @@ static void loadReportProfilesFromDisk()
     }
     T2Info("JSON: loadReportProfilesFromDisk \n");
 #endif
-	
+
     int configIndex = 0;
     Vector *configList = NULL;
     Config *config = NULL;

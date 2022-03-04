@@ -49,6 +49,12 @@
                     <syntax>string</syntax>
                     <writable>true</writable>
                 </parameter>
+                <parameter>
+                    <name>Temp_ReportProfiles</name>
+                    <type>string</type>
+                    <syntax>string</syntax>
+                    <writable>true</writable>
+                </parameter>
             </parameters>
         </object>
     </objects>

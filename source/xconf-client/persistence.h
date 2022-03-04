@@ -34,6 +34,7 @@
 #define REPORTPROFILES_PERSISTENCE_PATH "/opt/.t2reportprofiles/"
 #endif
 
+#define SHORTLIVED_PROFILES_PATH               "/tmp/t2reportprofiles/"
 #define MSGPACK_REPORTPROFILES_PERSISTENT_FILE "profiles.msgpack"
 #define REPORTPROFILES_FILE_PATH_SIZE 256
 

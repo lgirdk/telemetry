@@ -34,7 +34,7 @@
 #define buffLen 1024
 #define maxParamLen 128
 
-#define NUM_PROFILE_ELEMENTS 2
+#define NUM_PROFILE_ELEMENTS 3
 
 #define RBUS_METHOD_TIMEOUT 10
 
@@ -48,6 +48,7 @@ static dataModelSavedMsgPackCallBack dmSavedMsgPackProcessingCallBack;
 static hash_map_t *compTr181ParamMap = NULL;
 
 static char* reportProfileVal = NULL ;
+static char* tmpReportProfileVal = NULL ;
 static char* reportProfilemsgPckVal = NULL ;
 T2ERROR T2RbusConsumer(TriggerCondition *triggerCondition);
 
@@ -294,7 +295,7 @@ rbusError_t t2PropertyDataSetHandler(rbusHandle_t handle, rbusProperty_t prop, r
 
     char const* paramName = rbusProperty_GetName(prop);
     if((strncmp(paramName, T2_EVENT_PARAM, maxParamLen) != 0) && (strncmp(paramName, T2_REPORT_PROFILE_PARAM, maxParamLen) != 0)
-            && (strncmp(paramName, T2_REPORT_PROFILE_PARAM_MSG_PCK, maxParamLen) != 0)) {
+            && (strncmp(paramName, T2_REPORT_PROFILE_PARAM_MSG_PCK, maxParamLen) != 0) && (strncmp(paramName, T2_TEMP_REPORT_PROFILE_PARAM, maxParamLen) != 0)) {
         T2Debug("Unexpected parameter = %s \n", paramName);
         T2Debug("%s --out\n", __FUNCTION__);
         return RBUS_ERROR_ELEMENT_DOES_NOT_EXIST;
@@ -336,7 +337,7 @@ rbusError_t t2PropertyDataSetHandler(rbusHandle_t handle, rbusProperty_t prop, r
             char* data = rbusValue_ToString(paramValue_t, NULL, 0);
             if(data) {
                 T2Debug("Call datamodel function  with data %s \n", data);
-                if(T2ERROR_SUCCESS != dmProcessingCallBack(data))
+                if(T2ERROR_SUCCESS != dmProcessingCallBack(data , T2_RP))
                 {
                     free(data);
                     return RBUS_ERROR_INVALID_INPUT;
@@ -394,6 +395,28 @@ rbusError_t t2PropertyDataSetHandler(rbusHandle_t handle, rbusProperty_t prop, r
                 reportProfilemsgPckVal = strdup(data);
                 free(data);
             }
+            }else {
+               T2Debug("Unexpected value type for property %s \n", paramName);
+            }
+
+    }else if(strncmp(paramName, T2_TEMP_REPORT_PROFILE_PARAM, maxParamLen) == 0) {
+        T2Debug("Inside datamodel handler for Short-lived profile \n");
+        if(type_t == RBUS_STRING) {
+            char* data = rbusValue_ToString(paramValue_t, NULL, 0);
+            if(data) {
+                T2Debug("Call datamodel function  with data %s \n", data);
+                if(T2ERROR_SUCCESS != dmProcessingCallBack(data , T2_TEMP_RP))
+                {
+                    free(data);
+                    return RBUS_ERROR_INVALID_INPUT;
+                }
+                if (tmpReportProfileVal){
+                    free(tmpReportProfileVal);
+                    tmpReportProfileVal = NULL;
+                }
+                tmpReportProfileVal = strdup(data);
+                free(data);
+            }
         } else {
             T2Debug("Unexpected value type for property %s \n", paramName);
         }
@@ -437,7 +460,7 @@ rbusError_t t2PropertyDataGetHandler(rbusHandle_t handle, rbusProperty_t propert
             T2Info("Check the persistant folder for Active Profiles\n");
             char* temp = NULL;
             (*dmSavedJsonProcessingCallBack)(&temp);
-            if (temp != NULL){    
+            if (temp != NULL){
                 T2Info("Profiles from persistant folder %s \n",temp);
                 rbusValue_SetString(value, temp);
                 free(temp);
@@ -474,7 +497,17 @@ rbusError_t t2PropertyDataGetHandler(rbusHandle_t handle, rbusProperty_t propert
         rbusProperty_SetValue(property, value);
         rbusValue_Release(value);
 
-    }else {
+    }else if(strncmp(propertyName, T2_TEMP_REPORT_PROFILE_PARAM, maxParamLen) == 0) {
+        rbusValue_t value;
+        rbusValue_Init(&value);
+        if(tmpReportProfileVal)
+            rbusValue_SetString(value, tmpReportProfileVal);
+        else
+            rbusValue_SetString(value, "");
+        rbusProperty_SetValue(property, value);
+        rbusValue_Release(value);
+    }
+    else {
         // START : Extract component name requesting for event marker list
         if(compTr181ParamMap != NULL)
             componentName = (char*) hash_map_get(compTr181ParamMap, propertyName);
@@ -612,7 +645,9 @@ T2ERROR regDEforCompEventList(const char* componentName, T2EventMarkerListCallba
         return T2ERROR_FAILURE;
     }
 
-    rbusDataElement_t dataElements[1] = { { deNameSpace, RBUS_ELEMENT_TYPE_PROPERTY, { t2PropertyDataGetHandler, NULL, NULL, NULL,NULL, NULL } } };
+    rbusDataElement_t dataElements[1] = {
+      { deNameSpace, RBUS_ELEMENT_TYPE_PROPERTY, { t2PropertyDataGetHandler, NULL, NULL, NULL,NULL, NULL } }
+    };
     ret = rbus_regDataElements(t2bus_handle, 1, dataElements);
     if(ret == RBUS_ERROR_SUCCESS) {
         T2Debug("Registered data element %s with bus \n ", deNameSpace);
@@ -686,6 +721,7 @@ T2ERROR regDEforProfileDataModel(dataModelCallBack dmCallBackHandler,  dataModel
     T2Debug("%s ++in\n", __FUNCTION__);
     char deNameSpace[125] = { '\0' };
     char deMsgPck[125] = { '\0' };
+    char deTmpNameSpace[125] = { '\0' };
     rbusError_t ret = RBUS_ERROR_SUCCESS;
     T2ERROR status = T2ERROR_SUCCESS;
     dmSavedJsonProcessingCallBack = dmSavedJsonCallBack;
@@ -693,6 +729,7 @@ T2ERROR regDEforProfileDataModel(dataModelCallBack dmCallBackHandler,  dataModel
 
     snprintf(deNameSpace, 124 , "%s", T2_REPORT_PROFILE_PARAM);
     snprintf(deMsgPck, 124 , "%s", T2_REPORT_PROFILE_PARAM_MSG_PCK);
+    snprintf(deTmpNameSpace, 124 , "%s", T2_TEMP_REPORT_PROFILE_PARAM);
     if(!t2bus_handle && T2ERROR_SUCCESS != rBusInterface_Init()) {
         T2Error("%s Failed in getting bus handles \n", __FUNCTION__);
         T2Debug("%s --out\n", __FUNCTION__);
@@ -701,7 +738,8 @@ T2ERROR regDEforProfileDataModel(dataModelCallBack dmCallBackHandler,  dataModel
 
     rbusDataElement_t dataElements[NUM_PROFILE_ELEMENTS] = {
         {deNameSpace, RBUS_ELEMENT_TYPE_PROPERTY, {t2PropertyDataGetHandler, t2PropertyDataSetHandler, NULL, NULL, NULL, NULL}},
-        {deMsgPck, RBUS_ELEMENT_TYPE_PROPERTY, {t2PropertyDataGetHandler, t2PropertyDataSetHandler, NULL, NULL, NULL, NULL}}
+        {deMsgPck, RBUS_ELEMENT_TYPE_PROPERTY, {t2PropertyDataGetHandler, t2PropertyDataSetHandler, NULL, NULL, NULL, NULL}},
+	{deTmpNameSpace, RBUS_ELEMENT_TYPE_PROPERTY, {t2PropertyDataGetHandler, t2PropertyDataSetHandler, NULL, NULL, NULL, NULL}}
     };
     ret = rbus_regDataElements(t2bus_handle, NUM_PROFILE_ELEMENTS, dataElements);
     if(ret == RBUS_ERROR_SUCCESS) {

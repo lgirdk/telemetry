@@ -101,6 +101,7 @@ ANSC_STATUS CosaTelemetryInitialize(ANSC_HANDLE hThisObject) {
     ANSC_STATUS returnStatus = ANSC_STATUS_SUCCESS;
 
     pMyObject->JsonBlob = NULL;
+    pMyObject->JsonTmpBlob = NULL;
     return returnStatus;
 }
 
@@ -135,6 +136,9 @@ ANSC_STATUS CosaTelemetryRemove(ANSC_HANDLE hThisObject) {
     /* Free internal data */
     if (pMyObject->JsonBlob)
         AnscFreeMemory((ANSC_HANDLE) (pMyObject->JsonBlob));
+
+    if (pMyObject->JsonTmpBlob)
+        AnscFreeMemory((ANSC_HANDLE) (pMyObject->JsonTmpBlob));
 
     /* Remove self */
     AnscFreeMemory((ANSC_HANDLE) pMyObject);

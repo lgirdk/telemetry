@@ -33,10 +33,14 @@ extern "C" {
 #define T2_PROFILE_UPDATED_NOTIFY "Telemetry.ReportProfiles.ProfilesUpdated"
 #define T2_REPORT_PROFILE_PARAM "Device.X_RDKCENTRAL-COM_T2.ReportProfiles"
 #define T2_REPORT_PROFILE_PARAM_MSG_PCK "Device.X_RDKCENTRAL-COM_T2.ReportProfilesMsgPack"
+#define T2_TEMP_REPORT_PROFILE_PARAM "Device.X_RDKCENTRAL-COM_T2.Temp_ReportProfiles"
 
 #define T2_MTLS_RFC "Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.Telemetry.MTLS.Enable"
 
 #define INFINITE_TIMEOUT      (unsigned int)~0
+
+#define T2_RP       0
+#define T2_TEMP_RP  1
 
 typedef enum
 {

@@ -21,12 +21,12 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include <dirent.h>
 #include <stddef.h>
 #include <limits.h>
 #include <sys/types.h>
 
 #include "reportprofiles.h"
-
 #include "t2collection.h"
 #include "persistence.h"
 #include "t2log_wrapper.h"
@@ -72,7 +72,7 @@ static bool rpInitialized = false;
 static char *t2Version = NULL;
 
 pthread_mutex_t rpMutex = PTHREAD_MUTEX_INITIALIZER;
-
+T2ERROR RemovePreRPfromDisk(const char* path , hash_map_t *map);
 static bool isT2MtlsEnable = false;
 static bool initT2MtlsEnable = false;
 
@@ -493,6 +493,33 @@ T2ERROR ReportProfiles_uninit( ) {
     return T2ERROR_SUCCESS;
 }
 
+T2ERROR RemovePreRPfromDisk(const char* path , hash_map_t *map)
+{
+    T2Debug("%s ++in\n", __FUNCTION__);
+    struct dirent *entry;
+    DIR *dir = opendir(path);
+    if (dir == NULL) {
+       T2Error("Failed to open persistence folder : %s, creating folder\n", path);
+       return T2ERROR_FAILURE;
+    }
+
+    while ((entry = readdir(dir)) != NULL)
+    {
+       T2Info("Filename : %s \n", entry->d_name);
+       if((entry->d_name[0] == '.') || (strcmp(entry->d_name, "..")==0))
+           continue;
+
+       if(NULL == hash_map_get(map, entry->d_name))
+       {
+          T2Debug("%s : Removed %s report profile from the disk due to coming new report profile \n", __FUNCTION__,entry->d_name);
+          removeProfileFromDisk(REPORTPROFILES_PERSISTENCE_PATH, entry->d_name);
+       }
+
+    }
+    T2Debug("%s ++out\n", __FUNCTION__);
+    return T2ERROR_SUCCESS;
+}
+
 static void freeProfilesHashMap(void *data) {
     T2Debug("%s ++in\n", __FUNCTION__);
     if(data != NULL) {
@@ -558,7 +585,7 @@ static T2ERROR deleteAllReportProfiles() {
     return T2ERROR_SUCCESS;
 }
 
-void ReportProfiles_ProcessReportProfilesBlob(cJSON *profiles_root) {
+void ReportProfiles_ProcessReportProfilesBlob(cJSON *profiles_root , bool rprofiletypes) {
 
     T2Debug("%s ++in\n", __FUNCTION__);
     if(profiles_root == NULL) {
@@ -619,17 +646,31 @@ void ReportProfiles_ProcessReportProfilesBlob(cJSON *profiles_root) {
     // Delete profiles not present in the new profile list
     char *profileNameKey = NULL;
     int count = hash_map_count(profileHashMap) - 1;
+    const char *DirPath = NULL;
+
+    if (rprofiletypes == T2_RP){
+        DirPath=REPORTPROFILES_PERSISTENCE_PATH;
+    }else if (rprofiletypes == T2_TEMP_RP) {
+        DirPath=SHORTLIVED_PROFILES_PATH;
+    }
 
     bool rm_flag = false;
-    while(count >= 0) {
-        profileNameKey = hash_map_lookupKey(profileHashMap, count--);
-        T2Debug("%s Map content from disk = %s \n", __FUNCTION__ , profileNameKey);
-        if(NULL == hash_map_get(receivedProfileHashMap, profileNameKey)) {
-            T2Debug("%s Profile %s not present in current config . Remove profile from disk \n", __FUNCTION__, profileNameKey);
-            removeProfileFromDisk(REPORTPROFILES_PERSISTENCE_PATH, profileNameKey);
-            T2Debug("%s Terminate profile %s \n", __FUNCTION__, profileNameKey);
-            ReportProfiles_deleteProfile(profileNameKey);
-	    rm_flag = true;
+    if(rprofiletypes == T2_RP) {
+
+        while(count >= 0) {
+            profileNameKey = hash_map_lookupKey(profileHashMap, count--);
+            T2Debug("%s Map content from disk = %s \n", __FUNCTION__ , profileNameKey);
+            if(NULL == hash_map_get(receivedProfileHashMap, profileNameKey)) {
+                T2Debug("%s Profile %s not present in current config . Remove profile from disk \n", __FUNCTION__, profileNameKey);
+                removeProfileFromDisk(DirPath, profileNameKey);
+                T2Debug("%s Terminate profile %s \n", __FUNCTION__, profileNameKey);
+                ReportProfiles_deleteProfile(profileNameKey);
+                rm_flag = true;
+            }
+        }
+
+        if(T2ERROR_SUCCESS != RemovePreRPfromDisk(DirPath , receivedProfileHashMap)) {
+            T2Error("Failed to remove previous report profile from the disk\n");
         }
     }
 
@@ -641,8 +682,8 @@ void ReportProfiles_ProcessReportProfilesBlob(cJSON *profiles_root) {
         profileName = hash_map_lookupKey(receivedProfileHashMap, profileIndex);
 
         char *existingProfileHash = hash_map_remove(profileHashMap, profileName);
-        if(existingProfileHash != NULL)
-        {
+        if(existingProfileHash != NULL) {
+
             if(!strcmp(existingProfileHash, profileEntry->hash)) {
                 T2Debug("%s Profile hash for %s is same as previous profile, ignore processing config\n", __FUNCTION__, profileName);
                 free(existingProfileHash);
@@ -650,17 +691,22 @@ void ReportProfiles_ProcessReportProfilesBlob(cJSON *profiles_root) {
             } else {
                 Profile *profile = 0;
                 free(existingProfileHash);
+
                 if(T2ERROR_SUCCESS == processConfiguration(&(profileEntry->config), profileName, profileEntry->hash, &profile)) { //CHECK if process configuration should have locking mechanism
-                    if(T2ERROR_SUCCESS != saveConfigToFile(REPORTPROFILES_PERSISTENCE_PATH, profile->name, profileEntry->config))
-                    {
+
+                    if(T2ERROR_SUCCESS != saveConfigToFile(DirPath, profile->name, profileEntry->config)) {
                         T2Error("Unable to save profile : %s to disk\n", profile->name);
                     }
-                    if(T2ERROR_SUCCESS == ReportProfiles_deleteProfile(profile->name))
-                    {
+
+                    if(T2ERROR_SUCCESS == ReportProfiles_deleteProfile(profile->name)) {
                         ReportProfiles_addReportProfile(profile);
-			rm_flag = true;
+                            if(rprofiletypes == T2_RP) {
+                                rm_flag = true;
+                            }
                     }
-                }else {
+                }
+                else
+                {
                     T2Error("Unable to parse the profile: %s, invalid configuration\n", profileName);
                 }
             }
@@ -671,20 +717,23 @@ void ReportProfiles_ProcessReportProfilesBlob(cJSON *profiles_root) {
             Profile *profile = 0;
 
             if(T2ERROR_SUCCESS == processConfiguration(&(profileEntry->config), profileName, profileEntry->hash, &profile)) { //CHECK if process configuration should have locking mechanism
-                if(T2ERROR_SUCCESS != saveConfigToFile(REPORTPROFILES_PERSISTENCE_PATH, profile->name, profileEntry->config))
-                {
+
+                if(T2ERROR_SUCCESS != saveConfigToFile(DirPath, profile->name, profileEntry->config)) {
                     T2Error("Unable to save profile : %s to disk\n", profile->name);
                 }
+
                 ReportProfiles_addReportProfile(profile);
-		rm_flag = true;
-            }else {
+                if(rprofiletypes == T2_RP) {
+                    rm_flag = true;
+                }
+            } else {
                 T2Error("Unable to parse the profile: %s, invalid configuration\n", profileName);
             }
         }
-    } // End of looping through report profiles
+    }
 
     if (rm_flag) {
-	removeProfileFromDisk(REPORTPROFILES_PERSISTENCE_PATH, MSGPACK_REPORTPROFILES_PERSISTENT_FILE);
+	removeProfileFromDisk(DirPath, MSGPACK_REPORTPROFILES_PERSISTENT_FILE);
 	T2Info("%s is removed from disk \n", MSGPACK_REPORTPROFILES_PERSISTENT_FILE);
     }
 

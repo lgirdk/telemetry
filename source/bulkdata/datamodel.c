@@ -32,14 +32,17 @@
 
 static bool               stopProcessing = true;
 static queue_t            *rpQueue = NULL;
+static queue_t            *tmpRpQueue = NULL;
 static pthread_t          rpThread;
+static pthread_t          tmpRpThread;
 static pthread_mutex_t    rpMutex;
+static pthread_mutex_t    tmpRpMutex;
 static pthread_cond_t     rpCond;
+static pthread_cond_t     tmpRpCond;
 static queue_t            *rpMsgPkgQueue = NULL;
 static pthread_t          rpMsgThread;
 static pthread_mutex_t    rpMsgMutex;
 static pthread_cond_t     msg_Cond;
-
 /**
  * Thread function to receive report profiles Json object
  */
@@ -61,7 +64,7 @@ static void *process_rp_thread(void *data)
             reportProfiles = (cJSON *)t2_queue_pop(rpQueue);
             if (reportProfiles)
             {
-                ReportProfiles_ProcessReportProfilesBlob(reportProfiles);
+                ReportProfiles_ProcessReportProfilesBlob(reportProfiles , T2_RP);
                 cJSON_Delete(reportProfiles);
                 reportProfiles = NULL;
             }
@@ -72,11 +75,40 @@ static void *process_rp_thread(void *data)
     return NULL;
 }
 
+static void *process_tmprp_thread(void *data)
+{
+    cJSON *tmpReportProfiles = NULL;
+
+    T2Debug("%s ++in\n", __FUNCTION__);
+
+    while(!stopProcessing)
+    {
+        pthread_mutex_lock(&tmpRpMutex);
+        T2Info("%s: Waiting for event from tr-181 \n", __FUNCTION__);
+        pthread_cond_wait(&tmpRpCond, &tmpRpMutex);
+
+        T2Debug("%s: Received wake up signal \n", __FUNCTION__);
+        if(t2_queue_count(tmpRpQueue) > 0)
+        {
+            tmpReportProfiles = (cJSON *)t2_queue_pop(tmpRpQueue);
+            if (tmpReportProfiles)
+            {
+                ReportProfiles_ProcessReportProfilesBlob(tmpReportProfiles , T2_TEMP_RP);
+                cJSON_Delete(tmpReportProfiles);
+                tmpReportProfiles = NULL;
+            }
+        }
+        pthread_mutex_unlock(&tmpRpMutex);
+    }
+    T2Debug("%s --out\n", __FUNCTION__);
+    return NULL;
+}
+
 static void *process_msg_thread(void *data)
 {
     struct __msgpack__ *msgpack;
     while(!stopProcessing)
-    {	
+    {
     	pthread_mutex_lock(&rpMsgMutex);
         pthread_cond_wait(&msg_Cond, &rpMsgMutex);
 	if(t2_queue_count(rpMsgPkgQueue) > 0)
@@ -99,10 +131,11 @@ static void *process_msg_thread(void *data)
  * Arguments:
  *      char *JsonBlob         List of active profiles.
  */
-T2ERROR datamodel_processProfile(char *JsonBlob)
+T2ERROR datamodel_processProfile(char *JsonBlob , bool rprofiletypes)
 {
     cJSON *rootObj = NULL;
     cJSON *profiles = NULL;
+
     if((rootObj = cJSON_Parse(JsonBlob)) == NULL)
     {
         T2Error("%s: JSON parsing failure\n", __FUNCTION__);
@@ -120,8 +153,14 @@ T2ERROR datamodel_processProfile(char *JsonBlob)
     pthread_mutex_lock(&rpMutex);
     if (!stopProcessing)
     {
-        t2_queue_push(rpQueue, (void *)rootObj);
-        pthread_cond_signal(&rpCond);
+	if(rprofiletypes == T2_RP){
+           t2_queue_push(rpQueue, (void *)rootObj);
+           pthread_cond_signal(&rpCond);
+        }
+        else if(rprofiletypes == T2_TEMP_RP){
+           t2_queue_push(tmpRpQueue, (void *)rootObj);
+           pthread_cond_signal(&tmpRpCond);
+        }
     }
     else
     {
@@ -266,16 +305,27 @@ T2ERROR datamodel_init(void)
         T2Error("Failed to create Msg Pck report profile Queue\n");
         return T2ERROR_FAILURE;
     }
+    tmpRpQueue = t2_queue_create();
+    if (tmpRpQueue == NULL)
+    {
+        T2Error("Failed to create report profile Queue\n");
+        return T2ERROR_FAILURE;
+    }
+
     pthread_mutex_init(&rpMutex, NULL);
     pthread_cond_init(&rpCond, NULL);
     pthread_mutex_init(&rpMsgMutex, NULL);
     pthread_cond_init(&msg_Cond, NULL);
+    pthread_mutex_init(&tmpRpMutex, NULL);
+    pthread_cond_init(&tmpRpCond, NULL);
 
     pthread_mutex_lock(&rpMutex);
     stopProcessing = false;
     pthread_mutex_unlock(&rpMutex);
     pthread_create(&rpThread, NULL, process_rp_thread, (void *)NULL);
     pthread_create(&rpMsgThread, NULL, process_msg_thread, (void *)NULL);
+    pthread_create(&tmpRpThread, NULL, process_tmprp_thread, (void *)NULL);
+
     T2Debug("%s --out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;
 }
@@ -297,6 +347,9 @@ void datamodel_unInit(void)
     pthread_join(rpMsgThread, NULL);
     pthread_mutex_destroy(&rpMsgMutex);
     pthread_cond_destroy(&msg_Cond);
+    pthread_join(tmpRpThread, NULL);
+    pthread_mutex_destroy(&tmpRpMutex);
+    pthread_cond_destroy(&tmpRpCond);
 
     T2Debug("%s --out\n", __FUNCTION__);
 }

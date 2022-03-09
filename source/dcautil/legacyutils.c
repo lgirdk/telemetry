@@ -48,13 +48,20 @@ static pthread_mutex_t pSeekLock = PTHREAD_MUTEX_INITIALIZER;
 GrepSeekProfile *addToProfileSeekMap(char* profileName){
 
     T2Debug("%s ++in for profileName = %s \n", __FUNCTION__, profileName);
+    const char *path = "/tmp/telemetry_logupload";
+    struct stat st;
+    int fd;
     pthread_mutex_lock(&pSeekLock);
     GrepSeekProfile *gsProfile = NULL;
     if (profileSeekMap) {
         T2Debug("Adding GrepSeekProfile for profile %s in profileSeekMap\n", profileName);
         gsProfile = malloc(sizeof(GrepSeekProfile));
         gsProfile->logFileSeekMap = hash_map_create();
-        gsProfile->execCounter = 0;
+        fd = stat(path, &st);
+        if(fd != -1){
+            gsProfile->execCounter = 0;
+            remove("/tmp/telemetry_logupload");
+        }
         hash_map_put(profileSeekMap, strdup(profileName), (void*)gsProfile);
     } else {
         T2Debug("profileSeekMap exists .. \n");

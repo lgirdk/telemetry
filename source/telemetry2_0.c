@@ -21,6 +21,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <fcntl.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <string.h>
@@ -135,7 +136,8 @@ static void _print_stack_backtrace(void)
 
 void sig_handler(int sig)
 {
-
+    int fd;
+    const char *path = "/tmp/telemetry_logupload";
     if ( sig == SIGINT ) {
         signal(SIGINT, sig_handler); /* reset it to this function */
         T2Info(("SIGINT received!\n"));
@@ -161,6 +163,13 @@ void sig_handler(int sig)
     else if(sig == SIGUSR2 || sig == EXEC_RELOAD)
     {
         T2Info(("EXEC_RELOAD received!\n"));
+        fd = open(path, O_RDONLY | O_CREAT, 0400);
+        if(fd  == -1) {
+               T2Warning("Failed to open the file\n");
+        }else{
+            T2Debug("File is created\n");
+            close(fd);
+        }
         #ifndef DEVICE_EXTENDER
         stopXConfClient();
         if(T2ERROR_SUCCESS == startXConfClient()) {

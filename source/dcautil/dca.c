@@ -677,6 +677,7 @@ static int parseMarkerList(char* profileName, Vector* vMarkerList, Vector* grepR
     }
 
     gsProfile->execCounter += 1;
+    T2Debug("Execution Count = %d\n",gsProfile->execCounter);
 
     /* max limit not maintained for rdkec_head FIXME */
     if(NULL != rdkec_head) {

@@ -27,7 +27,7 @@
 #include <stddef.h>
 #include <string.h>
 #include <unistd.h>
-
+#include <limits.h>
 #include "t2log_wrapper.h"
 #include "scheduler.h"
 #include "vector.h"
@@ -115,8 +115,14 @@ void* TimeoutThread(void *arg)
         clock_gettime(CLOCK_REALTIME, &_now);
         _ts.tv_sec = _now.tv_sec + tProfile->timeOutDuration;
 
-        T2Info("Waiting for %d sec for next TIMEOUT for profile - %s\n", tProfile->timeOutDuration, tProfile->name);
-        n = pthread_cond_timedwait(&tProfile->tCond, &tProfile->tMutex, &_ts);
+	if(tProfile->timeOutDuration == UINT_MAX){
+	     T2Info("Waiting for condition as reporting interval is not configured for profile - %s\n", tProfile->name);
+             n = pthread_cond_wait(&tProfile->tCond, &tProfile->tMutex);
+	}
+	else{
+             T2Info("Waiting for %d sec for next TIMEOUT for profile - %s\n", tProfile->timeOutDuration, tProfile->name);
+	     n = pthread_cond_timedwait(&tProfile->tCond, &tProfile->tMutex, &_ts);
+        }
         if(n == ETIMEDOUT)
         {
             T2Info("TIMEOUT for profile - %s\n", tProfile->name);
@@ -160,7 +166,6 @@ void* TimeoutThread(void *arg)
         {
             T2Error("Profile : %s pthread_cond_timedwait ERROR!!!\n", tProfile->name);
         }
-
         //Update activation timeout
         if (tProfile->timeToLive != INFINITE_TIMEOUT)
         {

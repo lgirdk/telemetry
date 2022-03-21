@@ -21,7 +21,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-
+#include <limits.h>
 #include "xconfclient.h"
 #include "reportprofiles.h"
 #include "t2log_wrapper.h"
@@ -681,7 +681,9 @@ T2ERROR processConfiguration(char** configData, char *profileName, char* profile
     profile->encodingType = strdup(jprofileEncodingType->valuestring);
     profile->generateNow = false;
     profile->activationTimeoutPeriod = INFINITE_TIMEOUT;
-
+    if(jprofileTriggerCondition) {
+	profile->reportingInterval = UINT_MAX;
+    }
     if(jprofileGenerateNow)
         profile->generateNow = (cJSON_IsTrue(jprofileGenerateNow) == 1);
 
@@ -1218,6 +1220,7 @@ T2ERROR processMsgPackConfiguration(msgpack_object *profiles_array_map, Profile 
     msgpack_object *ReportFormat_str;
     msgpack_object *ReportTimestamp_str;
     msgpack_object *GenerateNow_boolean;
+    msgpack_object *TriggerConditionArray;
 
     int i;
     int ret;
@@ -1359,7 +1362,10 @@ T2ERROR processMsgPackConfiguration(msgpack_object *profiles_array_map, Profile 
             return T2ERROR_FAILURE;
         }
     }
-
+    TriggerConditionArray = msgpack_get_map_value(value_map, "TriggerCondition");
+    if(TriggerConditionArray && (!profile->reportingInterval)){
+		    profile->reportingInterval = UINT_MAX;
+    }
     TimeReference_str = msgpack_get_map_value(value_map, "TimeReference");
     msgpack_print(TimeReference_str, msgpack_get_obj_name(TimeReference_str));
     /* profile->timeRef = msgpack_strdup(TimeReference_str); */

@@ -36,6 +36,10 @@
 #define HEADER_ACCEPT       "Accept: application/json"
 #define HEADER_CONTENTTYPE  "Content-type: application/json"
 
+#if defined(WAN_FAILOVER_SUPPORTED)
+#define TR181_DEVICE_CURRENT_WAN_IFNAME             "Device.X_RDK_WanManager.CurrentActiveInterface"
+#endif
+
 T2ERROR sendReportOverHTTP(char *httpUrl, char* payload);
 
 T2ERROR sendCachedReportsOverHTTP(char *httpUrl, Vector *reportList);

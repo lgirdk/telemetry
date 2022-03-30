@@ -38,6 +38,10 @@
 
 #if defined(ENABLE_RDKB_SUPPORT)
 
+#if defined(WAN_FAILOVER_SUPPORTED)
+#define TR181_DEVICE_CURRENT_WAN_IFNAME             "Device.X_RDK_WanManager.CurrentActiveInterface"
+#endif
+
 #define TR181_DEVICE_FW_VERSION                     "Device.DeviceInfo.SoftwareVersion"
 #define TR181_DEVICE_UPTIME                         "Device.DeviceInfo.UpTime"
 #define TR181_DEVICE_WAN_MAC                        "Device.DeviceInfo.X_COMCAST-COM_WAN_MAC"
@@ -63,8 +67,6 @@
 #define TR181_DEVICE_RECEIVER_ID                    "Device.X_COMCAST-COM_Xcalibur.Client.XRE.xreReceiverId"
 
 #endif // ENABLE_RDKB_SUPPORT
-
-
 
 
 

@@ -35,7 +35,14 @@
 #include "reportprofiles.h"
 #include "t2MtlsUtils.h"
 #include "t2log_wrapper.h"
+#include "busInterface.h"
 
+#if defined(ENABLE_RDKB_SUPPORT)
+
+#if defined(WAN_FAILOVER_SUPPORTED)
+   static char waninterface[256];
+#endif
+#endif
 static pthread_once_t curlFileMutexOnce = PTHREAD_ONCE_INIT;
 static pthread_mutex_t curlFileMutex;
 
@@ -81,12 +88,21 @@ static T2ERROR setHeader(CURL *curl, const char* destURL, struct curl_slist **he
     }
 
 #if defined(ENABLE_RDKB_SUPPORT)
+
+#if defined(WAN_FAILOVER_SUPPORTED)
+
+    code = curl_easy_setopt(curl, CURLOPT_INTERFACE, waninterface);
+    if(code != CURLE_OK) {
+        T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
+    }
+#else
      /* CID 125287: Unchecked return value from library */
     code = curl_easy_setopt(curl, CURLOPT_INTERFACE, INTERFACE);
     if(code != CURLE_OK){
        T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
     }
 
+#endif
 #endif
     *headerList = curl_slist_append(NULL, "Accept: application/json");
     curl_slist_append(*headerList, "Content-type: application/json");
@@ -167,7 +183,25 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char* payload) {
         T2Debug("%s --out\n", __FUNCTION__);
         return T2ERROR_FAILURE;
     }
+#if defined(ENABLE_RDKB_SUPPORT)
 
+#if defined(WAN_FAILOVER_SUPPORTED)
+    char *paramVal = NULL;
+    memset(waninterface, 0, sizeof(waninterface));
+    snprintf(waninterface, sizeof(waninterface), "%s", INTERFACE); 
+
+ if(T2ERROR_SUCCESS == getParameterValue(TR181_DEVICE_CURRENT_WAN_IFNAME, &paramVal)) {
+        if(strlen(paramVal) >0) {
+            memset(waninterface, 0, sizeof(waninterface));
+            snprintf(waninterface, sizeof(waninterface), "%s", paramVal);
+        }
+        free(paramVal);
+        paramVal = NULL;
+    } else {
+          T2Error("Failed to get Value for %s\n", TR181_DEVICE_CURRENT_WAN_IFNAME);
+    }
+ #endif
+ #endif
     if((childPid = fork()) < 0) {
         T2Error("Failed to fork !!! exiting...\n");
         T2Debug("%s --out\n", __FUNCTION__);

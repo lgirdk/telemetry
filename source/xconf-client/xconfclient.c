@@ -49,6 +49,12 @@
 #define PROCESS_CONFIG_COMPLETE_FLAG "/tmp/t2DcmComplete"
 #define HTTP_RESPONSE_FILE "/tmp/httpOutput.txt"
 
+#if defined(ENABLE_RDKB_SUPPORT)
+
+#if defined(WAN_FAILOVER_SUPPORTED)
+   static char waninterface[256];
+#endif
+#endif
 static const int MAX_URL_LEN = 1024;
 static const int MAX_URL_ARG_LEN = 128;
 static int xConfRetryCount = 0;
@@ -398,7 +404,25 @@ static T2ERROR doHttpGet(char* httpsUrl, char **data) {
         T2Debug("%s --out\n", __FUNCTION__);
         return T2ERROR_FAILURE;
     }
+#if defined(ENABLE_RDKB_SUPPORT)
 
+#if defined(WAN_FAILOVER_SUPPORTED)
+    char *paramVal = NULL;
+    memset(waninterface, 0, sizeof(waninterface));
+    snprintf(waninterface, sizeof(waninterface), "%s", INTERFACE); 
+
+ if(T2ERROR_SUCCESS == getParameterValue(TR181_DEVICE_CURRENT_WAN_IFNAME, &paramVal)) {
+        if(strlen(paramVal) >0) {
+            memset(waninterface, 0, sizeof(waninterface));
+            snprintf(waninterface, sizeof(waninterface), "%s", paramVal);
+        }
+        free(paramVal);
+        paramVal = NULL;
+    } else {
+          T2Error("Failed to get Value for %s\n", TR181_DEVICE_CURRENT_WAN_IFNAME);
+    }
+ #endif
+ #endif
     if((childPid = fork()) < 0) {
         T2Error("Failed to fork !!! exiting...\n");
         T2Debug("%s --out\n", __FUNCTION__);
@@ -482,11 +506,33 @@ static T2ERROR doHttpGet(char* httpsUrl, char **data) {
             }
 
 #if defined(ENABLE_RDKB_SUPPORT)
-            code = curl_easy_setopt(curl, CURLOPT_INTERFACE, IFINTERFACE);
-            if(code != CURLE_OK) {
-                T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
-            }
-#endif      
+
+#if defined(WAN_FAILOVER_SUPPORTED)
+/*    char *paramVal = NULL;
+    char waninterface[256];
+    snprintf(waninterface, sizeof(waninterface), "%s", IFINTERFACE); 
+
+ if(T2ERROR_SUCCESS == getParameterValue(TR181_DEVICE_CURRENT_WAN_IFNAME, &paramVal)) {
+        if(strlen(paramVal) >0) {
+            memset(waninterface, 0, sizeof(waninterface));
+            snprintf(waninterface, sizeof(waninterface), "%s", paramVal);
+        }
+        free(paramVal);
+        paramVal = NULL;
+    } else {
+          T2Error("Failed to get Value for %s\n", TR181_DEVICE_CURRENT_WAN_IFNAME);
+    }*/
+    code = curl_easy_setopt(curl, CURLOPT_INTERFACE, waninterface);
+    if(code != CURLE_OK) {
+        T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
+    }
+#else
+    code = curl_easy_setopt(curl, CURLOPT_INTERFACE, IFINTERFACE);
+    if(code != CURLE_OK) {
+        T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
+    }
+#endif            
+#endif  
 
             curl_code = curl_easy_perform(curl);
             curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);

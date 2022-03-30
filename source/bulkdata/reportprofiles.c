@@ -916,6 +916,10 @@ int __ReportProfiles_ProcessReportProfilesMsgPackBlob(void *msgpack)
         }
         msgpack_object* nameObj = msgpack_get_map_value(singleProfile, "name");
         msgpack_object* hashObj = msgpack_get_map_value(singleProfile, "hash");
+        if (hashObj == NULL){
+             T2Debug("Hash value is null checking for VersionHash value \n");
+             hashObj = msgpack_get_map_value(singleProfile, "VersionHash");
+        }
         msgpack_object* profileObj = msgpack_get_map_value(singleProfile, "value");
         if(nameObj == NULL || hashObj == NULL || profileObj == NULL) {
             T2Error("Incomplete profile object information, unable to create profile\n");
@@ -952,6 +956,12 @@ int __ReportProfiles_ProcessReportProfilesMsgPackBlob(void *msgpack)
         MsgPackSaveConfig(REPORTPROFILES_PERSISTENCE_PATH, MSGPACK_REPORTPROFILES_PERSISTENT_FILE,
                 msgpack_blob , msgpack_blob_size);
         T2Debug("%s is saved on disk \n", MSGPACK_REPORTPROFILES_PERSISTENT_FILE);
+    }
+    if(isRbusEnabled()) {
+        createComponentDataElements();
+        // Notify registered components that profile has received an update
+        publishEventsProfileUpdates();
+        getMarkerCompRbusSub(true);
     }
     msgpack_unpacked_destroy(&result);
     hash_map_destroy(profileHashMap, freeProfilesHashMap);

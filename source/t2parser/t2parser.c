@@ -1198,6 +1198,7 @@ T2ERROR processMsgPackConfiguration(msgpack_object *profiles_array_map, Profile 
     msgpack_object *Parameter_eventName_str;
     msgpack_object *Parameter_component_str;
     msgpack_object *Parameter_name_str;
+    msgpack_object *Parameter_method_str;
     msgpack_object *Parameter_reportEmpty_boolean;
     msgpack_object *HTTP_map;
     msgpack_object *URL_str;
@@ -1337,7 +1338,7 @@ T2ERROR processMsgPackConfiguration(msgpack_object *profiles_array_map, Profile 
         MSGPACK_GET_NUMBER(ReportingInterval_u64, profile->reportingInterval);
         T2Debug("profile->reportingInterval: %u\n", profile->reportingInterval);
 
-        ActivationTimeout_u64 = msgpack_get_map_value(value_map, "ActivationTimeout");
+        ActivationTimeout_u64 = msgpack_get_map_value(value_map, "ActivationTimeOut");
         msgpack_print(ActivationTimeout_u64, msgpack_get_obj_name(ActivationTimeout_u64));
         MSGPACK_GET_NUMBER(ActivationTimeout_u64, profile->activationTimeoutPeriod);
         T2Debug("profile->activationTimeoutPeriod: %u\n", profile->activationTimeoutPeriod);
@@ -1384,6 +1385,7 @@ T2ERROR processMsgPackConfiguration(msgpack_object *profiles_array_map, Profile 
         char* header;
         char* content;
         char* logfile;
+        char* method;
         bool reportEmpty;
         int skipFrequency;
 
@@ -1393,6 +1395,7 @@ T2ERROR processMsgPackConfiguration(msgpack_object *profiles_array_map, Profile 
         skipFrequency = 0;
         paramtype = NULL;
         use = NULL;
+        method = NULL;
         reportEmpty = false;
 
         Parameter_array_map = msgpack_get_array_element(Parameter_array, i);
@@ -1424,6 +1427,26 @@ T2ERROR processMsgPackConfiguration(msgpack_object *profiles_array_map, Profile 
             if(NULL == header)
                 header = msgpack_strdup(Parameter_reference_str);
 
+            Parameter_method_str = msgpack_get_map_value(Parameter_array_map, "method");
+            msgpack_print(Parameter_method_str, msgpack_get_obj_name(Parameter_method_str));
+            method = msgpack_strdup(Parameter_method_str);
+
+            if(method){
+                   T2Debug("Method property is present and the value is %s\n", method);
+                   if(!(strcmp(method, "subscribe")))
+                   {
+                       T2Info("Method is subscribe converting the parameter to event type\n");
+                       // free now as we will change the values in the below code which will be freed later
+                       free(header);
+                       free(paramtype);
+                       free(content);
+                       header = msgpack_strdup(Parameter_reference_str);
+                       paramtype = strdup("event");
+                       content = strdup(T2REPORTCOMPONENT);
+                       if(Parameter_name_str)
+                           logfile = msgpack_strdup(Parameter_name_str);
+                  }
+            }
         }else if(0 == msgpack_strcmp(Parameter_type_str, "event")) {
 
             Parameter_name_str = msgpack_get_map_value(Parameter_array_map, "name");
@@ -1471,6 +1494,7 @@ T2ERROR processMsgPackConfiguration(msgpack_object *profiles_array_map, Profile 
         free(logfile);
         free(use);
         free(paramtype);
+        free(method);
     }
     T2Debug("Added parameter count:%d \n", profileParamCount);
     addMsgPckTriggerCondition(profile, value_map);

@@ -409,7 +409,7 @@ static T2ERROR doHttpGet(char* httpsUrl, char **data) {
 #if defined(WAN_FAILOVER_SUPPORTED)
     char *paramVal = NULL;
     memset(waninterface, 0, sizeof(waninterface));
-    snprintf(waninterface, sizeof(waninterface), "%s", INTERFACE); 
+    snprintf(waninterface, sizeof(waninterface), "%s", IFINTERFACE); 
 
  if(T2ERROR_SUCCESS == getParameterValue(TR181_DEVICE_CURRENT_WAN_IFNAME, &paramVal)) {
         if(strlen(paramVal) >0) {

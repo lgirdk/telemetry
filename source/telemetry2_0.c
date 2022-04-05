@@ -68,6 +68,7 @@
 sigset_t blocking_signal;
 
 static bool isDebugEnabled = true;
+static int initcomplete = 0;
 
 
 T2ERROR initTelemetry()
@@ -94,18 +95,23 @@ T2ERROR initTelemetry()
     else
         T2Error("Failed to initialize ReportProfiles\n");
 
+    initcomplete = 1;
 
     T2Debug("%s --out\n",__FUNCTION__);
     return ret;
 }
 
 
-static void terminate() {
+static void terminate()
+{
+    if (initcomplete)
+    {
+#ifndef DEVICE_EXTENDER
+        uninitXConfClient();
+#endif
+        ReportProfiles_uninit();
+    }
 
-    #ifndef DEVICE_EXTENDER
-    uninitXConfClient();
-    #endif
-    ReportProfiles_uninit();
     if(0 != remove("/tmp/.t2ReadyToReceiveEvents")){
         T2Info("%s Unable to remove ready to receive event flag \n", __FUNCTION__);
     }

@@ -61,6 +61,7 @@
 
 
 static bool isDebugEnabled = true;
+static int initcomplete = 0;
 
 
 T2ERROR initTelemetry()
@@ -81,6 +82,7 @@ T2ERROR initTelemetry()
     else
         T2Error("Failed to initialize ReportProfiles\n");
 
+    initcomplete = 1;
 
     T2Debug("%s --out\n",__FUNCTION__);
     return ret;
@@ -88,8 +90,13 @@ T2ERROR initTelemetry()
 
 
 static void terminate() {
-    uninitXConfClient();
-    ReportProfiles_uninit();
+
+    if (initcomplete)
+    {
+        uninitXConfClient();
+        ReportProfiles_uninit();
+    }
+
     curl_global_cleanup();
     if(0 != remove("/tmp/.t2ReadyToReceiveEvents")){
         T2Info("%s Unable to remove ready to receive event flag \n", __FUNCTION__);

@@ -40,6 +40,10 @@
 #include "t2common.h"
 #include "busInterface.h"
 
+// Using same error code used by safeclib for buffer overflow for easy metrics collection
+// safeclib is not compleately introduced in T2 but to be in sync with legacy
+#define INVALID_COUNT -406
+
 /**
  * @addtogroup DCA_TYPES
  * @{
@@ -269,7 +273,11 @@ static int addToVector(rdkList_t *pchead, Vector* grepResultList) {
                 if(tmp->d_type == OCCURENCE) {
                     if(tmp->count != 0) {
                         char tmp_str[5] = { 0 };
-                        sprintf(tmp_str, "%d", tmp->count);
+                        if(tmp->count > 9999){
+                            T2Debug("Count value is %d higher than limit of 9999 changing the value to %d to track buffer overflow",tmp->count,INVALID_COUNT);
+                            tmp->count=INVALID_COUNT;
+                        }
+                        snprintf(tmp_str,sizeof(tmp_str), "%d", tmp->count);
                         GrepResult* grepResult = (GrepResult*) malloc(sizeof(GrepResult));
                         grepResult->markerName = strdup(tmp->header);
                         grepResult->markerValue = strdup(tmp_str);

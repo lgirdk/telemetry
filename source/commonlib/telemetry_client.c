@@ -18,15 +18,29 @@
 */
 
 #include <stdio.h>
+#include <string.h>
 #include <telemetry_busmessage_sender.h>
 
 #define COMP_NAME "telemetry_client"
 
 int main(int argc, char *argv[]) {
     t2_init(COMP_NAME);
-	t2_event_s(argv[1], argv[2]);
+
+    if (strcmp(argv[1], "telemetry_client_stdio_loop")) {
+        t2_event_s(argv[1], argv[2]);
+    } else {
+        char line[256], *p;
+
+        while (fgets(line, sizeof(line), stdin)) {
+            p = strchr(line, '|');
+            if (p) {
+                *p++ = 0;
+                t2_event_s(line, p);
+            }
+        }
+    }
 
     t2_uninit();
 
-	return 0;
+    return 0;
 }

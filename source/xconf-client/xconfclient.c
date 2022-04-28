@@ -326,7 +326,7 @@ static T2ERROR appendRequestParams(char *buf, const int maxArgLen) {
             avaBufSize);
      int slen = strlen("controllerId=2504&channelMapId=2345&vodId=15660&");
     avaBufSize = avaBufSize - slen;
-#if !defined(ENABLE_RDKB_SUPPORT)
+#if !defined(ENABLE_RDKB_SUPPORT) && !defined(ENABLE_RDKC_SUPPORT)
     char *timezone = NULL;
     timezone = getTimezone();
     if(timezone != NULL){
@@ -478,6 +478,7 @@ static T2ERROR doHttpGet(char* httpsUrl, char **data) {
                 T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
             }
 
+#if !defined(ENABLE_RDKC_SUPPORT)
             if(mtls_enable == true) {
                 if(T2ERROR_SUCCESS == getMtlsCerts(&pCertFile, &pPasswd)) {
                     code = curl_easy_setopt(curl, CURLOPT_SSLENGINE_DEFAULT, 1L);
@@ -512,6 +513,7 @@ static T2ERROR doHttpGet(char* httpsUrl, char **data) {
                     goto status_return;
                 }
             }
+#endif
 
 #if defined(ENABLE_RDKB_SUPPORT)
 

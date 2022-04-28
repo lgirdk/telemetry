@@ -50,7 +50,17 @@
 #define TR181_DEVICE_CM_MAC                         "Device.DeviceInfo.X_COMCAST-COM_CM_MAC"
 #define TR181_DEVICE_CM_IP                          "Device.DeviceInfo.X_COMCAST-COM_CM_IP"
 
-#else // ENABLE_RDKB_SUPPORT
+#elif defined(ENABLE_RDKC_SUPPORT)
+
+#define TR181_DEVICE_FW_VERSION                     "Device.DeviceInfo.X_RDKCENTRAL-COM_FWVersion"
+#define TR181_DEVICE_UPTIME                         "Device.DeviceInfo.UpTime"
+#define TR181_DEVICE_WAN_MAC                        "Device.DeviceInfo.X_RDKCENTRAL-COM_MAC"
+#define TR181_DEVICE_WAN_IPv4                       "Device.WiFi.X_RDKCENTRAL-COM_IPv4Address"
+#define TR181_DEVICE_WAN_IPv6                       "Device.WiFi.X_RDKCENTRAL-COM_IPv6Address"
+#define TR181_DEVICE_CM_MAC                         "Device.DeviceInfo.X_RDKCENTRAL-COM_MAC"
+#define TR181_DEVICE_CM_IP                          "Device.WiFi.X_RDKCENTRAL-COM_IPv4Address"
+
+#else
 
 #if defined(RDKV_FW_FLAG) //DELIA-52622 temporary workaround
 #define TR181_DEVICE_FW_VERSION                     "Device.DeviceInfo.X_RDKCENTRAL-COM_FirmwareFilename"

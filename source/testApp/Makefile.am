@@ -36,7 +36,7 @@ testModules_CPPFLAGS = -fPIC -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/dbus-1.0 \
                                 -I${top_srcdir}/source/reportgen \
                                 -I${top_srcdir}/source/utils
                                 
-testModules_LDADD = ${top_builddir}/source/dcautil/libdcautil.la ${top_builddir}/source/utils/libutils.la
+testModules_LDADD = ${top_builddir}/source/dcautil/libdcautil.la ${top_builddir}/source/utils/libt2utils.la
 
 testCommonLib_SOURCES = testCommonLibApi.c
 testCommonLib_LDFLAGS = -L${top_builddir}/source/commonlib/.libs/ -ltelemetry_msgsender

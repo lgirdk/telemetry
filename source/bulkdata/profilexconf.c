@@ -120,6 +120,8 @@ static T2ERROR initJSONReportXconf(cJSON** jsonObj, cJSON **valArray)
     // Requirement from field triage to be a fixed string instead of actual profile name .
 #if defined(ENABLE_RDKB_SUPPORT)
     cJSON_AddStringToObject(arrayItem, "Profile", "RDKB");
+#elif defined(ENABLE_RDKC_SUPPORT)
+    cJSON_AddStringToObject(arrayItem, "Profile", "RDKC");
 #else
     cJSON_AddStringToObject(arrayItem, "Profile", "RDKV");
 #endif

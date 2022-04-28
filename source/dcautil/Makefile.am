@@ -24,7 +24,7 @@ libdcautil_la_LDFLAGS = -shared -fPIC $(GLIB_LIBS) -lcjson
 libdcautil_la_CFLAGS += $(DBUS_CFLAGS) -DUSE_TR181_CCSP_MESSAGEBUS
 libdcautil_la_LDFLAGS += $(DBUS_LIBS)
 
-libdcautil_la_LIBADD = ${top_builddir}/source/ccspinterface/libccspinterface.la ${top_builddir}/source/utils/libutils.la
+libdcautil_la_LIBADD = ${top_builddir}/source/ccspinterface/libccspinterface.la ${top_builddir}/source/utils/libt2utils.la
 
 libdcautil_la_CFLAGS += -fPIC -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/dbus-1.0 \
                                 -I${PKG_CONFIG_SYSROOT_DIR}$(libdir)/dbus-1.0/include \
@@ -37,4 +37,4 @@ libdcautil_la_CFLAGS += -fPIC -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/dbus-1.0 
                                 -I${top_srcdir}/source/interChipHelper \
                                 -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/ccsp
 
-libdcautil_la_DEPENDENCIES = ${top_builddir}/source/ccspinterface/libccspinterface.la ${top_builddir}/source/utils/libutils.la
+libdcautil_la_DEPENDENCIES = ${top_builddir}/source/ccspinterface/libccspinterface.la ${top_builddir}/source/utils/libt2utils.la

@@ -34,5 +34,5 @@ librbusmethod_la_CPPFLAGS = -fPIC -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/dbus-
                                 -I${top_srcdir}/source/reportgen \
                                 -I${top_srcdir}/source/utils
                                 
-librbusmethod_la_DEPENDENCIES = ${top_builddir}/source/ccspinterface/libccspinterface.la ${top_builddir}/source/utils/libutils.la
+librbusmethod_la_DEPENDENCIES = ${top_builddir}/source/ccspinterface/libccspinterface.la ${top_builddir}/source/utils/libt2utils.la
 

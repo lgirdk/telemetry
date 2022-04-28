@@ -61,7 +61,8 @@ telemetry2_0_SOURCES += t2ssp/ssp_main.c t2ssp/ssp_action.c t2ssp/ssp_messagebus
 telemetry2_0_CPPFLAGS += -I${top_srcdir}/source/t2ssp \
                                 -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/ccsp
 endif
-telemetry2_0_LDADD = ${top_builddir}/source/utils/libutils.la ${top_builddir}/source/dcautil/libdcautil.la \
+telemetry2_0_LDADD = ${top_builddir}/source/utils/libt2utils.la ${top_builddir}/source/dcautil/libdcautil.la \
+		   ${top_builddir}/source/protocol/rbusMethod/librbusmethod.la \
                   ${top_builddir}/source/bulkdata/libbulkdata.la ${top_builddir}/source/ccspinterface/libccspinterface.la \
                   ${top_builddir}/source/reportgen/libreportgen.la ${top_builddir}/source/scheduler/libscheduler.la \
                   ${top_builddir}/source/protocol/http/libhttp.la \

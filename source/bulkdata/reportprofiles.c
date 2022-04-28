@@ -381,9 +381,11 @@ T2ERROR initReportProfiles()
         T2Error("%s ReportProfiles already initialized - ignoring\n", __FUNCTION__);
         return T2ERROR_FAILURE;
     }
+#if !defined(ENABLE_RDKC_SUPPORT)
     if(isMtlsEnabled() == true){
       initMtls();
     }
+#endif
     rpInitialized = true;
 
     bulkdata.enable = false;

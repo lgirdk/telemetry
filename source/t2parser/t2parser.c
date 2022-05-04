@@ -55,6 +55,9 @@ static char * getProfileParameter(Profile * profile, const char *ref) {
     }else if(!strcmp(pName, "Protocol")) {
         if(profile->protocol)
             strncpy(pValue, profile->protocol, MAX_STATIC_PROP_VAL_LEN);
+    }else if(!strcmp(pName, "RootName")) {
+        if(profile->RootName)
+            strncpy(pValue, profile->RootName, MAX_STATIC_PROP_VAL_LEN);
     }else if(!strcmp(pName, "EncodingType")) {
         if(profile->encodingType)
             strncpy(pValue, profile->encodingType, MAX_STATIC_PROP_VAL_LEN);
@@ -524,6 +527,7 @@ T2ERROR processConfiguration(char** configData, char *profileName, char* profile
     cJSON *jprofileProtocol = cJSON_GetObjectItem(json_root, "Protocol");
     cJSON *jprofileEncodingType = cJSON_GetObjectItem(json_root, "EncodingType");
     cJSON *jprofileReportingInterval = cJSON_GetObjectItem(json_root, "ReportingInterval");
+    cJSON *jprofileRootName = cJSON_GetObjectItem(json_root, "RootName");
     cJSON *jprofileActivationTimeout = cJSON_GetObjectItem(json_root, "ActivationTimeOut");
     cJSON *jprofileTimeReference = cJSON_GetObjectItem(json_root, "TimeReference");
     cJSON *jprofileParameter = cJSON_GetObjectItem(json_root, "Parameter");
@@ -669,6 +673,12 @@ T2ERROR processConfiguration(char** configData, char *profileName, char* profile
     if(jprofileDescription) {
         profile->Description = strdup(jprofileDescription->valuestring);
     }
+    if(jprofileRootName) {
+        profile->RootName = strdup(jprofileRootName->valuestring);
+    }
+    else{
+        profile->RootName = strdup("Report");
+    }
     if(jprofileVersion) {
         profile->version = strdup(jprofileVersion->valuestring);
     }
@@ -712,6 +722,7 @@ T2ERROR processConfiguration(char** configData, char *profileName, char* profile
     T2Debug("[[profile->version:%s]]\n", profile->version);
     T2Debug("[[profile->protocol:%s]]\n", profile->protocol);
     T2Debug("[[profile->encodingType:%s]]\n", profile->encodingType);
+    T2Debug("[[profile->RootName:%s]]\n", profile->RootName);
 
     if(profile->reportingInterval)
         T2Debug("[[ profile->reportingInterval:%d]]\n", profile->reportingInterval);
@@ -1189,6 +1200,7 @@ T2ERROR processMsgPackConfiguration(msgpack_object *profiles_array_map, Profile 
     msgpack_object *ReportingInterval_u64;
     msgpack_object *TimeReference_str;
     msgpack_object *ActivationTimeout_u64;
+    msgpack_object *RootName_str;
     msgpack_object *Parameter_array;
     msgpack_object *Parameter_array_map;
     msgpack_object *Parameter_type_str;
@@ -1366,6 +1378,15 @@ T2ERROR processMsgPackConfiguration(msgpack_object *profiles_array_map, Profile 
     if(TriggerConditionArray && (!profile->reportingInterval)){
 		    profile->reportingInterval = UINT_MAX;
     }
+
+    RootName_str = msgpack_get_map_value(value_map, "RootName");
+    msgpack_print(RootName_str, msgpack_get_obj_name(RootName_str));
+    profile->RootName = msgpack_strdup(RootName_str);
+    if(profile->RootName == NULL){
+	    profile->RootName = strdup("Report");
+    }
+    T2Debug("profile->RootName: %s\n", profile->RootName);
+
     TimeReference_str = msgpack_get_map_value(value_map, "TimeReference");
     msgpack_print(TimeReference_str, msgpack_get_obj_name(TimeReference_str));
     /* profile->timeRef = msgpack_strdup(TimeReference_str); */

@@ -86,6 +86,8 @@ static void freeProfile(void *data)
             free(profile->protocol);
         if(profile->encodingType)
             free(profile->encodingType);
+	if(profile->RootName)
+	    free(profile->RootName);
         if(profile->Description)
              free(profile->Description);
         if(profile->version)
@@ -161,7 +163,7 @@ static T2ERROR getProfile(const char *profileName, Profile **profile)
     return T2ERROR_PROFILE_NOT_FOUND;
 }
 
-static T2ERROR initJSONReportProfile(cJSON** jsonObj, cJSON **valArray)
+static T2ERROR initJSONReportProfile(cJSON** jsonObj, cJSON **valArray, char *rootname)
 {
     *jsonObj = cJSON_CreateObject();
     if(*jsonObj == NULL)
@@ -169,8 +171,7 @@ static T2ERROR initJSONReportProfile(cJSON** jsonObj, cJSON **valArray)
         T2Error("Failed to create cJSON object\n");
         return T2ERROR_FAILURE;
     }
-
-    cJSON_AddItemToObject(*jsonObj, "Report", *valArray = cJSON_CreateArray());
+    cJSON_AddItemToObject(*jsonObj, rootname, *valArray = cJSON_CreateArray());
 
 
     return T2ERROR_SUCCESS;
@@ -270,7 +271,7 @@ static void* CollectAndReport(void* data)
             triggercondition=profile->jsonReportObj;
             profile->jsonReportObj = NULL;
         }
-        if(T2ERROR_SUCCESS != initJSONReportProfile(&profile->jsonReportObj, &valArray))
+        if(T2ERROR_SUCCESS != initJSONReportProfile(&profile->jsonReportObj, &valArray, profile->RootName))
         {
             T2Error("Failed to initialize JSON Report\n");
             profile->reportInProgress = false;
@@ -319,7 +320,7 @@ static void* CollectAndReport(void* data)
             T2Info("cJSON Report = %s\n", jsonReport);
 	    cJSON *root = cJSON_Parse(jsonReport);
 	    if(root != NULL){
-		     cJSON *array = cJSON_GetObjectItem(root, "Report");
+		     cJSON *array = cJSON_GetObjectItem(root, profile->RootName);
 		     if(cJSON_GetArraySize(array) == 0){
 			     T2Warning("Array size of Report is %d. Report is empty. Cannot send empty report\n", cJSON_GetArraySize(array));
 			     profile->reportInProgress = false;

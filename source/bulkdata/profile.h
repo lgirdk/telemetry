@@ -52,6 +52,7 @@ typedef struct _Profile
     char* encodingType;
     char* Description;
     char* version;
+    char* RootName;
     JSONEncoding *jsonEncoding;
     unsigned int reportingInterval;
     unsigned int activationTimeoutPeriod;

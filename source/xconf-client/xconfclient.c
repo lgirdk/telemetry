@@ -618,7 +618,8 @@ static T2ERROR doHttpGet(char* httpsUrl, char **data) {
                 memset(*data, '\0', len + 1);
                 FILE *httpOutput = fopen(HTTP_RESPONSE_FILE, "r+");
                 if(httpOutput){
-                    fgets(*data, len + 1, httpOutput);
+                    // Read the whole file content
+                    fread(*data, len, 1, httpOutput);
                     T2Debug("Configuration obtained from http server : \n %s \n", *data);
                     fclose(httpOutput);
                 }

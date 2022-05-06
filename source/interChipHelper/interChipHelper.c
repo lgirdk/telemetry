@@ -41,6 +41,9 @@
 #include "t2common.h"
 #include "dca.h"
 #include "legacyutils.h"
+#ifdef LIBSYSWRAPPER_BUILD
+#include "secure_wrapper.h"
+#endif
 
 #define LOOP_SLEEP 100
 
@@ -49,6 +52,8 @@ static bool isEnabled = true;
 static Vector *grepMarkerList;
 static hash_map_t *grepMarkerListMap = NULL;
 static bool bGrepMarkerMapInitialized = false;
+
+
 
 T2ERROR initGrepMarkerMap() {
     T2Debug("++in %s \n", __FUNCTION__);
@@ -383,12 +388,22 @@ int listenForInterProcessorChipEvents(int notifyfd, int watchfd) {
 
 
 int execNotifier(char *eventType) {
+    int ret = 0;
     T2Debug("++in execNotifier with eventType =  %s  \n", eventType);
-    char command[128] = { '0' };
-    snprintf(command, sizeof(command),"%s %s", NOTIFY_HELPER_UTIL, eventType);
-    T2Debug("--out execNotifier, exec command is %s \n", command);
     // Use secure system call if the userstory is ready across platforms
-    return system(command);
+    T2Debug("--out execNotifier, exec command is %s %s", NOTIFY_HELPER_UTIL, eventType);
+    #ifdef LIBSYSWRAPPER_BUILD
+        ret = v_secure_system(NOTIFY_HELPER_UTIL " %s",eventType);
+    #else
+        char command[128] = { '0' };
+        snprintf(command, sizeof(command),"%s %s", NOTIFY_HELPER_UTIL, eventType);
+        ret = system(command);
+    #endif
+    if(ret !=0)
+    {
+        T2Debug("Failed in executing v_secure_system command ret %d \n",ret);
+    }
+    return ret;
 }
 
 int interchipDaemonStart( ) {

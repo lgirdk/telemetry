@@ -37,7 +37,8 @@ AC_CONFIG_SRCDIR([source/testApp])
 AM_INIT_AUTOMAKE([foreign no-dist-gzip dist-bzip2 1.9])
 LT_INIT
 GTEST_ENABLE_FLAG = ""
-
+LIBSYSWRAPPER_FLAG=" "
+IS_LIBSYSWRAPPER_ENABLED=" "
 AC_ARG_ENABLE([gtestapp],
              AS_HELP_STRING([--enable-gtestapp],[enable Gtest support (default is no)]),
              [
@@ -109,6 +110,21 @@ AC_ARG_ENABLE([deviceextender],
               [echo "Extender device  support is disabled"])
 
 AM_CONDITIONAL([ENABLE_DEVICE_EXTENDER], [test x$ENABLE_DEVICE_EXTENDER = xtrue])
+
+AC_ARG_ENABLE([libsyswrapper],
+        AS_HELP_STRING([--enable-libsyswrapper],[enables system wrapper replacement (default is no)]),
+        [
+          case "${enableval}" in
+           yes) IS_LIBSYSWRAPPER_ENABLED=true
+                LIBSYSWRAPPER_FLAG=" -DLIBSYSWRAPPER_BUILD ";;
+           no)  IS_LIBSYSWRAPPER_ENABLED=false ;;
+          *) AC_MSG_ERROR([bad value ${enableval} for --enable-libsyswrapper]) ;;
+           esac
+           ],
+        [echo "libsyswrapper is disabled"])
+AM_CONDITIONAL([IS_LIBSYSWRAPPER_ENABLED], [test x$IS_LIBSYSWRAPPER_ENABLED = xtrue])
+AC_SUBST(LIBSYSWRAPPER_FLAG)
+
 
 AC_CONFIG_FILES([Makefile
                  source/Makefile

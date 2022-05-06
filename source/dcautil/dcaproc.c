@@ -50,6 +50,9 @@
 
 #include "legacyutils.h"
 #include "t2log_wrapper.h"
+#ifdef LIBSYSWRAPPER_BUILD
+#include "secure_wrapper.h"
+#endif
 
 #ifdef LIBSYSWRAPPER_BUILD
 #include "secure_wrapper.h"
@@ -96,6 +99,7 @@ int getCPUInfo(procMemCpuInfo *pInfo);
  * @return  Returns status of operation.
  * @retval  0 on sucess, appropiate errorcode otherwise.
  */
+
 int getProcUsage(char *processName, Vector* grepResultList) {
     T2Debug("%s ++in \n", __FUNCTION__);
     if(processName != NULL) {
@@ -107,7 +111,7 @@ int getProcUsage(char *processName, Vector* grepResultList) {
 #endif
         FILE *cmdPid;
         char *mem_key = NULL, *cpu_key = NULL;
-        int ret = 0;
+        int ret = 0,pclose_ret = 0;
         int index = 0;
         pid_t *pid = NULL;
         pid_t *temp = NULL;
@@ -115,16 +119,27 @@ int getProcUsage(char *processName, Vector* grepResultList) {
         memset(&pInfo, '\0', sizeof(procMemCpuInfo));
         memcpy(pInfo.processName, processName, strlen(processName) + 1);
 
-        snprintf(pidofCommand, sizeof(pidofCommand), "pidof %s", processName);
-        T2Debug("Command for collecting process info : \n %s \n", pidofCommand);
-        if(!(cmdPid = popen(pidofCommand, "r"))) {
+        T2Debug("Command for collecting process info : \n pidof %s", processName);
+        #ifdef LIBSYSWRAPPER_BUILD
+            cmdPid = v_secure_popen("r","pidof %s", processName);
+        #else
+            snprintf(pidofCommand, sizeof(pidofCommand), "pidof %s", processName);
+            cmdPid = popen(pidofCommand, "r");
+        #endif
+        if(!cmdPid) {
             T2Debug("Failed to execute %s", pidofCommand);
             return 0;
         }
-
         pid = (int *) malloc(sizeof(pid_t));
         if(NULL == pid) {
-            pclose(cmdPid);
+            #ifdef LIBSYSWRAPPER_BUILD
+                pclose_ret = v_secure_pclose(cmdPid);
+            #else
+                pclose_ret = pclose(cmdPid);
+            #endif
+            if(pclose_ret !=0) {
+                T2Debug("failed in closing pipe! ret %d\n",pclose_ret);
+            }
             return 0;
         }
         *pid = 0;
@@ -137,14 +152,29 @@ int getProcUsage(char *processName, Vector* grepResultList) {
             if(NULL == temp) {
                 if(pid)
                     free(pid);
-                pclose(cmdPid);
+                #ifdef LIBSYSWRAPPER_BUILD
+                    pclose_ret = v_secure_pclose(cmdPid);
+                #else
+                    pclose_ret = pclose(cmdPid);
+                #endif
+                if(pclose_ret !=0) {
+		    T2Debug("failed in closing pipe! ret %d\n",pclose_ret);
+		}
                 return 0;
             }
             pid = temp;
             temp = NULL;
         }
 
-        pclose(cmdPid);
+       
+#ifdef LIBSYSWRAPPER_BUILD
+     pclose_ret = v_secure_pclose(cmdPid);
+#else
+     pclose_ret = pclose(cmdPid);
+#endif
+     if(pclose_ret !=0) {
+        T2Debug("failed in closing pipe! ret %d\n",pclose_ret);
+     }        
 
 #if defined (ENABLE_PS_PROCESS_SEARCH)
     // Pidof command output is empty
@@ -209,7 +239,6 @@ int getProcUsage(char *processName, Vector* grepResultList) {
 
         pInfo.total_instance = index;
         pInfo.pid = pid;
-
         if(0 != getProcInfo(&pInfo)) {
             mem_key = malloc(pname_prefix_len);
             cpu_key = malloc(pname_prefix_len);
@@ -382,7 +411,7 @@ int getMemInfo(procMemCpuInfo *pmInfo) {
  * @retval  Return 1 on success,appropiate errorcode otherwise.
  */
 int getCPUInfo(procMemCpuInfo *pInfo) {
-    int ret = 0;
+    int ret = 0,pclose_ret = 0;
     FILE *inFp = NULL;
     char command[CMD_LEN] = { '\0' };
     char var1[BUF_LEN] = { '\0' };
@@ -405,25 +434,45 @@ int getCPUInfo(procMemCpuInfo *pInfo) {
     }
 
     /* Check Whether -c option is supported */
-    ret = system(" top -c -n 1 2> /dev/null 1> /dev/null");
+    #ifdef LIBSYSWRAPPER_BUILD  
+        ret = v_secure_system(" top -c -n 1 2> /dev/null 1> /dev/null");
+    #else
+        ret = system(" top -c -n 1 2> /dev/null 1> /dev/null");
+    #endif
     if(0 == ret) {
         cmd_option = 1;
     }
 #ifdef INTEL
     /* Format Use:  `top n 1 | grep Receiver` */
     if ( 1 == cmd_option ) {
-        sprintf(command, "top -n 1 -c | grep -v grep |grep -i '%s'", pInfo->processName);
+        #ifdef LIBSYSWRAPPER_BUILD
+            inFp = v_secure_popen("r","top -n 1 -c | grep -v grep |grep -i '%s'", pInfo->processName);
+        #else
+            sprintf(command, "top -n 1 -c | grep -v grep |grep -i '%s'", pInfo->processName);
+            inFp = popen(command, "r");
+        #endif
     } else {
-        sprintf(command, "top -n 1 | grep -i '%s'", pInfo->processName);
+        #ifdef LIBSYSWRAPPER_BUILD 
+            inFp = v_secure_popen("r", "top -n 1 | grep -i '%s'", pInfo->processName);
+        #else
+            sprintf(command, "top -n 1 | grep -i '%s'", pInfo->processName);
+            inFp = popen(command, "r");
+        #endif
     }
 #else 
     /* ps -C Receiver -o %cpu -o %mem */
     //sprintf(command, "ps -C '%s' -o %%cpu -o %%mem | sed 1d", pInfo->processName);
-    snprintf(command, CMD_LEN, "top -b -n 1 %s | grep -v grep | grep -i '%s'", (cmd_option == 1) ? "-c" : "", pInfo->processName);
+    #ifdef LIBSYSWRAPPER_BUILD
+        inFp = v_secure_popen("r","top -b -n 1 %s | grep -v grep | grep -i '%s'", (cmd_option == 1) ? "-c" : "", pInfo->processName);
+    #else
+        snprintf(command, CMD_LEN, "top -b -n 1 %s | grep -v grep | grep -i '%s'", (cmd_option == 1) ? "-c" : "", pInfo->processName);
+        inFp = popen(command, "r");
+    #endif
 
 #endif
 
-    if(!(inFp = popen(command, "r"))) {
+    if(!(inFp)) {
+        T2Debug("failed in open v_scure_popen pipe! ret %d\n",pclose_ret);
         return 0;
     }
 
@@ -446,7 +495,16 @@ int getCPUInfo(procMemCpuInfo *pInfo) {
 #endif
 
     snprintf(pInfo->cpuUse, sizeof(pInfo->cpuUse), "%d", total_cpu_usage);
-    pclose(inFp);
+    #ifdef LIBSYSWRAPPER_BUILD
+        pclose_ret = v_secure_pclose(inFp);
+    #else
+        pclose_ret = pclose(inFp);
+    #endif
+  
+    if(pclose_ret !=0)
+    {
+        T2Debug("failed in closing pipe! ret %d\n",pclose_ret);
+    }
     return ret;
 
 }

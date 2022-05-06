@@ -39,10 +39,7 @@ T2ERROR fetchLocalConfigs(const char* path, Vector *configList)
     if (dir == NULL) {
         T2Error("Failed to open persistence folder : %s, creating folder\n", path);
 
-        char command[256] = {'\0'};
-        snprintf(command, sizeof(command), "mkdir %s", path);
-        T2Debug("Executing command : %s\n", command);
-        if (system(command) != 0) {
+        if (mkdir(path,S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH) != 0) {
             T2Error("%s,%d: Failed to make directory : %s  \n", __FUNCTION__ , __LINE__, path);
         }
 
@@ -169,16 +166,18 @@ void clearPersistenceFolder(const char* path)
 }
 
 void removeProfileFromDisk(const char* path, const char* fileName)
-{
-    char command[256] = {'\0'};
-    T2Debug("%s ++in\n", __FUNCTION__);
-
-    snprintf(command, sizeof(command), "rm -f %s%s", path, fileName);
-    T2Debug("Executing command : %s\n", command);
-    if (system(command) != 0) {
-        T2Error("%s,%d: %s command failed\n", __FUNCTION__ , __LINE__, command);
+{ 
+    size_t len = strlen(path)+strlen(fileName)+1;
+    char *str = malloc(len);
+    if (! str) {
+        T2Error("%s,%d: memory allocation failed\n", __FUNCTION__ , __LINE__);
+        return;
     }
-
+    snprintf(str, len, "%s%s", path, fileName);
+    if (unlink(str) != 0) {
+        T2Error("%s,%d: command failed\n", __FUNCTION__ , __LINE__);
+    }
+    free(str);
 
     T2Debug("%s --out\n", __FUNCTION__);
 }

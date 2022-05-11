@@ -27,6 +27,8 @@
 #include <sys/types.h>
 
 #include "reportprofiles.h"
+
+#include "xconfclient.h"
 #include "t2collection.h"
 #include "persistence.h"
 #include "t2log_wrapper.h"
@@ -1031,10 +1033,29 @@ bool isMtlsEnabled(void)
           }
           initT2MtlsEnable = true;
           free(paramValue);
+          paramValue = NULL;
        }
        else{
               T2Error("getParameterValue failed\n");
        }
+    }
+    if(isT2MtlsEnable != true)
+    {
+       if(T2ERROR_SUCCESS == getParameterValue(TR181_DEVICE_PARTNER_ID, &paramValue))
+       {
+        if(paramValue != NULL && (strncasecmp(paramValue, "sky-uk", 6) == 0))
+        {
+          T2Debug("Enabling mTLS for sky-uk partner\n");
+          isT2MtlsEnable = true;
+          initT2MtlsEnable = true;
+          free(paramValue);
+          paramValue = NULL;
+        }
+        else
+        {
+          T2Error("getParameterValue partner id failed\n");
+        }
+      }
     }
     return isT2MtlsEnable;
 }

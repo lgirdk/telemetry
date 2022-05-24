@@ -51,6 +51,10 @@
 #include "legacyutils.h"
 #include "t2log_wrapper.h"
 
+#ifdef LIBSYSWRAPPER_BUILD
+#include "secure_wrapper.h"
+#endif
+
 /**
  * @addtogroup DCA_TYPES
  * @{
@@ -98,6 +102,9 @@ int getProcUsage(char *processName, Vector* grepResultList) {
     	T2Debug("Process name is %s \n", processName);
         procMemCpuInfo pInfo;
         char pidofCommand[PIDOF_SIZE];
+#if defined (ENABLE_PS_PROCESS_SEARCH)
+        char psCommand[CMD_LEN];
+#endif
         FILE *cmdPid;
         char *mem_key = NULL, *cpu_key = NULL;
         int ret = 0;
@@ -136,16 +143,72 @@ int getProcUsage(char *processName, Vector* grepResultList) {
             pid = temp;
             temp = NULL;
         }
-        // If pidof command output is empty
-        if((*pid) <= 0) {
-            free(pid);
-            pclose(cmdPid);
+
+        pclose(cmdPid);
+
+#if defined (ENABLE_PS_PROCESS_SEARCH)
+    // Pidof command output is empty
+    if ((*pid) <= 0)
+    {
+        // pidof was empty, see if we can grab the pid via ps
+        sprintf(psCommand, "busybox ps | grep %s | grep -v grep | awk '{ print $1 }' | tail -n1", processName);
+
+    #ifdef LIBSYSWRAPPER_BUILD
+        if (!(cmdPid = v_secure_popen("r", "busybox ps | grep %s | grep -v grep | awk '{ print $1 }' | tail -n1", processName)))
+    #else
+        if (!(cmdPid = popen(psCommand, "r")))
+    #endif
+        {
             return 0;
         }
 
+        *pid=0;
+        index=0;
+        while(fscanf(cmdPid,"%d",(pid+index)) == 1)
+        {
+            if ((*(pid+index)) <= 0)
+            {
+                continue;
+            }
+            index++;
+            temp = (pid_t *) realloc (pid,((index+1)*sizeof(pid_t)) );
+            if ( NULL == temp )
+            {
+                free(pid);
+    #ifdef LIBSYSWRAPPER_BUILD
+                v_secure_pclose(cmdPid);
+    #else
+                pclose(cmdPid);
+    #endif
+                return 0;
+            }
+            pid=temp;
+        }
+
+    #ifdef LIBSYSWRAPPER_BUILD
+		v_secure_pclose(cmdPid);
+    #else
+		pclose(cmdPid);
+    #endif
+
+        // If pidof command output is empty
+        if ((*pid) <= 0)
+        {
+            free(pid);
+            return 0;
+        }
+    }
+#else
+    // If pidof command output is empty
+    if ((*pid) <= 0)
+    {
+        free(pid);
+        return 0;
+    }
+#endif
+
         pInfo.total_instance = index;
         pInfo.pid = pid;
-        pclose(cmdPid);
 
         if(0 != getProcInfo(&pInfo)) {
             mem_key = malloc(pname_prefix_len);

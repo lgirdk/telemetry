@@ -180,17 +180,27 @@ Vector* getRbusProfileParamValues(Vector *paramList) {
         int iterate = 0;
         profileValues* profVals = (profileValues *) malloc(sizeof(profileValues));
         char *param = (char*)((Param *) Vector_At(paramList, i))->alias ;
-        paramNames[0] = strdup(param);
-        T2Debug("Calling rbus_getExt for %s \n", paramNames[0]);
-        if(RBUS_ERROR_SUCCESS != rbus_getExt(t2bus_handle, 1, (const char**)paramNames, &paramValCount, &rbusPropertyValues)) {
-            T2Error("Failed to retrieve param : %s\n", paramNames[0]);
-            paramValCount = 0 ;
-        } else {
-            if(rbusPropertyValues == NULL || paramValCount == 0) {
-                T2Info("ParameterName : %s Retrieved value count : %d\n", paramNames[0], paramValCount);
+	if(param != NULL){
+            paramNames[0] = strdup(param);
+	}
+	else{
+	    paramNames[0] = NULL;
+	}
+	T2Debug("Parameter Name is %s \n",  paramNames[0]);
+	if(paramNames[0] != NULL){
+            T2Debug("Calling rbus_getExt for %s \n", paramNames[0]);
+            if(RBUS_ERROR_SUCCESS != rbus_getExt(t2bus_handle, 1, (const char**)paramNames, &paramValCount, &rbusPropertyValues)) {
+                T2Error("Failed to retrieve param : %s\n", paramNames[0]);
+                paramValCount = 0 ;
+            } else {
+                if(rbusPropertyValues == NULL || paramValCount == 0) {
+                    T2Info("ParameterName : %s Retrieved value count : %d\n", paramNames[0], paramValCount);
+                }
             }
         }
-
+	else {
+		 paramValCount = 0;
+	}
         profVals->paramValueCount = paramValCount;
 
         T2Debug("Received %d parameters for %s fetch \n", paramValCount, paramNames[0]);

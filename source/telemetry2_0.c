@@ -71,6 +71,7 @@ T2ERROR initTelemetry()
         if(T2ERROR_SUCCESS == initXConfClient())
         {
             ret = T2ERROR_SUCCESS;
+            generateDcaReport();
             T2Debug("%s --out\n", __FUNCTION__);
         }
         else
@@ -286,7 +287,7 @@ int main(int argc, char* argv[])
     pid_t sid = 0;
     LOGInit();
 
-    printf("Starting Telemetry 2.0 Process\n");
+    T2Info("Starting Telemetry 2.0 Process\n");
 
     // Create child process
     process_id = fork();

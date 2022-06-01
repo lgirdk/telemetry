@@ -25,6 +25,7 @@
 #include <stddef.h>
 #include <limits.h>
 #include <sys/types.h>
+#include <unistd.h>
 
 #include "reportprofiles.h"
 
@@ -445,11 +446,25 @@ T2ERROR initReportProfiles()
             getMarkerCompRbusSub(true);
         }
         T2ER_StartDispatchThread();
+
     }
 
     T2Debug("%s --out\n", __FUNCTION__);
     T2Info("Init ReportProfiles Successful\n");
     return T2ERROR_SUCCESS;
+}
+
+
+void generateDcaReport( ) {
+    T2Info("Triggering XCONF report generation during boot \n");
+    if(ProfileXConf_isSet()) {
+        /**
+         * Field requirement - Generate the first report at early stage after around 2 mins of stabilization during boot
+         * This is to make it at par with legacy dca reporting pattern
+         */
+        sleep(120);
+        ProfileXConf_notifyTimeout(false);
+    }
 }
 
 T2ERROR ReportProfiles_uninit( ) {

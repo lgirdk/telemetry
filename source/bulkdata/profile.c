@@ -989,9 +989,11 @@ T2ERROR triggerReportOnCondtion(const char *referenceName, const char *reference
                      if(triggerCondition->report)
                          appendTriggerCondition(tempProfile, referenceName, referenceValue);
                      tempProfile->minThresholdDuration = triggerCondition->minThresholdDuration;
-                     SendInterruptToTimeoutThread(tempProfile->name);
+                     char *tempProfilename = strdup(tempProfile->name); //RDKB-42640
+                     pthread_mutex_unlock(&plMutex); 
+                     SendInterruptToTimeoutThread(tempProfilename);
+                     free(tempProfilename); //RDKB-42640
                      T2Debug("%s --out\n", __FUNCTION__);
-                     pthread_mutex_unlock(&plMutex);
                      return T2ERROR_SUCCESS;
                 }
              }

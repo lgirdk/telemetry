@@ -99,6 +99,7 @@ T2ERROR sendReportsOverRBUSMethod(char *methodName, Vector* inputParams, char* p
              ret = T2ERROR_SUCCESS ;
         } else {
              T2Info("Return status of send via rbusMethod is failure \n " );
+	     ret = T2ERROR_NO_RBUS_METHOD_PROVIDER;
         }
         pthread_mutex_unlock(&rbusMethodMutex);
     }
@@ -112,7 +113,8 @@ T2ERROR sendCachedReportsOverRBUSMethod(char *methodName, Vector* inputParams, V
     T2Debug("%s ++in\n", __FUNCTION__);
     while(Vector_Size(reportList) > 0) {
         char* payload = (char *) Vector_At(reportList, 0);
-        if(T2ERROR_FAILURE == sendReportsOverRBUSMethod(methodName, inputParams, payload)) {
+        T2ERROR ret = sendReportsOverRBUSMethod(methodName, inputParams, payload);
+        if(ret == T2ERROR_FAILURE || ret == T2ERROR_NO_RBUS_METHOD_PROVIDER) {
             T2Error("Failed to send cached report, left with %zu reports in cache \n", Vector_Size(reportList));
             return T2ERROR_FAILURE;
         }

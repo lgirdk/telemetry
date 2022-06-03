@@ -579,10 +579,13 @@ T2ERROR processConfiguration(char** configData, char *profileName, char* profile
         }else if(strcmp(jprofileProtocol->valuestring, "RBUS_METHOD") == 0) {
             jprofileRBUSMethod = cJSON_GetObjectItem(json_root, "RBUS_METHOD");
             jprofileRBUSMethodName = cJSON_GetObjectItem(jprofileRBUSMethod, "Method");
+            if(jprofileRBUSMethodName == NULL || strcmp(jprofileRBUSMethodName->valuestring,"") == 0){
+               T2Error("RBUS Method not configured . Ignoring profile %s \n", profileName);
+               cJSON_Delete(json_root);
+               return T2ERROR_FAILURE;
+            }
             if (jprofileRBUSMethodName->valuestring && !rbusCheckMethodExists(jprofileRBUSMethodName->valuestring) ) {
-                T2Error("Configured RBUS Method %s doesn't exist . Ignoring profile %s \n", jprofileRBUSMethodName->valuestring, profileName);
-                cJSON_Delete(json_root);
-                return T2ERROR_FAILURE ;
+                T2Warning("WARN: no method provider: %s %s\n", profileName, jprofileRBUSMethodName->valuestring);
             }
             jprofileRBUSMethodParamArr = cJSON_GetObjectItem(jprofileRBUSMethod, "Parameters");
             if(jprofileRBUSMethodParamArr){
@@ -1302,15 +1305,18 @@ T2ERROR processMsgPackConfiguration(msgpack_object *profiles_array_map, Profile 
         RbusMethod_str = msgpack_get_map_value(RbusMethod_map, "Method");
         msgpack_print(RbusMethod_str, msgpack_get_obj_name(RbusMethod_str));
         profile->t2RBUSDest->rbusMethodName = msgpack_strdup(RbusMethod_str);
-
-        if(profile->t2RBUSDest->rbusMethodName && !rbusCheckMethodExists(profile->t2RBUSDest->rbusMethodName)) {
-            T2Error("Configured RBUS Method %s doesn't exist . Ignoring profile %s \n", profile->t2RBUSDest->rbusMethodName, profile->name);
+        if(profile->t2RBUSDest->rbusMethodName == NULL || strcmp(profile->t2RBUSDest->rbusMethodName,"" ) == 0){
+            T2Error("RBUS Method not configured. Ignoring profile %s \n", profile->name);
             free(profile->t2RBUSDest->rbusMethodName );
             free(profile->t2RBUSDest);
             free(profile->name);
             free(profile->hash);
             free(profile);
             return T2ERROR_FAILURE;
+        }
+
+        if(profile->t2RBUSDest->rbusMethodName && !rbusCheckMethodExists(profile->t2RBUSDest->rbusMethodName)) {
+            T2Warning("WARN: no method provider: %s %s\n", profile->name, profile->t2RBUSDest->rbusMethodName);
         }
     }
 

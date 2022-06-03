@@ -342,26 +342,39 @@ static void* CollectAndReport(void* data)
                 } else {
                     ret = sendReportsOverRBUSMethod(profile->t2RBUSDest->rbusMethodName, profile->t2RBUSDest->rbusMethodParamList, jsonReport);
                 }
-                if(strcmp(profile->protocol, "HTTP") == 0 ) { /* Adding this condition to avoid caching of reports and retry attempts for RBUS_METHOD protocol */
-                    if(ret == T2ERROR_FAILURE) {
-                        if(Vector_Size(profile->cachedReportList) == MAX_CACHED_REPORTS) {
-                            T2Debug("Max Cached Reports Limit Reached, Overwriting third recent report\n");
-                            char *thirdCachedReport = (char *) Vector_At(profile->cachedReportList, MAX_CACHED_REPORTS - 3);
-                            Vector_RemoveItem(profile->cachedReportList, thirdCachedReport, NULL);
-                            free(thirdCachedReport);
-                        }
+                if((ret == T2ERROR_FAILURE && strcmp(profile->protocol, "HTTP") == 0) || ret == T2ERROR_NO_RBUS_METHOD_PROVIDER) {
+                     if(Vector_Size(profile->cachedReportList) == MAX_CACHED_REPORTS) {
+                         T2Debug("Max Cached Reports Limit Reached, Overwriting third recent report\n");
+                         char *thirdCachedReport = (char *) Vector_At(profile->cachedReportList, MAX_CACHED_REPORTS - 3);
+                         Vector_RemoveItem(profile->cachedReportList, thirdCachedReport, NULL);
+                         free(thirdCachedReport);
+                     }
                         Vector_PushBack(profile->cachedReportList, jsonReport);
 
                         T2Info("Report Cached, No. of reportes cached = %lu\n", (unsigned long)Vector_Size(profile->cachedReportList));
-                    }else if(Vector_Size(profile->cachedReportList) > 0) {
+                        if(strcmp(profile->protocol, "RBUS_METHOD") == 0){
+                            profile->SendErr++;
+                            if(profile->SendErr > 3 && !(rbusCheckMethodExists(profile->t2RBUSDest->rbusMethodName))){ //to delete the profile in the next CollectAndReport or triggercondition
+                                T2Debug("RBUS_METHOD doesn't exists after 3 retries\n");
+                                profile->reportInProgress = false;
+                                T2Error("ERROR: no method provider; profile will be deleted: %s %s\n", profile->name, profile->t2RBUSDest->rbusMethodName);
+                                if(T2ERROR_SUCCESS != deleteProfile(profile->name)){
+                                    T2Error("Failed to delete profile after RBUS_METHOD failures: %s\n", profile->name);
+                                    T2Info("%s --out\n", __FUNCTION__);
+                                    return NULL;
+                                }
+                                T2Info("%s --out\n", __FUNCTION__);
+                                return NULL;
+                            }
+                        }
+                }else if(Vector_Size(profile->cachedReportList) > 0) {
                         T2Info("Trying to send  %lu cached reports\n", (unsigned long)Vector_Size(profile->cachedReportList));
                         if ( strcmp(profile->protocol, "HTTP") == 0 ) {
                             ret = sendCachedReportsOverHTTP(httpUrl, profile->cachedReportList);
                         } else {
                             ret = sendCachedReportsOverRBUSMethod(profile->t2RBUSDest->rbusMethodName, profile->t2RBUSDest->rbusMethodParamList, profile->cachedReportList);
-                        }
-                    }
-	        }
+                       }
+                }
                 if (httpUrl) {
                     free(httpUrl);
                     httpUrl = NULL ;
@@ -369,7 +382,7 @@ static void* CollectAndReport(void* data)
             }
             else
             {
-                T2Error("Unsupported report send protocol : %s\n", profile->protocol);
+               T2Error("Unsupported report send protocol : %s\n", profile->protocol);
             }
         }
     }

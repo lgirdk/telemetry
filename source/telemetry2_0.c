@@ -56,6 +56,7 @@
 #define LOG_UPLOAD 10
 #define EXEC_RELOAD 12
 
+sigset_t blocking_signal;
 
 static bool isDebugEnabled = true;
 
@@ -212,6 +213,14 @@ static void t2DaemonMainModeInit( ) {
 #ifdef INCLUDE_BREAKPAD
    breakpad_ExceptionHandler();
 #endif
+    /**
+    * Create a Signal Mask for signals that need to be blocked while using fork 
+    */
+    sigaddset(&blocking_signal, SIGUSR2);
+    sigaddset(&blocking_signal, SIGUSR1);
+    sigaddset(&blocking_signal, LOG_UPLOAD);
+    sigaddset(&blocking_signal, EXEC_RELOAD);
+
     signal(SIGTERM, sig_handler);
     signal(SIGUSR1, sig_handler);
     signal(LOG_UPLOAD, sig_handler);

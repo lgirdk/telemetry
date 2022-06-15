@@ -30,12 +30,15 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <curl/curl.h>
+#include <signal.h>
 
 #include "curlinterface.h"
 #include "reportprofiles.h"
 #include "t2MtlsUtils.h"
 #include "t2log_wrapper.h"
 #include "busInterface.h"
+
+extern sigset_t blocking_signal;
 
 #if defined(ENABLE_RDKB_SUPPORT)
 
@@ -202,8 +205,12 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char* payload) {
     }
  #endif
  #endif
+    // Block the userdefined signal handlers before fork
+    pthread_sigmask(SIG_BLOCK,&blocking_signal,NULL);
     if((childPid = fork()) < 0) {
         T2Error("Failed to fork !!! exiting...\n");
+        // Unblock the userdefined signal handlers
+        pthread_sigmask(SIG_UNBLOCK,&blocking_signal,NULL);
         T2Debug("%s --out\n", __FUNCTION__);
         return T2ERROR_FAILURE;
     }
@@ -278,7 +285,10 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char* payload) {
     }else {
 
         T2ERROR ret = T2ERROR_FAILURE;
-        wait(NULL);
+        // Use waitpid insted of wait we can have multiple child process
+        waitpid(childPid,NULL,0);
+        // Unblock the userdefined signal handlers before fork
+        pthread_sigmask(SIG_UNBLOCK,&blocking_signal,NULL);
         // Get the return status via IPC from child process
         close(sharedPipeFds[1]);
         read(sharedPipeFds[0], &ret, sizeof(T2ERROR));

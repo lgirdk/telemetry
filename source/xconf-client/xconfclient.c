@@ -27,6 +27,7 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <signal.h>
 
 #include "cJSON.h"
 #include "t2log_wrapper.h"
@@ -48,6 +49,8 @@
 #define XCONF_CONFIG_FILE  "DCMresponse.txt"
 #define PROCESS_CONFIG_COMPLETE_FLAG "/tmp/t2DcmComplete"
 #define HTTP_RESPONSE_FILE "/tmp/httpOutput.txt"
+
+extern sigset_t blocking_signal;
 
 #if defined(ENABLE_RDKB_SUPPORT)
 
@@ -423,8 +426,12 @@ static T2ERROR doHttpGet(char* httpsUrl, char **data) {
     }
  #endif
  #endif
+    // block the userdefined signal handlers before fork
+    pthread_sigmask(SIG_BLOCK,&blocking_signal,NULL);
     if((childPid = fork()) < 0) {
         T2Error("Failed to fork !!! exiting...\n");
+        // Unblock the userdefined signal handlers 
+        pthread_sigmask(SIG_UNBLOCK,&blocking_signal,NULL);
         T2Debug("%s --out\n", __FUNCTION__);
         return T2ERROR_FAILURE;
     }
@@ -597,7 +604,10 @@ static T2ERROR doHttpGet(char* httpsUrl, char **data) {
 
     }else { // Parent
         T2ERROR ret = T2ERROR_FAILURE;
-        wait(NULL);
+        // Use waitpid insted of wait
+        waitpid(childPid,NULL,0);
+        // Unblock the userdefined signal handlers after wait
+        pthread_sigmask(SIG_UNBLOCK,&blocking_signal,NULL);
         // Get the return status via IPC from child process
         close(sharedPipeFdStatus[1]);
         read(sharedPipeFdStatus[0], &ret, sizeof(T2ERROR));

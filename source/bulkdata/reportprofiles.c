@@ -643,7 +643,7 @@ void ReportProfiles_ProcessReportProfilesBlob(cJSON *profiles_root , bool rprofi
         cJSON* nameObj = cJSON_GetObjectItem(singleProfile, "name");
         cJSON* hashObj = cJSON_GetObjectItem(singleProfile, "hash");
         if(hashObj == NULL) {
-            hashObj = cJSON_GetObjectItem(singleProfile, "VersionHash");
+            hashObj = cJSON_GetObjectItem(singleProfile, "versionHash");
         }
         cJSON* profileObj = cJSON_GetObjectItem(singleProfile, "value");
 
@@ -983,8 +983,8 @@ int __ReportProfiles_ProcessReportProfilesMsgPackBlob(void *msgpack)
         msgpack_object* nameObj = msgpack_get_map_value(singleProfile, "name");
         msgpack_object* hashObj = msgpack_get_map_value(singleProfile, "hash");
         if (hashObj == NULL){
-             T2Debug("Hash value is null checking for VersionHash value \n");
-             hashObj = msgpack_get_map_value(singleProfile, "VersionHash");
+             T2Debug("Hash value is null checking for versionHash value \n");
+             hashObj = msgpack_get_map_value(singleProfile, "versionHash");
         }
         msgpack_object* profileObj = msgpack_get_map_value(singleProfile, "value");
         if(nameObj == NULL || hashObj == NULL || profileObj == NULL) {

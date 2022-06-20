@@ -520,7 +520,7 @@ T2ERROR processConfiguration(char** configData, char *profileName, char* profile
 
     cJSON *jprofileHash = cJSON_GetObjectItem(json_root, "Hash");
     if(jprofileHash == NULL) {
-        jprofileHash = cJSON_GetObjectItem(json_root, "VersionHash");
+        jprofileHash = cJSON_GetObjectItem(json_root, "versionHash");
     }
     cJSON *jprofileDescription = cJSON_GetObjectItem(json_root, "Description");
     cJSON *jprofileVersion = cJSON_GetObjectItem(json_root, "Version");
@@ -1255,7 +1255,7 @@ T2ERROR processMsgPackConfiguration(msgpack_object *profiles_array_map, Profile 
 
     hash_str = msgpack_get_map_value(profiles_array_map, "hash");
     if(NULL == hash_str)
-        hash_str = msgpack_get_map_value(profiles_array_map, "VersionHash");
+        hash_str = msgpack_get_map_value(profiles_array_map, "versionHash");
     msgpack_print(hash_str, msgpack_get_obj_name(hash_str));
     profile->hash = msgpack_strdup(hash_str);
 

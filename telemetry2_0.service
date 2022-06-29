@@ -24,7 +24,7 @@ After= dcm-log.service
 [Service]
 Type=forking
 ExecStart=/usr/bin/telemetry2_0
-ExecStop=/bin/killall telemetry2_0
+ExecStop=/usr/bin/killall telemetry2_0
 Restart=always
 
 #[Install]

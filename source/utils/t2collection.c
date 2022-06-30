@@ -173,6 +173,9 @@ void *hash_map_get(hash_map_t *map, const char *key)
 	uint32_t count, i;
 	hash_element_t *e = NULL;
 	bool found = false;
+        if ((map == NULL) || (key == NULL)) {
+                return NULL;
+        }
 	count = t2_queue_count(map->queue);
 	if (count == 0) {
 		return NULL;
@@ -191,8 +194,7 @@ void *hash_map_get(hash_map_t *map, const char *key)
 	}
 
 
-	return e->data;	
-	
+	return e->data;
 }
 
 void *hash_map_remove(hash_map_t *map, const char *key)
@@ -201,12 +203,16 @@ void *hash_map_remove(hash_map_t *map, const char *key)
     hash_element_t *e = NULL, *tmp = NULL;
     bool found = false;
     void *data;
-    
+
+    if ((map == NULL) || (key == NULL)) {
+        return NULL;
+    }
+
     count = t2_queue_count(map->queue);
     if (count == 0) {
         return NULL;
     }
-    
+
     for (i = 0; i < count; i++) {
         e = t2_queue_peek(map->queue, i);
         if ((e != NULL) && (strncmp(e->key, key, MAX_KEY_LEN) == 0)) {
@@ -214,26 +220,28 @@ void *hash_map_remove(hash_map_t *map, const char *key)
             break;
         }
     }
-    
+
     if (found == false) {
         return NULL;
     }
-    
+
     tmp = t2_queue_remove(map->queue, i);
     assert(tmp == e);
-    
+
     data = e->data;
     free(e->key);
     free(e);
-    
+
     return data;
-    
 }
 
 int8_t hash_map_put(hash_map_t *map, char *key, void *data)
 {
     hash_element_t *e;
-
+  
+    if (map == NULL) {
+        return -1;
+    }
 
     // Hash map should support only unique keys. If previous entry exists, replace it.
     if(hash_map_get(map,key)) {
@@ -260,18 +268,26 @@ int8_t hash_map_put(hash_map_t *map, char *key, void *data)
 void *hash_map_get_first(hash_map_t *map)
 {
     hash_element_t *e;
-    
+
+    if (map == NULL) {
+        return NULL;
+    }
+
     e = t2_queue_peek(map->queue, 0);
     if (e == NULL) {
         return NULL;
     }
-    
+
     return e->data;
 }
 
 void *hash_map_lookup(hash_map_t *map, uint32_t n)
 {
     hash_element_t *e;
+
+    if (map == NULL) {
+        return NULL;
+    }
 
     e = t2_queue_peek(map->queue, n);
     if (e == NULL) {
@@ -284,6 +300,10 @@ void *hash_map_lookup(hash_map_t *map, uint32_t n)
 void *hash_map_lookupKey(hash_map_t *map, uint32_t n)
 {
     hash_element_t *e;
+
+    if (map == NULL) {
+        return NULL;
+    }
 
     e = t2_queue_peek(map->queue, n);
     if (e == NULL) {
@@ -298,7 +318,11 @@ void *hash_map_get_next(hash_map_t *map, void *data)
     uint32_t count, i;
     hash_element_t *e;
     bool found = false;
-    
+
+    if (map == NULL) {
+        return NULL;
+    }
+
     count = hash_map_count(map);
     for (i = 0; i < count; i++) {
         e = t2_queue_peek(map->queue, i);
@@ -307,22 +331,25 @@ void *hash_map_get_next(hash_map_t *map, void *data)
             break;
         }
     }
-    
+
     if (found == false) {
         return NULL;
     }
-    
+
     e = t2_queue_peek(map->queue, i + 1);
     if (e == NULL) {
         return NULL;
     }
-    
+
     return e->data;
 }
 
 uint32_t hash_map_count(hash_map_t *map)
 {
-	return t2_queue_count(map->queue);
+    if (map == NULL) {
+        return -1;
+    }
+    return t2_queue_count(map->queue);
 }
 
 hash_map_t *hash_map_create()

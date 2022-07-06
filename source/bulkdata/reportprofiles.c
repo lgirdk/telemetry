@@ -953,6 +953,10 @@ int __ReportProfiles_ProcessReportProfilesMsgPackBlob(void *msgpack)
 
     profileHashMap = getProfileHashMap();
 
+    // Unregister the Component Subscriptions
+    if(isRbusEnabled())
+        getMarkerCompRbusSub(false);
+
     /* Delete profiles not present in the new profile list */
     count = hash_map_count(profileHashMap) - 1;
     while(count >= 0) {
@@ -972,6 +976,10 @@ int __ReportProfiles_ProcessReportProfilesMsgPackBlob(void *msgpack)
             save_flag = true;
         }
     }
+  
+    // Unregister the Component Event List
+    if(isRbusEnabled())
+        unregisterDEforCompEventList();
 
     /* Populate profile hash map for current configuration */
     for( profileIndex = 0; profileIndex < profiles_count; profileIndex++ ) {

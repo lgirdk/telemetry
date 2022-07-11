@@ -532,6 +532,7 @@ T2ERROR processConfiguration(char** configData, char *profileName, char* profile
     cJSON *jprofileTimeReference = cJSON_GetObjectItem(json_root, "TimeReference");
     cJSON *jprofileParameter = cJSON_GetObjectItem(json_root, "Parameter");
     cJSON *jprofileGenerateNow = cJSON_GetObjectItem(json_root, "GenerateNow");
+    cJSON *jprofileDeleteOnTimeout = cJSON_GetObjectItem(json_root, "DeleteOnTimeout");
     cJSON *jprofileTriggerCondition = cJSON_GetObjectItem(json_root, "TriggerCondition");
     if(jprofileParameter) {
         ThisProfileParameter_count = cJSON_GetArraySize(jprofileParameter);
@@ -693,9 +694,14 @@ T2ERROR processConfiguration(char** configData, char *profileName, char* profile
     profile->protocol = strdup(jprofileProtocol->valuestring);
     profile->encodingType = strdup(jprofileEncodingType->valuestring);
     profile->generateNow = false;
+    profile->deleteonTimeout = false;
     profile->activationTimeoutPeriod = INFINITE_TIMEOUT;
+    if(jprofileDeleteOnTimeout) {
+        profile->deleteonTimeout = (cJSON_IsTrue(jprofileDeleteOnTimeout) == 1);
+        T2Info("profile->deleteonTimeout: %i\n", profile->deleteonTimeout);
+    }
     if(jprofileTriggerCondition) {
-	profile->reportingInterval = UINT_MAX;
+        profile->reportingInterval = UINT_MAX;
     }
     if(jprofileGenerateNow)
         profile->generateNow = (cJSON_IsTrue(jprofileGenerateNow) == 1);
@@ -1235,6 +1241,7 @@ T2ERROR processMsgPackConfiguration(msgpack_object *profiles_array_map, Profile 
     msgpack_object *ReportFormat_str;
     msgpack_object *ReportTimestamp_str;
     msgpack_object *GenerateNow_boolean;
+    msgpack_object *DeleteOnTimout_boolean;
     msgpack_object *TriggerConditionArray;
 
     int i;
@@ -1345,6 +1352,11 @@ T2ERROR processMsgPackConfiguration(msgpack_object *profiles_array_map, Profile 
 
     profile->activationTimeoutPeriod = INFINITE_TIMEOUT;
     profile->generateNow = false;
+    profile->deleteonTimeout = false;
+    DeleteOnTimout_boolean = msgpack_get_map_value(value_map, "DeleteOnTimeout");
+    msgpack_print(DeleteOnTimout_boolean, msgpack_get_obj_name(DeleteOnTimeout_boolean));
+    MSGPACK_GET_NUMBER(DeleteOnTimout_boolean, profile->deleteonTimeout);
+    T2Debug("profile->deleteonTimeout: %u\n", profile->deleteonTimeout);
 
     GenerateNow_boolean = msgpack_get_map_value(value_map, "GenerateNow");
     msgpack_print(GenerateNow_boolean, msgpack_get_obj_name(GenerateNow_boolean));

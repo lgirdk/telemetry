@@ -34,7 +34,7 @@
 #define buffLen 1024
 #define maxParamLen 128
 
-#define NUM_PROFILE_ELEMENTS 3
+#define NUM_PROFILE_ELEMENTS 4
 
 #define RBUS_METHOD_TIMEOUT 10
 
@@ -46,10 +46,13 @@ static dataModelMsgPckCallBack dmMsgPckProcessingCallBack = NULL;
 static dataModelSavedJsonCallBack dmSavedJsonProcessingCallBack;
 static dataModelSavedMsgPackCallBack dmSavedMsgPackProcessingCallBack;
 static hash_map_t *compTr181ParamMap = NULL;
+static profilememCallBack profilememUsedCallBack;
 
 static char* reportProfileVal = NULL ;
 static char* tmpReportProfileVal = NULL ;
 static char* reportProfilemsgPckVal = NULL ;
+uint32_t t2MemUsage = 0;
+
 T2ERROR T2RbusConsumer(TriggerCondition *triggerCondition);
 
 bool isRbusInitialized( ) {
@@ -305,7 +308,7 @@ rbusError_t t2PropertyDataSetHandler(rbusHandle_t handle, rbusProperty_t prop, r
 
     char const* paramName = rbusProperty_GetName(prop);
     if((strncmp(paramName, T2_EVENT_PARAM, maxParamLen) != 0) && (strncmp(paramName, T2_REPORT_PROFILE_PARAM, maxParamLen) != 0)
-            && (strncmp(paramName, T2_REPORT_PROFILE_PARAM_MSG_PCK, maxParamLen) != 0) && (strncmp(paramName, T2_TEMP_REPORT_PROFILE_PARAM, maxParamLen) != 0)) {
+            && (strncmp(paramName, T2_REPORT_PROFILE_PARAM_MSG_PCK, maxParamLen) != 0) && (strncmp(paramName, T2_TEMP_REPORT_PROFILE_PARAM, maxParamLen) != 0) && (strncmp(paramName, T2_TOTAL_MEM_USAGE, maxParamLen) != 0)) {
         T2Debug("Unexpected parameter = %s \n", paramName);
         T2Debug("%s --out\n", __FUNCTION__);
         return RBUS_ERROR_ELEMENT_DOES_NOT_EXIST;
@@ -514,6 +517,13 @@ rbusError_t t2PropertyDataGetHandler(rbusHandle_t handle, rbusProperty_t propert
             rbusValue_SetString(value, tmpReportProfileVal);
         else
             rbusValue_SetString(value, "");
+        rbusProperty_SetValue(property, value);
+        rbusValue_Release(value);
+    }else if(strncmp(propertyName, T2_TOTAL_MEM_USAGE, maxParamLen) == 0) {
+        rbusValue_t value;
+        rbusValue_Init(&value);
+        profilememUsedCallBack(&t2MemUsage);
+        rbusValue_SetUInt32(value, t2MemUsage);
         rbusProperty_SetValue(property, value);
         rbusValue_Release(value);
     }
@@ -726,20 +736,23 @@ void unregisterDEforCompEventList(){
  * Data element over bus will be Device.X_RDKCENTRAL-COM_T2.ReportProfiles,
  *    Device.X_RDKCENTRAL-COM_T2.ReportProfilesMsgPack
  */
-T2ERROR regDEforProfileDataModel(dataModelCallBack dmCallBackHandler,  dataModelMsgPckCallBack dmMsgPckCallBackHandler, dataModelSavedJsonCallBack dmSavedJsonCallBack, dataModelSavedMsgPackCallBack dmSavedMsgPackCallBack) {
+T2ERROR regDEforProfileDataModel(dataModelCallBack dmCallBackHandler,  dataModelMsgPckCallBack dmMsgPckCallBackHandler, dataModelSavedJsonCallBack dmSavedJsonCallBack, dataModelSavedMsgPackCallBack dmSavedMsgPackCallBack, profilememCallBack pmCallBack) {
 
     T2Debug("%s ++in\n", __FUNCTION__);
     char deNameSpace[125] = { '\0' };
     char deMsgPck[125] = { '\0' };
     char deTmpNameSpace[125] = { '\0' };
+    char deTotalMemUsage[125] = { '\0' };
     rbusError_t ret = RBUS_ERROR_SUCCESS;
     T2ERROR status = T2ERROR_SUCCESS;
     dmSavedJsonProcessingCallBack = dmSavedJsonCallBack;
     dmSavedMsgPackProcessingCallBack = dmSavedMsgPackCallBack;
+    profilememUsedCallBack = pmCallBack;
 
     snprintf(deNameSpace, 124 , "%s", T2_REPORT_PROFILE_PARAM);
     snprintf(deMsgPck, 124 , "%s", T2_REPORT_PROFILE_PARAM_MSG_PCK);
     snprintf(deTmpNameSpace, 124 , "%s", T2_TEMP_REPORT_PROFILE_PARAM);
+    snprintf(deTotalMemUsage, 124 , "%s", T2_TOTAL_MEM_USAGE);
     if(!t2bus_handle && T2ERROR_SUCCESS != rBusInterface_Init()) {
         T2Error("%s Failed in getting bus handles \n", __FUNCTION__);
         T2Debug("%s --out\n", __FUNCTION__);
@@ -749,7 +762,8 @@ T2ERROR regDEforProfileDataModel(dataModelCallBack dmCallBackHandler,  dataModel
     rbusDataElement_t dataElements[NUM_PROFILE_ELEMENTS] = {
         {deNameSpace, RBUS_ELEMENT_TYPE_PROPERTY, {t2PropertyDataGetHandler, t2PropertyDataSetHandler, NULL, NULL, NULL, NULL}},
         {deMsgPck, RBUS_ELEMENT_TYPE_PROPERTY, {t2PropertyDataGetHandler, t2PropertyDataSetHandler, NULL, NULL, NULL, NULL}},
-	{deTmpNameSpace, RBUS_ELEMENT_TYPE_PROPERTY, {t2PropertyDataGetHandler, t2PropertyDataSetHandler, NULL, NULL, NULL, NULL}}
+	{deTmpNameSpace, RBUS_ELEMENT_TYPE_PROPERTY, {t2PropertyDataGetHandler, t2PropertyDataSetHandler, NULL, NULL, NULL, NULL}},
+	{deTotalMemUsage, RBUS_ELEMENT_TYPE_PROPERTY, {t2PropertyDataGetHandler, NULL, NULL, NULL, NULL, NULL}}
     };
     ret = rbus_regDataElements(t2bus_handle, NUM_PROFILE_ELEMENTS, dataElements);
     if(ret == RBUS_ERROR_SUCCESS) {

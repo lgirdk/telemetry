@@ -184,7 +184,10 @@ void* TimeoutThread(void *arg)
             tProfile->repeat = false;
             pthread_mutex_unlock(&tProfile->tMutex);
             pthread_detach(pthread_self());
-
+            if(tProfile->deleteonTime) {
+               deleteProfile(profileName);
+               break;
+	    }
             pthread_mutex_lock(&scMutex);
             Vector_RemoveItem(profileList, tProfile, freeSchedulerProfile);
             pthread_mutex_unlock(&scMutex);
@@ -277,7 +280,7 @@ void uninitScheduler()
     T2Debug("%s --out\n", __FUNCTION__);
 }
 
-T2ERROR registerProfileWithScheduler(const char* profileName, unsigned int timeInterval, unsigned int activationTimeout, bool repeat)
+T2ERROR registerProfileWithScheduler(const char* profileName, unsigned int timeInterval, unsigned int activationTimeout, bool deleteonTimeout, bool repeat)
 {
     T2ERROR ret;
     T2Debug("%s ++in : profile - %s \n", __FUNCTION__,profileName);
@@ -313,6 +316,7 @@ T2ERROR registerProfileWithScheduler(const char* profileName, unsigned int timeI
         tProfile->repeat = repeat;
         tProfile->timeOutDuration = timeInterval;
         tProfile->timeToLive = activationTimeout;
+	tProfile->deleteonTime = deleteonTimeout;
         tProfile->terminated = false;
         pthread_mutex_init(&tProfile->tMutex, NULL);
         pthread_cond_init(&tProfile->tCond, NULL);

@@ -57,5 +57,20 @@
                 </parameter>
             </parameters>
         </object>
+	<object>
+           <name>X_RDK_T2</name>
+           <objectType>object</objectType>
+           <functions>
+               <func_GetParamUlongValue>Telemetry_GetParamUlongValue</func_GetParamUlongValue>
+           </functions>
+           <parameters>
+               <parameter>
+                   <name>TotalUsedMem</name>
+                   <type>unsignedInt</type>
+                   <syntax>uint32</syntax>
+                   <writable>false</writable>
+               </parameter>
+           </parameters>
+      </object>
     </objects>
 </dataModelInfo>

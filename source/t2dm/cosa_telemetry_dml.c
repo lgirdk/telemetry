@@ -63,6 +63,7 @@
 #include "t2log_wrapper.h"
 #include "datamodel.h"
 #include "ansc_platform.h"
+#include "reportprofiles.h"
 
 /***********************************************************************
 
@@ -242,3 +243,17 @@ BOOL Telemetry_SetParamStringValue(ANSC_HANDLE hInsContext, char* ParamName, cha
 
     return FALSE;
 }
+
+BOOL
+Telemetry_GetParamUlongValue(ANSC_HANDLE hInsContext, char* ParamName, unsigned int *pValue)
+{
+    unsigned int *temp = 0;
+    if (strcmp(ParamName, "TotalUsedMem") == 0)
+    {
+        profilemem_usage(temp);
+        *pValue = *temp;
+        return TRUE;
+    }
+    return FALSE;
+}
+

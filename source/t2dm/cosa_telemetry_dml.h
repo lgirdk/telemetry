@@ -79,4 +79,6 @@ Telemetry_GetParamStringValue(ANSC_HANDLE hInsContext, char* ParamName, char* pV
 BOOL
 Telemetry_SetParamStringValue(ANSC_HANDLE hInsContext, char* ParamName, char* pString);
 
+BOOL
+Telemetry_GetParamUlongValue(ANSC_HANDLE hInsContext, char* ParamName, unsigned int* pValue);
 #endif

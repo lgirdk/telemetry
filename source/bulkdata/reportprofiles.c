@@ -26,7 +26,8 @@
 #include <limits.h>
 #include <sys/types.h>
 #include <unistd.h>
-
+#include <sys/time.h>
+#include <sys/resource.h>
 #include "reportprofiles.h"
 
 #include "xconfclient.h"
@@ -78,6 +79,9 @@ pthread_mutex_t rpMutex = PTHREAD_MUTEX_INITIALIZER;
 T2ERROR RemovePreRPfromDisk(const char* path , hash_map_t *map);
 static bool isT2MtlsEnable = false;
 static bool initT2MtlsEnable = false;
+
+struct rusage pusage;
+unsigned int profilemem=0;
 
 #if defined(DROP_ROOT_PRIV)
 static void drop_root()
@@ -353,6 +357,21 @@ static void createComponentDataElements() {
     T2Debug("%s --out\n", __FUNCTION__);
 }
 
+void profilemem_usage(unsigned int *value) {
+    T2Debug("%s ++in\n", __FUNCTION__);
+    *value = profilemem;
+    T2Debug("value is %u\n", *value);
+    T2Debug("%s --out\n", __FUNCTION__);
+}
+
+void T2totalmem_calculate(){
+    T2Debug("%s ++in\n", __FUNCTION__);
+    getrusage(RUSAGE_SELF, &pusage);
+    profilemem = (unsigned int)pusage.ru_maxrss;
+    T2Debug("T2 memory = %u\n", profilemem);
+    T2Debug("%s --out\n", __FUNCTION__);
+}
+
 T2ERROR initReportProfiles()
 {
     T2Debug("%s ++in\n", __FUNCTION__);
@@ -398,7 +417,7 @@ T2ERROR initReportProfiles()
 #endif
             {
                 T2Debug("Enabling datamodel for report profiles in RBUS mode \n");
-                regDEforProfileDataModel(datamodel_processProfile, datamodel_MsgpackProcessProfile, datamodel_getSavedJsonProfilesasString, datamodel_getSavedMsgpackProfilesasString);
+                regDEforProfileDataModel(datamodel_processProfile, datamodel_MsgpackProcessProfile, datamodel_getSavedJsonProfilesasString, datamodel_getSavedMsgpackProfilesasString, profilemem_usage);
             }
 #if defined(CCSP_SUPPORT_ENABLED)
             else {
@@ -753,6 +772,8 @@ void ReportProfiles_ProcessReportProfilesBlob(cJSON *profiles_root , bool rprofi
 	removeProfileFromDisk(DirPath, MSGPACK_REPORTPROFILES_PERSISTENT_FILE);
 	T2Info("%s is removed from disk \n", MSGPACK_REPORTPROFILES_PERSISTENT_FILE);
     }
+    //To calculate the memory when the profiles are assigned
+    T2totalmem_calculate(); 
 
     if(isRbusEnabled()) {
         createComponentDataElements();
@@ -1031,6 +1052,8 @@ int __ReportProfiles_ProcessReportProfilesMsgPackBlob(void *msgpack)
                 msgpack_blob , msgpack_blob_size);
         T2Debug("%s is saved on disk \n", MSGPACK_REPORTPROFILES_PERSISTENT_FILE);
     }
+    T2totalmem_calculate();
+
     if(isRbusEnabled()) {
         createComponentDataElements();
         // Notify registered components that profile has received an update

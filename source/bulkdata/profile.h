@@ -44,6 +44,7 @@ typedef struct _Profile
     bool isUpdated;
     bool reportInProgress;
     bool generateNow;
+    bool deleteonTimeout;
     bool bClearSeekMap;
     bool triggerReportOnCondition;
     char* hash;

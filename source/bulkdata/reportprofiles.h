@@ -101,6 +101,10 @@ void ReportProfiles_ProcessReportProfilesMsgPackBlob(char *msgpack_blob , int ms
 
 bool isMtlsEnabled(void);
 
+void profilemem_usage(unsigned int *value);
+
+void T2totalmem_calculate();
+
 #define msgpack_get_obj_name(obj) #obj
 
 #define MSGPACK_GET_ARRAY_SIZE(obj, item)		\

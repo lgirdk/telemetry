@@ -32,6 +32,7 @@ typedef struct _SchedulerProfile
     unsigned int timeToLive;
     bool repeat;
     bool terminated;
+    bool deleteonTime; 
     pthread_t tId;
     pthread_mutex_t tMutex;
     pthread_cond_t tCond;
@@ -47,7 +48,7 @@ T2ERROR initScheduler(TimeoutNotificationCB notificationCb, ActivationTimeoutCB 
 
 void uninitScheduler();
 
-T2ERROR registerProfileWithScheduler(const char* profileName, unsigned int timeInterval, unsigned int activationTimeout, bool repeat);
+T2ERROR registerProfileWithScheduler(const char* profileName, unsigned int timeInterval, unsigned int activationTimeout, bool deleteonTimout, bool repeat);
 
 T2ERROR unregisterProfileFromScheduler(const char* profileName);
 

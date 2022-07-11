@@ -550,7 +550,7 @@ T2ERROR enableProfile(const char *profileName)
             eMarker = (EventMarker *)Vector_At(profile->eMarkerList, emIndex);
             addT2EventMarker(eMarker->markerName, eMarker->compName, profile->name, eMarker->skipFreq);
         }
-        if(registerProfileWithScheduler(profile->name, profile->reportingInterval, profile->activationTimeoutPeriod, true) != T2ERROR_SUCCESS)
+        if(registerProfileWithScheduler(profile->name, profile->reportingInterval, profile->activationTimeoutPeriod, profile->deleteonTimeout, true) != T2ERROR_SUCCESS)
         {
             profile->enable = false;
             T2Error("Unable to register profile : %s with Scheduler\n", profileName);
@@ -840,6 +840,7 @@ static void loadReportProfilesFromDisk()
          }
      }
      T2Info("Completed processing %lu profiles on the disk,trying to fetch new/updated profiles\n", (unsigned long)Vector_Size(configList));
+     T2totalmem_calculate();
      Vector_Destroy(configList, freeReportProfileConfig);
 
     T2Debug("%s --out\n", __FUNCTION__);

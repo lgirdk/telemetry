@@ -201,11 +201,9 @@ T2ERROR addT2EventMarker(const char* markerName, const char* compName, const cha
         else
         {
             T2Error("Unable to add Event Marker to the Map :: Malloc failure\n");
-	    pthread_mutex_unlock(&t2MarkersMutex);
             return T2ERROR_FAILURE;
         }
     }
-    pthread_mutex_unlock(&t2MarkersMutex);
     return T2ERROR_SUCCESS;
 }
 

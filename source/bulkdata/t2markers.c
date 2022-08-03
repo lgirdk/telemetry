@@ -46,8 +46,10 @@ static void freeT2Marker(void *data)
         hash_element_t *element = (hash_element_t *)data;
         free(element->key);
         T2Marker *t2Marker = (T2Marker *)element->data;
-        free(t2Marker->componentName);
-        free(t2Marker->markerName);
+	if(t2Marker->componentName != NULL)
+           free(t2Marker->componentName);
+	if(t2Marker->markerName != NULL)
+           free(t2Marker->markerName);
         Vector_Destroy(t2Marker->profileList, free);
         free(t2Marker);
         free(element);

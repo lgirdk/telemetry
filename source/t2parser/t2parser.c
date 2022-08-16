@@ -1442,7 +1442,7 @@ T2ERROR processMsgPackConfiguration(msgpack_object *profiles_array_map, Profile 
             if (profile->t2HTTPDest)
                 free(profile->t2HTTPDest);
             if (profile->t2RBUSDest)
-                free(profile->t2HTTPDest);
+                free(profile->t2RBUSDest);
             free(profile->Description);
             free(profile->version);
             free(profile);

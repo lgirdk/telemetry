@@ -42,6 +42,7 @@
 #include "syslog.h"
 #include "reportprofiles.h"
 #include "xconfclient.h"
+#include "scheduler.h"
 #ifdef DUAL_CORE_XB3
 #include "interChipHelper.h"
 #endif
@@ -55,6 +56,7 @@
 /*Define signals properly to make sure they don't get overide anywhere*/
 #define LOG_UPLOAD 10
 #define EXEC_RELOAD 12
+#define LOG_UPLOAD_ONDEMAND 29
 
 sigset_t blocking_signal;
 
@@ -152,6 +154,13 @@ void sig_handler(int sig)
     else if ( sig == SIGUSR1 || sig == LOG_UPLOAD ) {
         signal(LOG_UPLOAD, sig_handler); /* reset it to this function */
         T2Info(("LOG_UPLOAD received!\n"));
+	set_logdemand(false);
+        ReportProfiles_Interrupt();
+    }
+    else if (sig == LOG_UPLOAD_ONDEMAND || sig == SIGIO) {
+        signal(LOG_UPLOAD_ONDEMAND, sig_handler); /* reset it to this function */
+        T2Info(("LOG_UPLOAD_ONDEMAND received!\n"));
+        set_logdemand(true);
         ReportProfiles_Interrupt();
     }
     else if ( sig == SIGCHLD ) {
@@ -218,13 +227,19 @@ static void t2DaemonMainModeInit( ) {
     */
     sigaddset(&blocking_signal, SIGUSR2);
     sigaddset(&blocking_signal, SIGUSR1);
+    sigaddset(&blocking_signal, SIGCONT);
     sigaddset(&blocking_signal, LOG_UPLOAD);
     sigaddset(&blocking_signal, EXEC_RELOAD);
+    sigaddset(&blocking_signal, LOG_UPLOAD_ONDEMAND);
+    sigaddset(&blocking_signal, SIGIO);
 
     signal(SIGTERM, sig_handler);
     signal(SIGUSR1, sig_handler);
+    signal(SIGCONT, sig_handler);
     signal(LOG_UPLOAD, sig_handler);
     signal(EXEC_RELOAD, sig_handler);
+    signal(LOG_UPLOAD_ONDEMAND, sig_handler);
+    signal(SIGIO, sig_handler);
 
     #ifdef _COSA_INTEL_XB3_ARM_
     if ( createNotifyDir() != 0 ) {

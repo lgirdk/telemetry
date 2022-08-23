@@ -23,7 +23,7 @@
 #include <sys/time.h>
 #include <pthread.h>
 #include "telemetry2_0.h"
-
+#include <stdbool.h>
 
 typedef struct _SchedulerProfile
 {
@@ -53,5 +53,9 @@ T2ERROR registerProfileWithScheduler(const char* profileName, unsigned int timeI
 T2ERROR unregisterProfileFromScheduler(const char* profileName);
 
 T2ERROR SendInterruptToTimeoutThread(char* profileName);
+
+bool get_logdemand();
+
+void set_logdemand(bool value);
 
 #endif /* _SCHEDULER_H_ */

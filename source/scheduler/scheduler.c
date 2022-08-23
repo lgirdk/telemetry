@@ -38,6 +38,19 @@ static ActivationTimeoutCB activationTimeoutCb;
 static Vector *profileList = NULL;
 static pthread_mutex_t scMutex;
 static bool sc_initialized = false;
+static bool islogdemand = false;
+
+bool get_logdemand ()
+{
+   T2Info(("get_logdemand ++in\n"));
+   return islogdemand;
+}
+
+void set_logdemand (bool value)
+{
+    T2Info(("set_logdemand ++in\n"));
+    islogdemand = value;
+}
 
 void freeSchedulerProfile(void *data)
 {
@@ -95,6 +108,7 @@ int getLapsedTime (struct timespec *output, struct timespec *time1, struct times
 
 void* TimeoutThread(void *arg)
 {
+    T2Debug("%s ++in\n", __FUNCTION__);
     SchedulerProfile *tProfile = (SchedulerProfile*)arg;
     struct timespec _ts;
     struct timespec _now;
@@ -145,7 +159,13 @@ void* TimeoutThread(void *arg)
 
             if(minThresholdTime == 0)
             {
-                 timeoutNotificationCb(tProfile->name, true);
+		 if (get_logdemand() == true){
+                       set_logdemand(false);
+		       timeoutNotificationCb(tProfile->name, false);
+                 }
+		 else{
+                       timeoutNotificationCb(tProfile->name, true);
+		 }
                  if(tProfile->terminated)
                  {
                     T2Error("Profile : %s is being removed from scheduler \n", tProfile->name);

@@ -203,8 +203,10 @@ void ReportProfiles_TimeoutCb(char* profileName, bool isClearSeekMap)
     T2Info("%s ++in\n", __FUNCTION__);
 
     if(ProfileXConf_isNameEqual(profileName)) {
+        T2Debug("isclearSeekmap = %s \n", isClearSeekMap ? "true":"false");
         ProfileXConf_notifyTimeout(isClearSeekMap);
     }else {
+        T2Debug("isclearSeekmap = %s \n", isClearSeekMap ? "true":"false");
         NotifyTimeout(profileName, isClearSeekMap);
     }
 

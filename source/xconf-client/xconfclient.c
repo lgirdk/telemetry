@@ -386,7 +386,7 @@ static T2ERROR doHttpGet(char* httpsUrl, char **data) {
     char *pCertFile = NULL;
     char *pPasswd = NULL;
     // char *pKeyType = "PEM" ;
-
+    bool mtls_enable = false;
     pid_t childPid;
     int sharedPipeFdStatus[2];
     int sharedPipeFdDataLen[2];
@@ -426,6 +426,7 @@ static T2ERROR doHttpGet(char* httpsUrl, char **data) {
     }
  #endif
  #endif
+    mtls_enable = isMtlsEnabled();
     // block the userdefined signal handlers before fork
     pthread_sigmask(SIG_BLOCK,&blocking_signal,NULL);
     if((childPid = fork()) < 0) {
@@ -477,7 +478,7 @@ static T2ERROR doHttpGet(char* httpsUrl, char **data) {
                 T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
             }
 
-            if(isMtlsEnabled() == true) {
+            if(mtls_enable == true) {
                 if(T2ERROR_SUCCESS == getMtlsCerts(&pCertFile, &pPasswd)) {
                     code = curl_easy_setopt(curl, CURLOPT_SSLENGINE_DEFAULT, 1L);
                     if(code != CURLE_OK) {

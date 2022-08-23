@@ -175,7 +175,7 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char* payload) {
     struct curl_slist *headerList = NULL;
     char *pCertFile = NULL;
     char *pKeyFile = NULL;
-
+    bool mtls_enable = false;
     pid_t childPid;
     int sharedPipeFds[2];
 
@@ -205,6 +205,7 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char* payload) {
     }
  #endif
  #endif
+    mtls_enable = isMtlsEnabled();
     // Block the userdefined signal handlers before fork
     pthread_sigmask(SIG_BLOCK,&blocking_signal,NULL);
     if((childPid = fork()) < 0) {
@@ -230,7 +231,7 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char* payload) {
                 return ret;
             }
 
-            if(isMtlsEnabled() == true) {
+            if(mtls_enable == true) {
                 if(T2ERROR_SUCCESS == getMtlsCerts(&pCertFile, &pKeyFile)) {
                     setMtlsHeaders(curl, pCertFile, pKeyFile);
                 }else {

@@ -266,6 +266,8 @@ static void* CollectAndReport(void* data)
             profile->reportInProgress = false;
             return NULL;
         }
+
+        pthread_mutex_lock(&profile->triggerCondMutex);
         if(profile->triggerReportOnCondition && (profile->jsonReportObj != NULL))
         {
             triggercondition=profile->jsonReportObj;
@@ -275,6 +277,7 @@ static void* CollectAndReport(void* data)
         {
             T2Error("Failed to initialize JSON Report\n");
             profile->reportInProgress = false;
+            pthread_mutex_unlock(&profile->triggerCondMutex);
             return NULL;
         }
         else
@@ -306,12 +309,13 @@ static void* CollectAndReport(void* data)
                 encodeEventMarkersInJSON(valArray, profile->eMarkerList);
                 pthread_mutex_unlock(&profile->eventMutex);
             }
-            if(profile->triggerReportOnCondition && (triggercondition != NULL))
+            if(profile->triggerReportOnCondition && (triggercondition != NULL)){
                 cJSON_AddItemToArray(valArray, triggercondition);
+            }
             ret = prepareJSONReport(profile->jsonReportObj, &jsonReport);
-	    destroyJSONReport(profile->jsonReportObj);
+	        destroyJSONReport(profile->jsonReportObj);
             profile->jsonReportObj = NULL;
-
+            pthread_mutex_unlock(&profile->triggerCondMutex);
             if(ret != T2ERROR_SUCCESS)
             {
                 T2Error("Unable to generate report for : %s\n", profile->name);
@@ -562,6 +566,7 @@ T2ERROR enableProfile(const char *profileName)
     else
     {
         profile->enable = true;
+        pthread_mutex_init(&profile->triggerCondMutex, NULL);
 
         int emIndex = 0;
         EventMarker *eMarker = NULL;
@@ -993,12 +998,14 @@ T2ERROR registerTriggerConditionConsumer()
 
 void appendTriggerCondition (Profile *tempProfile, const char *referenceName, const char *referenceValue){
     T2Debug("%s ++in\n", __FUNCTION__);
+    pthread_mutex_lock(&tempProfile->triggerCondMutex);
     cJSON *temparrayItem = cJSON_CreateObject();
     cJSON_AddStringToObject(temparrayItem, "reference",referenceName);
     cJSON_AddStringToObject(temparrayItem, "value", referenceValue);
     cJSON *temparrayItem1 = cJSON_CreateObject();
     cJSON_AddItemToObject(temparrayItem1, "TriggerConditionResult", temparrayItem);
     tempProfile->jsonReportObj=temparrayItem1;
+    pthread_mutex_unlock(&tempProfile->triggerCondMutex);
     T2Debug("%s --out\n", __FUNCTION__);
 }
 
@@ -1019,7 +1026,7 @@ T2ERROR triggerReportOnCondtion(const char *referenceName, const char *reference
                 TriggerCondition *triggerCondition = ((TriggerCondition *) Vector_At(tempProfile->triggerConditionList, j));
                 if(strcmp(triggerCondition->reference,referenceName) == 0)
                 {
-	             T2Debug("Triggering report on condition for %s with %s operator, %d threshold\n",
+	                 T2Info("Triggering report on condition for %s with %s operator, %d threshold\n",
 				     triggerCondition->reference, triggerCondition->oprator, triggerCondition->threshold);
                      tempProfile->triggerReportOnCondition = true;
                      if(triggerCondition->report)

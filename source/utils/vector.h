@@ -37,6 +37,7 @@ typedef int (*Vecor_Comparator)(const void*, const void*);
 
 T2ERROR Vector_Create(Vector** v);
 T2ERROR Vector_Destroy(Vector* v, Vector_Cleanup destroyer);
+T2ERROR Vector_Clear(Vector* v, Vector_Cleanup destroyer);
 T2ERROR Vector_PushBack(Vector* v, void* item);
 T2ERROR Vector_RemoveItem(Vector* v, void* item, Vector_Cleanup destroyer);
 T2ERROR Vector_Sort(Vector* v, size_t size, Vecor_Comparator comparator);

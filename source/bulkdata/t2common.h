@@ -22,14 +22,18 @@
 
 #include <stdbool.h>
 #include <stdio.h>
+#include "vector.h"
+
+#define MAX_ACCUMULATE 20
+#define MAX_ACCUMULATE_MSG "maximum accumulation reached"
 
 typedef enum
 {
     MTYPE_NONE,
     MTYPE_COUNTER,
-    MTYPE_ABSOLUTE
+    MTYPE_ABSOLUTE,
+    MTYPE_ACCUMULATE
 }MarkerType;
-
 
 typedef struct _Param
 {
@@ -57,6 +61,7 @@ typedef struct _EventMarker
     union{
         unsigned int count;
         char* markerValue;
+        Vector* accumulatedValues;
     }u;
     unsigned int skipFreq;
 }EventMarker;
@@ -97,5 +102,7 @@ void freeEMarker(void *data);
 void freeGMarker(void *data);
 
 void freeTriggerCondition(void *data);
+
+void freeAccumulatedParam(void *data);
 
 #endif /* _T2COMMON_H_ */

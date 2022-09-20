@@ -70,6 +70,8 @@ typedef struct _Profile
     Vector *cachedReportList;
     cJSON *jsonReportObj;
     pthread_t reportThread;
+    pthread_mutex_t triggerCondMutex;
+    pthread_mutex_t eventMutex;
     Vector *triggerConditionList;
 }Profile;
 

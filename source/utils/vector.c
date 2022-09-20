@@ -58,6 +58,24 @@ Vector_Destroy(Vector *v, Vector_Cleanup destroyer)
 }
 
 T2ERROR
+Vector_Clear(Vector *v, Vector_Cleanup destroyer)
+{ 
+  if (!v || !destroyer)
+    return T2ERROR_INVALID_ARGS;
+  size_t i;
+  if (v->data)
+  {
+      for (i = 0; i < v->count; ++i)
+          destroyer(v->data[i]);
+      free(v->data);
+  }
+  v->data = NULL;
+  v->capacity = 0;
+  v->count = 0;
+  return T2ERROR_SUCCESS;
+}
+
+T2ERROR
 Vector_PushBack(Vector *v, void* item)
 {
   if (!v)

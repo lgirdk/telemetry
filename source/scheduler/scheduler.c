@@ -127,15 +127,29 @@ void* TimeoutThread(void *arg)
         pthread_mutex_lock(&tProfile->tMutex);
 
         clock_gettime(CLOCK_REALTIME, &_now);
-        _ts.tv_sec = _now.tv_sec + tProfile->timeOutDuration;
-
-	if(tProfile->timeOutDuration == UINT_MAX){
-	     T2Info("Waiting for condition as reporting interval is not configured for profile - %s\n", tProfile->name);
-             n = pthread_cond_wait(&tProfile->tCond, &tProfile->tMutex);
-	}
-	else{
-             T2Info("Waiting for %d sec for next TIMEOUT for profile - %s\n", tProfile->timeOutDuration, tProfile->name);
-	     n = pthread_cond_timedwait(&tProfile->tCond, &tProfile->tMutex, &_ts);
+        //update the timevalues for profiles
+        _ts.tv_sec = _now.tv_sec;
+        if(tProfile->firstexecution == true){
+             T2Info("First Reporting Interval %d sec is given for profile %s\n", tProfile->firstreportint, tProfile->name);
+             _ts.tv_sec += tProfile->firstreportint;
+        }
+        else{
+             _ts.tv_sec += tProfile->timeOutDuration;
+        }
+        //When first reporting interval is given waiting for first report int value
+        if(tProfile->firstreportint > 0 && tProfile->firstexecution == true ){
+             T2Info("Waiting for %d sec for next TIMEOUT for profile as firstreporting interval is given - %s\n", tProfile->firstreportint, tProfile->name);
+             n = pthread_cond_timedwait(&tProfile->tCond, &tProfile->tMutex, &_ts);
+        }
+        else{
+             if(tProfile->timeOutDuration == UINT_MAX){
+                 T2Info("Waiting for condition as reporting interval is not configured for profile - %s\n", tProfile->name);
+                 n = pthread_cond_wait(&tProfile->tCond, &tProfile->tMutex);
+             }
+             else{
+                 T2Info("Waiting for %d sec for next TIMEOUT for profile - %s\n", tProfile->timeOutDuration, tProfile->name);
+                 n = pthread_cond_timedwait(&tProfile->tCond, &tProfile->tMutex, &_ts);
+             }
         }
         if(n == ETIMEDOUT)
         {
@@ -148,24 +162,24 @@ void* TimeoutThread(void *arg)
             T2Info("Interrupted before TIMEOUT for profile : %s \n", tProfile->name);
             if(minThresholdTime) 
             {
-		 memset(&_MinThresholdTimeTs, 0, sizeof(struct timespec));
+                 memset(&_MinThresholdTimeTs, 0, sizeof(struct timespec));
                  clock_gettime(CLOCK_REALTIME, &_MinThresholdTimeTs);
-		 T2Debug("minThresholdTime left %ld -\n", (long int)(_MinThresholdTimeTs.tv_sec - _MinThresholdTimeStart.tv_sec));
+                 T2Debug("minThresholdTime left %ld -\n", (long int)(_MinThresholdTimeTs.tv_sec - _MinThresholdTimeStart.tv_sec));
                  if(minThresholdTime < (_MinThresholdTimeTs.tv_sec - _MinThresholdTimeStart.tv_sec)){
                       minThresholdTime = 0;
-		      T2Debug("minThresholdTime reset done\n");
-		 }     
+                      T2Debug("minThresholdTime reset done\n");
+                 }     
             }
 
             if(minThresholdTime == 0)
             {
-		 if (get_logdemand() == true){
+                  if (get_logdemand() == true){
                        set_logdemand(false);
-		       timeoutNotificationCb(tProfile->name, false);
+                       timeoutNotificationCb(tProfile->name, false);
                  }
-		 else{
+                 else{
                        timeoutNotificationCb(tProfile->name, true);
-		 }
+                 }
                  if(tProfile->terminated)
                  {
                     T2Error("Profile : %s is being removed from scheduler \n", tProfile->name);
@@ -177,7 +191,7 @@ void* TimeoutThread(void *arg)
 
                  if(minThresholdTime)
                  {
-		     memset(&_MinThresholdTimeStart, 0, sizeof(struct timespec));
+                     memset(&_MinThresholdTimeStart, 0, sizeof(struct timespec));
                      clock_gettime(CLOCK_REALTIME, &_MinThresholdTimeStart);
                  }
             }
@@ -187,11 +201,14 @@ void* TimeoutThread(void *arg)
             T2Error("Profile : %s pthread_cond_timedwait ERROR!!!\n", tProfile->name);
         }
         //Update activation timeout
-        if (tProfile->timeToLive != INFINITE_TIMEOUT)
+        if (tProfile->timeToLive != INFINITE_TIMEOUT && tProfile->firstexecution == true){
+             tProfile->timeToLive -= tProfile->firstreportint;
+        }
+        else if (tProfile->timeToLive != INFINITE_TIMEOUT)
         {
             tProfile->timeToLive -= tProfile->timeOutDuration;
         }
-
+        tProfile->firstexecution = false;
         /*
          * If timeToLive < timeOutDuration,
          * invoke activationTimeout callback and
@@ -207,7 +224,7 @@ void* TimeoutThread(void *arg)
             if(tProfile->deleteonTime) {
                deleteProfile(profileName);
                break;
-	    }
+            }
             pthread_mutex_lock(&scMutex);
             Vector_RemoveItem(profileList, tProfile, freeSchedulerProfile);
             pthread_mutex_unlock(&scMutex);
@@ -303,7 +320,7 @@ void uninitScheduler()
     T2Debug("%s --out\n", __FUNCTION__);
 }
 
-T2ERROR registerProfileWithScheduler(const char* profileName, unsigned int timeInterval, unsigned int activationTimeout, bool deleteonTimeout, bool repeat)
+T2ERROR registerProfileWithScheduler(const char* profileName, unsigned int timeInterval, unsigned int activationTimeout, bool deleteonTimeout, bool repeat,bool reportOnUpdate, unsigned int firstReportingInterval)
 {
     T2ERROR ret;
     T2Debug("%s ++in : profile - %s \n", __FUNCTION__,profileName);
@@ -339,9 +356,18 @@ T2ERROR registerProfileWithScheduler(const char* profileName, unsigned int timeI
         tProfile->repeat = repeat;
         tProfile->timeOutDuration = timeInterval;
         tProfile->timeToLive = activationTimeout;
-	tProfile->deleteonTime = deleteonTimeout;
+        tProfile->deleteonTime = deleteonTimeout;
         tProfile->terminated = false;
-        if(pthread_mutex_init(&tProfile->tMutex, NULL) != 0){
+        tProfile->reportonupdate = reportOnUpdate;
+        tProfile->firstreportint = firstReportingInterval;
+        tProfile->firstexecution = false;
+        if(tProfile->timeOutDuration < tProfile->firstreportint){
+            tProfile->firstreportint = 0;
+        }
+        if(tProfile->firstreportint > 0 ){
+            tProfile->firstexecution = true;
+        }
+	if(pthread_mutex_init(&tProfile->tMutex, NULL) != 0){
             T2Error("%s Mutex init has failed\n",  __FUNCTION__);
             return T2ERROR_FAILURE;
         }

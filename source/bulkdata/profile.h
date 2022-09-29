@@ -55,6 +55,8 @@ typedef struct _Profile
     char* version;
     char* RootName;
     JSONEncoding *jsonEncoding;
+    bool reportOnUpdate;
+    unsigned int firstReportingInterval;
     unsigned int SendErr;
     unsigned int reportingInterval;
     unsigned int activationTimeoutPeriod;

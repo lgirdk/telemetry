@@ -731,7 +731,10 @@ void ReportProfiles_ProcessReportProfilesBlob(cJSON *profiles_root , bool rprofi
                 free(existingProfileHash);
 
                 if(T2ERROR_SUCCESS == processConfiguration(&(profileEntry->config), profileName, profileEntry->hash, &profile)) { //CHECK if process configuration should have locking mechanism
-
+                    if (profile->reportOnUpdate){
+                         T2Info("%s Profile %s present in current config and hash value is different. Generating  cjson report for the profile. \n", __FUNCTION__, profileName);
+                         NotifyTimeout(profileName, true);
+                    }
                     if(T2ERROR_SUCCESS != saveConfigToFile(DirPath, profile->name, profileEntry->config)) {
                         T2Error("Unable to save profile : %s to disk\n", profile->name);
                     }
@@ -1038,7 +1041,11 @@ int __ReportProfiles_ProcessReportProfilesMsgPackBlob(void *msgpack)
                 T2Info("Profile %s with %s hash already exist \n", profileName, existingProfileHash);
                 continue;
             } else {
-                if(T2ERROR_SUCCESS == processMsgPackConfiguration(singleProfile, &profile))
+                if(T2ERROR_SUCCESS == processMsgPackConfiguration(singleProfile, &profile)){
+		if (profile->reportOnUpdate){
+                         T2Info("%s Profile %s present in current config and hash value is different. Generating  cjson report for the profile. \n", __FUNCTION__, profileName);
+                         NotifyTimeout(profileName, true);
+			 }
                 if(T2ERROR_SUCCESS == ReportProfiles_deleteProfile(profile->name)) {
                     ReportProfiles_addReportProfile(profile);
                     save_flag = true;
@@ -1046,6 +1053,7 @@ int __ReportProfiles_ProcessReportProfilesMsgPackBlob(void *msgpack)
             }
         }
         free(profileName);
+	}
     } /* End of looping through report profiles */
     if (save_flag) {
         clearPersistenceFolder(REPORTPROFILES_PERSISTENCE_PATH);

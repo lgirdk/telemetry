@@ -519,6 +519,7 @@ T2ERROR processConfiguration(char** configData, char *profileName, char* profile
     //REPORTPROFILE CJson PARSING
     T2ERROR ret = T2ERROR_SUCCESS;
     int ThisProfileParameter_count = 0;
+    int ReportAdjustments_index = 0;
     cJSON *json_root = cJSON_Parse(*configData);
 
     cJSON *jprofileHash = cJSON_GetObjectItem(json_root, "Hash");
@@ -537,6 +538,8 @@ T2ERROR processConfiguration(char** configData, char *profileName, char* profile
     cJSON *jprofileGenerateNow = cJSON_GetObjectItem(json_root, "GenerateNow");
     cJSON *jprofileDeleteOnTimeout = cJSON_GetObjectItem(json_root, "DeleteOnTimeout");
     cJSON *jprofileTriggerCondition = cJSON_GetObjectItem(json_root, "TriggerCondition");
+    cJSON *jprofileReportingAdjustments =  cJSON_GetObjectItem(json_root, "ReportingAdjustments");
+
     if(jprofileParameter) {
         ThisProfileParameter_count = cJSON_GetArraySize(jprofileParameter);
     }
@@ -699,6 +702,8 @@ T2ERROR processConfiguration(char** configData, char *profileName, char* profile
     profile->generateNow = false;
     profile->deleteonTimeout = false;
     profile->activationTimeoutPeriod = INFINITE_TIMEOUT;
+    profile->reportOnUpdate = false;
+    profile->firstReportingInterval = 0;
     if(jprofileDeleteOnTimeout) {
         profile->deleteonTimeout = (cJSON_IsTrue(jprofileDeleteOnTimeout) == 1);
         T2Info("profile->deleteonTimeout: %i\n", profile->deleteonTimeout);
@@ -709,8 +714,29 @@ T2ERROR processConfiguration(char** configData, char *profileName, char* profile
     if(jprofileGenerateNow)
         profile->generateNow = (cJSON_IsTrue(jprofileGenerateNow) == 1);
 
+    if(jprofileReportingAdjustments){
+        int ReportAdjustments_count = cJSON_GetArraySize(jprofileReportingAdjustments);
+        for( ReportAdjustments_index = 0; ReportAdjustments_index < ReportAdjustments_count ; ReportAdjustments_index++ ) {
+              cJSON *Reportadjustment_subitem = cJSON_GetArrayItem(jprofileReportingAdjustments, ReportAdjustments_index);
+              if(Reportadjustment_subitem != NULL){
+                  cJSON *jprofileReportOnUpdate = cJSON_GetObjectItem(Reportadjustment_subitem, "ReportOnUpdate");
+                  if(jprofileReportOnUpdate){
+                      profile->reportOnUpdate = (cJSON_IsTrue(jprofileReportOnUpdate) == 1);
+                      T2Debug("[[profile->reportOnUpdate:%u]]\n",  profile->reportOnUpdate);
+                  }
+                  cJSON *jprofilefirstReportingInterval = cJSON_GetObjectItem(Reportadjustment_subitem, "FirstReportingInterval");
+                  if(jprofilefirstReportingInterval){
+                      int firstReportIntervalInSec = jprofilefirstReportingInterval->valueint;
+                      profile->firstReportingInterval = firstReportIntervalInSec;
+                      T2Debug("[[profile->firstReportingInterval:%d]]\n",  profile->firstReportingInterval);
+                  }
+              }
+        }
+    }
     if(profile->generateNow) {
         profile->reportingInterval = 0;
+        profile->reportOnUpdate = false;
+        profile->firstReportingInterval = 0;
     }else {
         if(jprofileReportingInterval) {
             int reportIntervalInSec = jprofileReportingInterval->valueint;
@@ -728,7 +754,6 @@ T2ERROR processConfiguration(char** configData, char *profileName, char* profile
         /*  MUST TODO: Seems timeref is an unsigned int in profile structure . Handle the scenario accordingly */
 
     }
-
     T2Debug("[[profile->name:%s]]\n", profile->name);
     T2Debug("[[ profile->Description:%s]]\n", profile->Description);
     T2Debug("[[profile->version:%s]]\n", profile->version);
@@ -1246,6 +1271,9 @@ T2ERROR processMsgPackConfiguration(msgpack_object *profiles_array_map, Profile 
     msgpack_object *GenerateNow_boolean;
     msgpack_object *DeleteOnTimout_boolean;
     msgpack_object *TriggerConditionArray;
+    msgpack_object *ReportingAdjustments_array;
+    msgpack_object *ReportOnUpdate_boolean;
+    msgpack_object *FirstReportInterval_u64;
 
     int i;
     int ret;
@@ -1253,6 +1281,7 @@ T2ERROR processMsgPackConfiguration(msgpack_object *profiles_array_map, Profile 
     uint32_t Parameter_array_size = 0;
     uint32_t RequestURIParameter_array_size = 0;
     uint32_t RbusMethodParameter_array_size = 0;
+    uint32_t ReportingAdjustments_array_size = 0;
 
     T2Debug("%s --in\n", __FUNCTION__);
     Profile *profile = (Profile *) malloc(sizeof(Profile));
@@ -1365,8 +1394,33 @@ T2ERROR processMsgPackConfiguration(msgpack_object *profiles_array_map, Profile 
     msgpack_print(GenerateNow_boolean, msgpack_get_obj_name(GenerateNow_boolean));
     MSGPACK_GET_NUMBER(GenerateNow_boolean, profile->generateNow);
     T2Debug("profile->generateNow: %u\n", profile->generateNow);
+
+    profile->firstReportingInterval = 0;
+    profile->reportOnUpdate = false;
+    ReportingAdjustments_array = msgpack_get_map_value(value_map, "ReportingAdjustments");
+    if(ReportingAdjustments_array){
+        MSGPACK_GET_ARRAY_SIZE(ReportingAdjustments_array, ReportingAdjustments_array_size);
+        for (int i=0; i < ReportingAdjustments_array_size; i++){
+              msgpack_object *ReportingAdjustments_array_map = msgpack_get_array_element(ReportingAdjustments_array, i);
+              ReportOnUpdate_boolean = msgpack_get_map_value(ReportingAdjustments_array_map, "ReportOnUpdate");
+              if(ReportOnUpdate_boolean != NULL){
+                  msgpack_print(ReportOnUpdate_boolean, msgpack_get_obj_name(ReportOnUpdate_boolean));
+                  MSGPACK_GET_NUMBER(ReportOnUpdate_boolean, profile->reportOnUpdate);
+                  T2Debug("profile->reportingAdjust->reportOnUpdate: %u\n", profile->reportOnUpdate);
+              }
+              FirstReportInterval_u64 = msgpack_get_map_value(ReportingAdjustments_array_map, "FirstReportingInterval");
+              if(FirstReportInterval_u64 != NULL){
+                  msgpack_print(FirstReportInterval_u64, msgpack_get_obj_name(FirstReportInterval_u64));
+                  MSGPACK_GET_NUMBER(FirstReportInterval_u64, profile->firstReportingInterval);
+                  T2Debug("profile->reportingAdjust->firstReportingInterval: %d\n", profile->firstReportingInterval);
+              }
+        }
+    }
+
     if(profile->generateNow) {
         profile->reportingInterval = 0;
+        profile->reportOnUpdate = false;
+        profile->firstReportingInterval = 0;
     }else {
 
         ReportingInterval_u64 = msgpack_get_map_value(value_map, "ReportingInterval");
@@ -1395,9 +1449,10 @@ T2ERROR processMsgPackConfiguration(msgpack_object *profiles_array_map, Profile 
             return T2ERROR_FAILURE;
         }
     }
+
     TriggerConditionArray = msgpack_get_map_value(value_map, "TriggerCondition");
     if(TriggerConditionArray && (!profile->reportingInterval)){
-		    profile->reportingInterval = UINT_MAX;
+         profile->reportingInterval = UINT_MAX;
     }
 
     RootName_str = msgpack_get_map_value(value_map, "RootName");

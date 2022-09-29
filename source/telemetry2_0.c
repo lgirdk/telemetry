@@ -49,7 +49,11 @@
 #include "t2eventreceiver.h"
 
 #ifdef INCLUDE_BREAKPAD
+#ifndef ENABLE_RDKC_SUPPORT
 #include "breakpad_wrapper.h"
+#else
+#include "breakpadwrap.h"
+#endif
 #endif
 
 #define MAX_PARAMETERNAME_LEN    512
@@ -220,7 +224,12 @@ static void t2DaemonMainModeInit( ) {
      * Signal handling is being used as way to handle log uploads . Double check whether we get minidump events for crashes
      */
 #ifdef INCLUDE_BREAKPAD
-   breakpad_ExceptionHandler();
+#ifndef ENABLE_RDKC_SUPPORT
+    breakpad_ExceptionHandler();
+#else
+    BreakPadWrapExceptionHandler eh;
+    eh = newBreakPadWrapExceptionHandler();
+#endif
 #endif
     /**
     * Create a Signal Mask for signals that need to be blocked while using fork 

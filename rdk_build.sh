@@ -48,6 +48,14 @@ export RDK_FSROOT_PATH=$RDK_PROJECT_ROOT_PATH/sdk/fsroot/ramdisk
 # To enable rtMessage
 export RTMESSAGE=yes
 
+if [ "$XCAM_MODEL" != "XHB1" ];then
+  export RDK_DUMP_SYMS=${RDK_PROJECT_ROOT_PATH}/utility/prebuilts/breakpad-prebuilts/x86/dump_syms
+  export STRIP=${RDK_TOOLCHAIN_PATH}/arm-linux-gnueabihf/bin/arm-linux-gnueabihf-strip
+else
+  export RDK_DUMP_SYMS=${RDK_PROJECT_ROOT_PATH}/utility/prebuilts/breakpad-prebuilts/x64/dump_syms
+fi
+
+
 if [ "$XCAM_MODEL" == "SCHC2" ]; then
  echo "Configuring for XCAM2"
  source  ${RDK_PROJECT_ROOT_PATH}/build/components/amba/sdk/setenv2
@@ -111,11 +119,11 @@ function configure()
     configure_options="--host=$DEFAULT_HOST --target=$DEFAULT_HOST --enable-deviceextender"
 
     if [ $XCAM_MODEL == "SCHC2" ]; then
-      export LDFLAGS="-L${RDK_PROJECT_ROOT_PATH}/opensource/lib -lmsgpackc -L${RDK_PROJECT_ROOT_PATH}/rdklogger/src/.libs -lrdkloggers -L${RDK_PROJECT_ROOT_PATH}/opensource/src/rtmessage/ -lrtMessage -Wl,-rpath-link=${RDK_PROJECT_ROOT_PATH}/libexchanger/Release/src -Wl,-rpath-link=${RDK_PROJECT_ROOT_PATH}/libexchanger/password/src -L${RDK_PROJECT_ROOT_PATH}/libsyswrapper/source/.libs/  -lsecure_wrapper -L${RDK_PROJECT_ROOT_PATH}/rbuscore/build/rbus-core/lib/ -lrbus-core -L${RDK_PROJECT_ROOT_PATH}/rbus/build/src/ -lrbus -Wl,-rpath-link=${RDK_PROJECT_ROOT_PATH}/opensource/lib -L${RDK_PROJECT_ROOT_PATH}/webconfig-framework/source/.libs"
+      export LDFLAGS="-L${RDK_PROJECT_ROOT_PATH}/breakpadwrap -lbreakpadwrap -L${RDK_PROJECT_ROOT_PATH}/opensource/lib -lmsgpackc -L${RDK_PROJECT_ROOT_PATH}/rdklogger/src/.libs -lrdkloggers -L${RDK_PROJECT_ROOT_PATH}/opensource/src/rtmessage/ -lrtMessage -Wl,-rpath-link=${RDK_PROJECT_ROOT_PATH}/libexchanger/Release/src -Wl,-rpath-link=${RDK_PROJECT_ROOT_PATH}/libexchanger/password/src -L${RDK_PROJECT_ROOT_PATH}/libsyswrapper/source/.libs/  -lsecure_wrapper -L${RDK_PROJECT_ROOT_PATH}/rbuscore/build/rbus-core/lib/ -lrbus-core -L${RDK_PROJECT_ROOT_PATH}/rbus/build/src/ -lrbus -Wl,-rpath-link=${RDK_PROJECT_ROOT_PATH}/opensource/lib -L${RDK_PROJECT_ROOT_PATH}/webconfig-framework/source/.libs"
     else
-      export LDFLAGS="-L${RDK_PROJECT_ROOT_PATH}/opensource/lib -lmsgpackc -L${RDK_PROJECT_ROOT_PATH}/rdklogger/src/.libs -lrdkloggers -L${RDK_PROJECT_ROOT_PATH}/opensource/src/rtmessage/ -lrtMessage -L${RDK_PROJECT_ROOT_PATH}/libsyswrapper/source/.libs/ -lsecure_wrapper -L${RDK_PROJECT_ROOT_PATH}/rbuscore/build/rbus-core/lib/ -lrbus-core -L${RDK_PROJECT_ROOT_PATH}/rbus/build/src/ -lrbus -Wl,-rpath-link=${RDK_PROJECT_ROOT_PATH}/opensource/lib -L${RDK_PROJECT_ROOT_PATH}/webconfig-framework/source/.libs"
+      export LDFLAGS="-L${RDK_PROJECT_ROOT_PATH}/breakpadwrap -lbreakpadwrap -L${RDK_PROJECT_ROOT_PATH}/opensource/lib -lmsgpackc -L${RDK_PROJECT_ROOT_PATH}/rdklogger/src/.libs -lrdkloggers -L${RDK_PROJECT_ROOT_PATH}/opensource/src/rtmessage/ -lrtMessage -L${RDK_PROJECT_ROOT_PATH}/libsyswrapper/source/.libs/ -lsecure_wrapper -L${RDK_PROJECT_ROOT_PATH}/rbuscore/build/rbus-core/lib/ -lrbus-core -L${RDK_PROJECT_ROOT_PATH}/rbus/build/src/ -lrbus -Wl,-rpath-link=${RDK_PROJECT_ROOT_PATH}/opensource/lib -L${RDK_PROJECT_ROOT_PATH}/webconfig-framework/source/.libs"
     fi
-    export CFLAGS="-I${RDK_PROJECT_ROOT_PATH}/opensource/include -fPIC  -I${RDK_PROJECT_ROOT_PATH}/opensource/include/glib-2.0/ -I${RDK_PROJECT_ROOT_PATH}/opensource/lib/glib-2.0/include/ -I${RDK_PROJECT_ROOT_PATH}/opensource/include/glib-2.0/glib -I${RDK_PROJECT_ROOT_PATH}opensource/include/cjson/ -I${RDK_PROJECT_ROOT_PATH}/rdklogger/include -I${RDK_PROJECT_ROOT_PATH}/libsyswrapper/source/ -I${RDK_FSROOT_PATH}/usr/include/ -I${RDK_FSROOT_PATH}/usr/include/rbus -DENABLE_RDKC_SUPPORT -DFEATURE_SUPPORT_WEBCONFIG "
+    export CFLAGS="-I${RDK_PROJECT_ROOT_PATH}/opensource/include -fPIC  -I${RDK_PROJECT_ROOT_PATH}/opensource/include/glib-2.0/ -I${RDK_PROJECT_ROOT_PATH}/opensource/lib/glib-2.0/include/ -I${RDK_PROJECT_ROOT_PATH}/opensource/include/glib-2.0/glib -I${RDK_PROJECT_ROOT_PATH}opensource/include/cjson/ -I${RDK_PROJECT_ROOT_PATH}/rdklogger/include -I${RDK_PROJECT_ROOT_PATH}/libsyswrapper/source/ -I${RDK_FSROOT_PATH}/usr/include/ -I${RDK_FSROOT_PATH}/usr/include/rbus -I${RDK_PROJECT_ROOT_PATH}/breakpadwrap/ -DENABLE_RDKC_SUPPORT -DINCLUDE_BREAKPAD -DENABLE_RDKC_SUPPORT -DFEATURE_SUPPORT_WEBCONFIG"
     export GLIB_CFLAGS="-I${RDK_PROJECT_ROOT_PATH}/opensource/lib/glib-2.0/include/ -I${RDK_PROJECT_ROOT_PATH}/opensource/include/glib-2.0/ -I${RDK_PROJECT_ROOT_PATH}/opensource/include/glib-2.0/glib"
     export ac_cv_func_malloc_0_nonnull=yes
     export ac_cv_func_memset=yes
@@ -141,6 +149,54 @@ function build()
    echo "Building telemetry common code"
    cd ${RDK_SOURCE_PATH}
    make
+
+
+    cd ${RDK_SOURCE_PATH}/source
+    cp .libs/telemetry2_0 .libs/telemetry2_0_debug
+    $RDK_DUMP_SYMS .libs/telemetry2_0 > .libs/telemetry2_0.sym
+    cp commonlib/.libs/telemetry2_0_client .libs/telemetry2_0_client_debug
+    $RDK_DUMP_SYMS commonlib/.libs/telemetry2_0_client > commonlib/.libs/telemetry2_0_client.sym
+    cp dcautil/.libs/libdcautil.so.0.0.0 dcautil/.libs/libdcautil_debug.so.0.0.0
+    $RDK_DUMP_SYMS dcautil/.libs/libdcautil.so.0.0.0 > dcautil/.libs/libdcautil.so.0.0.0.sym
+    cp reportgen/.libs/libreportgen.so.0.0.0 reportgen/.libs/libreportgen_debug.so.0.0.0
+    $RDK_DUMP_SYMS reportgen/.libs/libreportgen.so.0.0.0 > reportgen/.libs/libreportgen.so.0.0.0.sym
+    cp interChipHelper/.libs/libinterChipHelper.so.0.0.0 interChipHelper/.libs/libinterChipHelper_debug.so.0.0.0
+    $RDK_DUMP_SYMS interChipHelper/.libs/libinterChipHelper.so.0.0.0 > interChipHelper/.libs/libinterChipHelper.so.0.0.0.sym
+    cp commonlib/.libs/libtelemetry_msgsender.so.0.0.0 commonlib/.libs/libtelemetry_msgsender_debug.so.0.0.0
+    $RDK_DUMP_SYMS commonlib/.libs/libtelemetry_msgsender.so.0.0.0 > commonlib/.libs/libtelemetry_msgsender.so.0.0.0.sym
+    cp protocol/http/.libs/libhttp.so.0.0.0 protocol/http/.libs/libhttp_debug.so.0.0.0
+    $RDK_DUMP_SYMS protocol/http/.libs/libhttp.so.0.0.0 > protocol/http/.libs/libhttp.so.0.0.0.sym
+    cp protocol/rbusMethod/.libs/librbusmethod.so.0.0.0 protocol/rbusMethod/.libs/librbusmethod_debug.so.0.0.0
+    $RDK_DUMP_SYMS protocol/rbusMethod/.libs/librbusmethod.so.0.0.0 > protocol/rbusMethod/.libs/librbusmethod.so.0.0.0.sym
+    cp t2parser/.libs/libt2parser.so.0.0.0 t2parser/.libs/libt2parser_debug.so.0.0.0
+    $RDK_DUMP_SYMS t2parser/.libs/libt2parser.so.0.0.0 > t2parser/.libs/libt2parser.so.0.0.0.sym
+    cp scheduler/.libs/libscheduler.so.0.0.0 scheduler/.libs/libscheduler_debug.so.0.0.0
+    $RDK_DUMP_SYMS scheduler/.libs/libscheduler.so.0.0.0 > scheduler/.libs/libscheduler.so.0.0.0.sym
+    cp ccspinterface/.libs/libccspinterface.so.0.0.0 ccspinterface/.libs/libccspinterface_debug.so.0.0.0
+    $RDK_DUMP_SYMS ccspinterface/.libs/libccspinterface.so.0.0.0 > ccspinterface/.libs/libccspinterface.so.0.0.0.sym
+    cp xconf-client/.libs/libxconfclient.so.0.0.0 xconf-client/.libs/libxconfclient.so_debug.0.0.0
+    $RDK_DUMP_SYMS xconf-client/.libs/libxconfclient.so.0.0.0 > xconf-client/.libs/libxconfclient.so.0.0.0.sym
+    cp bulkdata/.libs/libbulkdata.so.0.0.0 bulkdata/.libs/libbulkdata.so_debug.0.0.0
+    $RDK_DUMP_SYMS bulkdata/.libs/libbulkdata.so.0.0.0 > bulkdata/.libs/libbulkdata.so.0.0.0.sym
+    cp utils/.libs/libt2utils.so.0.0.0 utils/.libs/libt2utils.so_debug.0.0.0
+    $RDK_DUMP_SYMS utils/.libs/libt2utils.so.0.0.0 > utils/.libs/libt2utils.so.0.0.0.sym
+
+   
+    mv .libs/telemetry2_0.sym  $PLATFORM_SYMBOL_PATH	
+    mv commonlib/.libs/telemetry2_0_client.sym $PLATFORM_SYMBOL_PATH
+    mv dcautil/.libs/libdcautil.so.0.0.0.sym $PLATFORM_SYMBOL_PATH
+    mv reportgen/.libs/libreportgen.so.0.0.0.sym $PLATFORM_SYMBOL_PATH
+    mv interChipHelper/.libs/libinterChipHelper.so.0.0.0.sym $PLATFORM_SYMBOL_PATH
+    mv commonlib/.libs/libtelemetry_msgsender.so.0.0.0.sym $PLATFORM_SYMBOL_PATH
+    mv protocol/http/.libs/libhttp.so.0.0.0.sym $PLATFORM_SYMBOL_PATH
+    mv protocol/rbusMethod/.libs/librbusmethod.so.0.0.0.sym $PLATFORM_SYMBOL_PATH
+    mv t2parser/.libs/libt2parser.so.0.0.0.sym $PLATFORM_SYMBOL_PATH
+    mv scheduler/.libs/libscheduler.so.0.0.0.sym $PLATFORM_SYMBOL_PATH
+    mv ccspinterface/.libs/libccspinterface.so.0.0.0.sym $PLATFORM_SYMBOL_PATH
+    mv xconf-client/.libs/libxconfclient.so.0.0.0.sym $PLATFORM_SYMBOL_PATH
+    mv bulkdata/.libs/libbulkdata.so.0.0.0.sym $PLATFORM_SYMBOL_PATH
+    mv utils/.libs/libt2utils.so.0.0.0.sym $PLATFORM_SYMBOL_PATH	
+
    install
 }
 
@@ -187,6 +243,7 @@ function install()
     cp commonlib/.libs/telemetry2_0_client ${RDK_FSROOT_PATH}/usr/bin/
     cp nativeProtocolSimulator/.libs/t2rbusMethodSimulator ${RDK_FSROOT_PATH}/usr/bin/
     cp commonlib/t2Shared_api.sh ${RDK_FSROOT_PATH}/lib/rdk/
+
 }
 
 # run the logic

@@ -231,7 +231,6 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char* payload) {
                 return ret;
             }
 
-#if !defined(ENABLE_RDKC_SUPPORT)
             if(mtls_enable == true) {
                 if(T2ERROR_SUCCESS == getMtlsCerts(&pCertFile, &pKeyFile)) {
                     setMtlsHeaders(curl, pCertFile, pKeyFile);
@@ -241,7 +240,6 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char* payload) {
                     return T2ERROR_FAILURE;
                 }
             }
-#endif
             setPayload(curl, payload);
 
             pthread_once(&curlFileMutexOnce, sendOverHTTPInit);

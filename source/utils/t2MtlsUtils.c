@@ -32,6 +32,7 @@
 #define XCONF_MTLS_DOMAN "secure.xconfds.coast.xcal.tv"
 #define DATA_LAKE_MTLS_DOMAIN "stbrtl-oi.stb.r53.xcal.tv"
 
+#if !defined(ENABLE_RDKC_SUPPORT)
 static const char* staticMtlsCert = "/etc/ssl/certs/staticXpkiCrt.pk12";
 static const char* staticMtlsDestFile = "/tmp/.cfgStaticxpki";
 
@@ -42,20 +43,31 @@ static const char* dynamicMtlsCert = "/nvram/certs/devicecert_1.pk12";
 static const char* dynamicMtlsCert = "/opt/certs/devicecert_1.pk12";
 #endif
 
+#else
+static char* staticMtlsCert = "";
+static char* staticPassPhrase = "";
+static char* dynamicMtlsCert = "";
+static char* dynamicPassPhrase = "";
+#endif
+
 void initMtls() {
     T2Debug("%s ++in\n", __FUNCTION__);
     // Prepare certs required for mTls commmunication
     // CPG doesn't support api's - will have to use v_secure_system calls
+#if !defined (ENABLE_RDKC_SUPPORT)
     v_secure_system("/usr/bin/GetConfigFile %s", staticMtlsDestFile);
     v_secure_system("/usr/bin/GetConfigFile %s", dynamicMtlsDestFile);
+#endif
     T2Debug("%s --out\n", __FUNCTION__);
 
 }
 
 void uninitMtls() {
     T2Debug("%s ++in\n", __FUNCTION__);
+#if !defined (ENABLE_RDKC_SUPPORT)
     v_secure_system("rm -f %s", staticMtlsDestFile);
     v_secure_system("rm -f %s", dynamicMtlsDestFile);
+#endif
     T2Debug("%s --out\n", __FUNCTION__);
 
 }
@@ -70,12 +82,18 @@ T2ERROR getMtlsCerts(char **certName, char **phrase) {
     T2Debug("%s ++in\n", __FUNCTION__);
     char buf[124];
     memset(buf, 0, sizeof(buf));
+#if !defined (ENABLE_RDKC_SUPPORT)
     FILE *filePointer;
 
     if(access(dynamicMtlsCert, F_OK) != -1) { // Dynamic cert
+#else
+    if(getenv("XPKI") != NULL) {
+      dynamicMtlsCert = getenv("XPKI_CERT");
+      if (dynamicMtlsCert != NULL) { // Dynamic cert
+#endif
         *certName = strdup(dynamicMtlsCert);
         T2Info("Using xpki Dynamic Certs connection certname: %s\n", dynamicMtlsCert);
-
+#if !defined (ENABLE_RDKC_SUPPORT)
         FILE *fp;
         fp = v_secure_popen("r", "/usr/bin/rdkssacli \"{STOR=GET,SRC=kquhqtoczcbx,DST=/dev/stdout}\"");
         if(fp == NULL) {
@@ -94,12 +112,25 @@ T2ERROR getMtlsCerts(char **certName, char **phrase) {
             }
             v_secure_pclose(fp);
         }
+#else
+        dynamicPassPhrase = getenv("XPKI_PASS");
+        if (dynamicPassPhrase != NULL)
+          *phrase = strdup(dynamicPassPhrase);
+      }
+#endif
         ret = T2ERROR_SUCCESS;
+#if !defined (ENABLE_RDKC_SUPPORT)
     }else if(access(staticMtlsCert, F_OK) != -1) { // Static cert
+#else
+    }else if (getenv("STATICXPKI") != NULL) {
+        staticMtlsCert = getenv("STATIC_XPKI_CERT");
+        if (staticMtlsCert != NULL) { // Static cert
+#endif
         T2Info("Using xpki Static Certs connection certname: %s\n", staticMtlsCert);
         *certName = strdup(staticMtlsCert);
 
 	/* CID: 189984 Time of check time of use (TOCTOU) */
+#if !defined (ENABLE_RDKC_SUPPORT)
 	filePointer = fopen(staticMtlsDestFile, "r");
         if( !filePointer ) {
             T2Info("%s Destination file %s is not present. Generate now.\n", __FUNCTION__, *phrase);
@@ -117,6 +148,12 @@ T2ERROR getMtlsCerts(char **certName, char **phrase) {
            }
            fclose(filePointer);
         }
+#else
+          staticPassPhrase = getenv("STATIC_XPKI_PASS");
+          if(staticPassPhrase != NULL)
+            *phrase = strdup(staticPassPhrase);
+        }
+#endif
         ret = T2ERROR_SUCCESS;
     }else {
         T2Error("Certs not found\n");

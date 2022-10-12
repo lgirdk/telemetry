@@ -374,6 +374,16 @@ void T2totalmem_calculate(){
     T2Debug("%s --out\n", __FUNCTION__);
 }
 
+static void* reportOnDemand(void *input) {
+    T2Debug("%s ++in\n", __FUNCTION__);
+
+    set_logdemand(true);
+    ReportProfiles_Interrupt();
+
+    return NULL;
+    T2Debug("%s --out\n", __FUNCTION__);
+}
+
 T2ERROR initReportProfiles()
 {
     T2Debug("%s ++in\n", __FUNCTION__);
@@ -421,7 +431,8 @@ T2ERROR initReportProfiles()
 #endif
             {
                 T2Debug("Enabling datamodel for report profiles in RBUS mode \n");
-                regDEforProfileDataModel(datamodel_processProfile, datamodel_MsgpackProcessProfile, datamodel_getSavedJsonProfilesasString, datamodel_getSavedMsgpackProfilesasString, profilemem_usage);
+                regDEforProfileDataModel(datamodel_processProfile, datamodel_MsgpackProcessProfile, datamodel_getSavedJsonProfilesasString,
+                        datamodel_getSavedMsgpackProfilesasString, profilemem_usage, reportOnDemand);
             }
 #if defined(CCSP_SUPPORT_ENABLED)
             else {

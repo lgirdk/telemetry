@@ -37,6 +37,7 @@ extern "C" {
 #define T2_TOTAL_MEM_USAGE "Device.X_RDK_T2.TotalUsedMem"
 
 #define T2_MTLS_RFC "Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.Telemetry.MTLS.Enable"
+#define T2_ON_DEMAND_REPORT "Device.X_RDKCENTRAL-COM_T2.UploadDCMReport"
 
 #define INFINITE_TIMEOUT      (unsigned int)~0
 

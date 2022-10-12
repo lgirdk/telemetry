@@ -22,6 +22,8 @@
 #include <stdlib.h>
 #include <glib.h>
 #include <glib/gi18n.h>
+#include <pthread.h>
+#include <unistd.h>
 
 #include "t2collection.h"
 #include "t2common.h"
@@ -34,9 +36,10 @@
 #define buffLen 1024
 #define maxParamLen 128
 
-#define NUM_PROFILE_ELEMENTS 4
+#define NUM_PROFILE_ELEMENTS 5
 
 #define RBUS_METHOD_TIMEOUT 10
+#define MAX_REPORT_TIMEOUT 50
 
 static rbusHandle_t t2bus_handle;
 static TelemetryEventCallback eventCallBack;
@@ -47,11 +50,16 @@ static dataModelSavedJsonCallBack dmSavedJsonProcessingCallBack;
 static dataModelSavedMsgPackCallBack dmSavedMsgPackProcessingCallBack;
 static hash_map_t *compTr181ParamMap = NULL;
 static profilememCallBack profilememUsedCallBack;
+static dataModelReportOnDemandCallBack reportOnDemandCallBack;
 
 static char* reportProfileVal = NULL ;
 static char* tmpReportProfileVal = NULL ;
 static char* reportProfilemsgPckVal = NULL ;
 uint32_t t2MemUsage = 0;
+
+typedef struct MethodData {
+    rbusMethodAsyncHandle_t asyncHandle;
+} MethodData;
 
 T2ERROR T2RbusConsumer(TriggerCondition *triggerCondition);
 
@@ -308,7 +316,8 @@ rbusError_t t2PropertyDataSetHandler(rbusHandle_t handle, rbusProperty_t prop, r
 
     char const* paramName = rbusProperty_GetName(prop);
     if((strncmp(paramName, T2_EVENT_PARAM, maxParamLen) != 0) && (strncmp(paramName, T2_REPORT_PROFILE_PARAM, maxParamLen) != 0)
-            && (strncmp(paramName, T2_REPORT_PROFILE_PARAM_MSG_PCK, maxParamLen) != 0) && (strncmp(paramName, T2_TEMP_REPORT_PROFILE_PARAM, maxParamLen) != 0) && (strncmp(paramName, T2_TOTAL_MEM_USAGE, maxParamLen) != 0)) {
+            && (strncmp(paramName, T2_REPORT_PROFILE_PARAM_MSG_PCK, maxParamLen) != 0)
+            && (strncmp(paramName, T2_TEMP_REPORT_PROFILE_PARAM, maxParamLen) != 0) && (strncmp(paramName, T2_TOTAL_MEM_USAGE, maxParamLen) != 0)) {
         T2Debug("Unexpected parameter = %s \n", paramName);
         T2Debug("%s --out\n", __FUNCTION__);
         return RBUS_ERROR_ELEMENT_DOES_NOT_EXIST;
@@ -526,8 +535,7 @@ rbusError_t t2PropertyDataGetHandler(rbusHandle_t handle, rbusProperty_t propert
         rbusValue_SetUInt32(value, t2MemUsage);
         rbusProperty_SetValue(property, value);
         rbusValue_Release(value);
-    }
-    else {
+    }else {
         // START : Extract component name requesting for event marker list
         if(compTr181ParamMap != NULL)
             componentName = (char*) hash_map_get(compTr181ParamMap, propertyName);
@@ -603,6 +611,95 @@ rbusError_t t2PropertyDataGetHandler(rbusHandle_t handle, rbusProperty_t propert
     T2Debug("%s --out\n", __FUNCTION__);
     return RBUS_ERROR_SUCCESS;
 }
+
+
+/**
+ * This is a Mock implementation which sends status always as success.
+ * Core logic to send actual status only in case of forced report generation via external calls
+ *  will have follow up EPIC for implementation based on requirement clarification with stake holders
+ */
+static void* asyncReportStatusNotifier(void *methodParams) {
+
+    MethodData* data;
+
+    rbusObject_t outParams;
+    rbusValue_t value;
+    rbusError_t err;
+
+    T2Debug("++in %s \n", __FUNCTION__);
+    data = (MethodData*) methodParams;
+    if(!data){
+        T2Error("%s received NULL argument \n", __FUNCTION__);
+        T2Debug("--OUT %s\n", __FUNCTION__);
+        return NULL;
+    }
+
+    // Wait for max known time that a t2 report generation would take.
+    T2Debug("%s waiting for report upload status ... \n", __FUNCTION__);
+    sleep(MAX_REPORT_TIMEOUT);
+
+    rbusObject_Init(&outParams, NULL);
+    rbusValue_Init(&value);
+    rbusValue_SetString(value, "SUCCESS");
+    rbusObject_SetValue(outParams, "UPLOAD_STATUS", value);
+
+    T2Info("Sending response as SUCCESS from %s \n", __FUNCTION__ );
+    err = rbusMethod_SendAsyncResponse(data->asyncHandle, RBUS_ERROR_SUCCESS, outParams);
+    if(err != RBUS_ERROR_SUCCESS) {
+        T2Error("%s rbusMethod_SendAsyncResponse failed err:%d\n", __FUNCTION__, err);
+    } else{
+    	T2Info("%s rbusMethod_SendAsyncResponse sent successfully \n", __FUNCTION__);
+    }
+
+    rbusValue_Release(value);
+    rbusObject_Release(outParams);
+
+    if(data) {
+        free(data);
+        data = NULL;
+    }
+
+    T2Debug("--OUT %s\n", __FUNCTION__);
+
+    return NULL;
+}
+
+static rbusError_t reportonDemandMethodHandler(rbusHandle_t handle, char const* methodName, rbusObject_t inParams, rbusObject_t outParams,
+        rbusMethodAsyncHandle_t asyncCallBackHandle) {
+    (void) handle;
+    (void) inParams;
+
+    T2Debug("++IN %s\n", __FUNCTION__);
+    //rbusObject_fwrite(inParams, 1, stdout);
+
+    /* Trigger a report generation asynchronously */
+    pthread_t rpOnDemandTh;
+    pthread_attr_t rpOnDemandAttr;
+    pthread_attr_init(&rpOnDemandAttr);
+    pthread_attr_setdetachstate(&rpOnDemandAttr, PTHREAD_CREATE_DETACHED);
+    // Calls within reportOnDemandCallBack are thread safe, thread synchronization is not required
+    if(pthread_create(&rpOnDemandTh, &rpOnDemandAttr, reportOnDemandCallBack, NULL) != 0) {
+        T2Error("Failed to create thread for report on demand.\n");
+    }
+    pthread_attr_destroy(&rpOnDemandAttr);
+
+    /* If a callback handler is included use it to report the status of report sending status*/
+    if(NULL != asyncCallBackHandle) {
+        pthread_t pid;
+        MethodData* data = malloc(sizeof(MethodData));
+        data->asyncHandle = asyncCallBackHandle;
+
+        if(pthread_create(&pid, NULL, asyncReportStatusNotifier, data) || pthread_detach(pid)) {
+        	T2Error("%s failed to spawn thread\n", __FUNCTION__);
+        	T2Debug("--OUT %s\n", __FUNCTION__);
+            return RBUS_ERROR_BUS_ERROR;
+        }
+    }
+    T2Debug("--OUT %s\n", __FUNCTION__);
+    return RBUS_ERROR_ASYNC_RESPONSE ;
+}
+
+
 
 
 T2ERROR registerRbusT2EventListener(TelemetryEventCallback eventCB)
@@ -736,23 +833,28 @@ void unregisterDEforCompEventList(){
  * Data element over bus will be Device.X_RDKCENTRAL-COM_T2.ReportProfiles,
  *    Device.X_RDKCENTRAL-COM_T2.ReportProfilesMsgPack
  */
-T2ERROR regDEforProfileDataModel(dataModelCallBack dmCallBackHandler,  dataModelMsgPckCallBack dmMsgPckCallBackHandler, dataModelSavedJsonCallBack dmSavedJsonCallBack, dataModelSavedMsgPackCallBack dmSavedMsgPackCallBack, profilememCallBack pmCallBack) {
+T2ERROR regDEforProfileDataModel(dataModelCallBack dmCallBackHandler, dataModelMsgPckCallBack dmMsgPckCallBackHandler,
+        dataModelSavedJsonCallBack dmSavedJsonCallBack, dataModelSavedMsgPackCallBack dmSavedMsgPackCallBack, profilememCallBack pmCallBack,
+        dataModelReportOnDemandCallBack reportonDemand) {
 
     T2Debug("%s ++in\n", __FUNCTION__);
     char deNameSpace[125] = { '\0' };
     char deMsgPck[125] = { '\0' };
     char deTmpNameSpace[125] = { '\0' };
     char deTotalMemUsage[125] = { '\0' };
+    char deReportonDemand[125] = { '\0' };
     rbusError_t ret = RBUS_ERROR_SUCCESS;
     T2ERROR status = T2ERROR_SUCCESS;
     dmSavedJsonProcessingCallBack = dmSavedJsonCallBack;
     dmSavedMsgPackProcessingCallBack = dmSavedMsgPackCallBack;
     profilememUsedCallBack = pmCallBack;
+    reportOnDemandCallBack = reportonDemand;
 
     snprintf(deNameSpace, 124 , "%s", T2_REPORT_PROFILE_PARAM);
     snprintf(deMsgPck, 124 , "%s", T2_REPORT_PROFILE_PARAM_MSG_PCK);
     snprintf(deTmpNameSpace, 124 , "%s", T2_TEMP_REPORT_PROFILE_PARAM);
     snprintf(deTotalMemUsage, 124 , "%s", T2_TOTAL_MEM_USAGE);
+    snprintf(deReportonDemand, 124 , "%s", T2_ON_DEMAND_REPORT);
     if(!t2bus_handle && T2ERROR_SUCCESS != rBusInterface_Init()) {
         T2Error("%s Failed in getting bus handles \n", __FUNCTION__);
         T2Debug("%s --out\n", __FUNCTION__);
@@ -762,8 +864,9 @@ T2ERROR regDEforProfileDataModel(dataModelCallBack dmCallBackHandler,  dataModel
     rbusDataElement_t dataElements[NUM_PROFILE_ELEMENTS] = {
         {deNameSpace, RBUS_ELEMENT_TYPE_PROPERTY, {t2PropertyDataGetHandler, t2PropertyDataSetHandler, NULL, NULL, NULL, NULL}},
         {deMsgPck, RBUS_ELEMENT_TYPE_PROPERTY, {t2PropertyDataGetHandler, t2PropertyDataSetHandler, NULL, NULL, NULL, NULL}},
-	{deTmpNameSpace, RBUS_ELEMENT_TYPE_PROPERTY, {t2PropertyDataGetHandler, t2PropertyDataSetHandler, NULL, NULL, NULL, NULL}},
-	{deTotalMemUsage, RBUS_ELEMENT_TYPE_PROPERTY, {t2PropertyDataGetHandler, NULL, NULL, NULL, NULL, NULL}}
+        {deTmpNameSpace, RBUS_ELEMENT_TYPE_PROPERTY, {t2PropertyDataGetHandler, t2PropertyDataSetHandler, NULL, NULL, NULL, NULL}},
+        {deTotalMemUsage, RBUS_ELEMENT_TYPE_PROPERTY, {t2PropertyDataGetHandler, NULL, NULL, NULL, NULL, NULL}},
+        {deReportonDemand, RBUS_ELEMENT_TYPE_METHOD, {NULL, NULL, NULL, NULL, NULL, reportonDemandMethodHandler}}
     };
     ret = rbus_regDataElements(t2bus_handle, NUM_PROFILE_ELEMENTS, dataElements);
     if(ret == RBUS_ERROR_SUCCESS) {

@@ -302,9 +302,7 @@ static void* CollectAndReport(void* data)
             }
             if(Vector_Size(profile->eMarkerList) > 0)
             {
-                pthread_mutex_lock(&profile->eventMutex);
                 encodeEventMarkersInJSON(valArray, profile->eMarkerList);
-                pthread_mutex_unlock(&profile->eventMutex);
             }
             if(profile->triggerReportOnCondition && (triggercondition != NULL))
                 cJSON_AddItemToArray(valArray, triggercondition);
@@ -471,28 +469,11 @@ T2ERROR Profile_storeMarkerEvent(const char *profileName, T2Event *eventInfo)
     }
     if(lookupEvent != NULL)
     {
-        pthread_mutex_lock(&profile->eventMutex);
         switch(lookupEvent->mType)
         {
             case MTYPE_COUNTER:
                 lookupEvent->u.count++;
                 T2Debug("Increment marker count to : %d\n", lookupEvent->u.count);
-                break;
-
-            case MTYPE_ACCUMULATE:
-                T2Debug("Marker type is ACCUMULATE Event Value : %s\n",eventInfo->value);
-                int arraySize = Vector_Size(lookupEvent->u.accumulatedValues);
-                T2Debug("Current array size : %d \n", arraySize);
-                if( arraySize < MAX_ACCUMULATE){
-                    Vector_PushBack(lookupEvent->u.accumulatedValues, strdup(eventInfo->value));
-                    T2Debug("Sucessfully added value into vector New Size : %d\n", ++arraySize);
-                } else if ( arraySize == MAX_ACCUMULATE ){
-                    T2Warning("Max size of the array has been reached appending warning message : %s\n", MAX_ACCUMULATE_MSG);
-                    Vector_PushBack(lookupEvent->u.accumulatedValues, strdup(MAX_ACCUMULATE_MSG));
-                    T2Debug("Sucessfully added warning message into vector New Size : %d\n", ++arraySize);
-                } else{
-                    T2Warning("Max size of the array has been reached Ignore New Value\n");
-                }
                 break;
 
             case MTYPE_ABSOLUTE:
@@ -503,7 +484,6 @@ T2ERROR Profile_storeMarkerEvent(const char *profileName, T2Event *eventInfo)
                 T2Debug("New marker value saved : %s\n", lookupEvent->u.markerValue);
                 break;
         }
-        pthread_mutex_unlock(&profile->eventMutex);
     }
     else
     {

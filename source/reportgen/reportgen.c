@@ -58,18 +58,6 @@ void getTimeStamp (char** timeStamp) {
 
 }
 
-// convert vector to json array it is responsbility of
-// caller function to free the vector 
-void convertVectorToJson(cJSON *output, Vector *input) {
-    if(!output)
-        output = cJSON_CreateArray();
-    int i,vectorSize = (int) Vector_Size(input);
-    for(i = 0; i < vectorSize; i++){
-        char* eventValue = Vector_At(input, i);
-        cJSON_AddItemToArray(output, cJSON_CreateString(eventValue));                   
-    } 
-}
-
 T2ERROR destroyJSONReport(cJSON *jsonObj)
 {
     cJSON_Delete(jsonObj);
@@ -198,23 +186,6 @@ T2ERROR encodeEventMarkersInJSON(cJSON *valArray, Vector *eventMarkerList)
                 }
                 break;
 
-            case MTYPE_ACCUMULATE:
-                if( eventMarker->u.accumulatedValues != NULL && Vector_Size(eventMarker->u.accumulatedValues))
-                {
-                    arrayItem = cJSON_CreateObject();
-                    cJSON *vectorToarray = cJSON_CreateArray();
-                    convertVectorToJson(vectorToarray, eventMarker->u.accumulatedValues);
-                    Vector_Clear(eventMarker->u.accumulatedValues, freeAccumulatedParam);
-                    if (eventMarker->alias) {
-                        cJSON_AddItemToObject(arrayItem,eventMarker->alias, vectorToarray);
-                    } else {
-                        cJSON_AddItemToObject(arrayItem,eventMarker->markerName, vectorToarray);
-                    }
-                    cJSON_AddItemToArray(valArray, arrayItem);
-                    T2Debug("Marker value Array for : %s is %s\n", eventMarker->markerName, cJSON_Print(vectorToarray));
-                }
-                break;
-
             case MTYPE_ABSOLUTE:
             default:
                 if(eventMarker->u.markerValue != NULL)
@@ -226,6 +197,7 @@ T2ERROR encodeEventMarkersInJSON(cJSON *valArray, Vector *eventMarkerList)
                         cJSON_AddStringToObject(arrayItem, eventMarker->markerName, eventMarker->u.markerValue);
                     }
                     cJSON_AddItemToArray(valArray, arrayItem);
+
                     T2Debug("Marker value for : %s is %s\n", eventMarker->markerName, eventMarker->u.markerValue);
                     free(eventMarker->u.markerValue);
                     eventMarker->u.markerValue = NULL;

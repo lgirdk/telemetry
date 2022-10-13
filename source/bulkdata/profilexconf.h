@@ -34,8 +34,7 @@ typedef enum
 {
     MTYPE_XCONF_NONE,
     MTYPE_XCONF_COUNTER,
-    MTYPE_XCONF_ABSOLUTE,
-    MTYPE_XCONF_ACCUMULATE
+    MTYPE_XCONF_ABSOLUTE
 }MarkerTypeXConf;
 
 typedef struct _JSONEncodingXConf

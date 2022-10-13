@@ -176,9 +176,6 @@ static T2ERROR addParameter(Profile *profile, const char* name, const char* ref,
         }else if (0 == strcmp(use, "count")){
             eMarker->mType = MTYPE_COUNTER;
             eMarker->u.count = 0;
-        }else if (0 == strcmp(use, "accumulate")){
-            eMarker->mType = MTYPE_ACCUMULATE;
-            Vector_Create(&eMarker->u.accumulatedValues);
         } else {
             T2Info("Unsupported marker type. Defaulting to absolute \n");
             eMarker->mType = MTYPE_ABSOLUTE;

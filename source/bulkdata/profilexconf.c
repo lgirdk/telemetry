@@ -425,7 +425,6 @@ T2ERROR ProfileXConf_uninit()
     }
     initialized = false;
 
-    pthread_mutex_lock(&plMutex);
     if(singleProfile->reportInProgress)
     {
         T2Debug("Waiting for final report before uninit\n");
@@ -433,6 +432,7 @@ T2ERROR ProfileXConf_uninit()
         singleProfile->reportInProgress = false ;
         T2Info("Final report is completed, releasing profile memory\n");
     }
+    pthread_mutex_lock(&plMutex);
     freeProfileXConf();
     pthread_mutex_unlock(&plMutex);
 
@@ -540,14 +540,14 @@ T2ERROR ProfileXConf_delete(ProfileXConf *profile)
         }
     }
 
-    pthread_mutex_lock(&plMutex);
-
     if(singleProfile->reportInProgress)
     {
         T2Info("Waiting for CollectAndReport to be complete : %s\n", singleProfile->name);
         pthread_join(singleProfile->reportThread, NULL);
         singleProfile->reportInProgress = false ;
     }
+
+    pthread_mutex_lock(&plMutex);
 
     int count = Vector_Size(singleProfile->cachedReportList);
     // Copy any cached message present in previous single profile to new profile

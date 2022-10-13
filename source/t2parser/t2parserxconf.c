@@ -33,7 +33,6 @@
 #define MT_TR181PARAM_PATTERN   "<message_bus>"
 #define MT_TR181PATAM_PATTERN_LENGTH 13
 #define SPLITMARKER_SUFFIX  "_split"
-#define ACCUMULATE_MARKER_SUFFIX  "_accum"
 
 #define XCONF_END_POINT_PARAMETER "Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.TelemetryEndpoint.URL"
 #define MAX_END_POINT_LEN 128
@@ -98,23 +97,16 @@ static T2ERROR addParameter(ProfileXConf *profile, const char* name, const char*
     else if(fileName == NULL) //Event Marker
     {
         char *splitSuffix = NULL;
-        char *accumulateSuffix = NULL;
         // T2Debug("Adding Event Marker :: Param/Marker Name : %s ref/pattern/Comp : %s skipFreq : %d\n", name, ref, skipFreq);
         EventMarker *eMarker = (EventMarker *)malloc(sizeof(EventMarker));
         memset(eMarker, 0, sizeof(EventMarker));
         eMarker->markerName = strdup(name);
         eMarker->compName = strdup(ref);
         splitSuffix = strstr(name, SPLITMARKER_SUFFIX);
-        accumulateSuffix = strstr(name, ACCUMULATE_MARKER_SUFFIX);
         if(splitSuffix != NULL && strcmp(splitSuffix, SPLITMARKER_SUFFIX) == 0)
         {
             eMarker->mType = MTYPE_XCONF_ABSOLUTE;
             eMarker->u.markerValue = NULL;
-        }
-        else if(accumulateSuffix != NULL && strcmp(accumulateSuffix, ACCUMULATE_MARKER_SUFFIX) == 0)
-        {
-            eMarker->mType = MTYPE_XCONF_ACCUMULATE;
-            Vector_Create(&eMarker->u.accumulatedValues);
         }
         else
         {

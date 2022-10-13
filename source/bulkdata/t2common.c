@@ -19,7 +19,6 @@
 
 #include <stdlib.h>
 #include "t2common.h"
-#include <string.h>
 
 void freeParam(void *data)
 {
@@ -67,19 +66,10 @@ void freeEMarker(void *data)
             free(eMarker->paramType);
         if(eMarker->mType == MTYPE_ABSOLUTE && eMarker->u.markerValue)
             free(eMarker->u.markerValue);
-        if(eMarker->mType == MTYPE_ACCUMULATE && eMarker->u.accumulatedValues)
-            Vector_Destroy(eMarker->u.accumulatedValues, freeAccumulatedParam);
         free(eMarker);
     }
 }
 
-void freeAccumulatedParam(void* data)
-{
-    if(data != NULL){
-        char* dataStr = data;
-        free(dataStr);
-    }
-}
 
 void freeGMarker(void *data)
 {

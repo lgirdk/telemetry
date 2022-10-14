@@ -845,10 +845,10 @@ void triggerCondtionReceiveHandler(
     T2Debug("Consumer receiver event for param %s\n and the value %s\n", event->name, eventValue);
 
     if(newValue){
-        T2Info("  New Value: %s \n", rbusValue_ToString(newValue,NULL,0));
+        T2Debug("  New Value: %s \n", rbusValue_ToString(newValue,NULL,0));
     }
     if(oldValue){
-        T2Info("  Old Value: %s \n",  rbusValue_ToString(oldValue,NULL,0));
+        T2Debug("  Old Value: %s \n",  rbusValue_ToString(oldValue,NULL,0));
     }
 
     if(filter) {

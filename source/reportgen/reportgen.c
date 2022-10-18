@@ -44,17 +44,18 @@ void freeProfileValues(void *data)
     T2Debug("%s --Out\n", __FUNCTION__);
 }
 
-void getTimeStamp (char** timeStamp) {
+char* getTimeStamp () {
 
     time_t timeObj = time(NULL);
+    char *timeStamp = NULL;
     char output[MAX_TIME_INFO_LEN] = { '\0' };
     struct tm * tmInfo;
     time(&timeObj);
     tmInfo = localtime(&timeObj);
     // Format -  yyyy-mm-dd hh:mm:ss
     strftime(output, MAX_TIME_INFO_LEN, "%F %H:%M:%S" , tmInfo);
-    *timeStamp = strndup(output,MAX_TIME_INFO_LEN);
-    return ;
+    timeStamp = strndup(output,MAX_TIME_INFO_LEN);
+    return timeStamp ;
 
 }
 

@@ -473,6 +473,7 @@ T2ERROR Profile_storeMarkerEvent(const char *profileName, T2Event *eventInfo)
             break;
         }
     }
+    int arraySize = 0;
     if(lookupEvent != NULL)
     {
         pthread_mutex_lock(&profile->eventMutex);
@@ -485,7 +486,7 @@ T2ERROR Profile_storeMarkerEvent(const char *profileName, T2Event *eventInfo)
 
             case MTYPE_ACCUMULATE:
                 T2Debug("Marker type is ACCUMULATE Event Value : %s\n",eventInfo->value);
-                int arraySize = Vector_Size(lookupEvent->u.accumulatedValues);
+                arraySize = Vector_Size(lookupEvent->u.accumulatedValues);
                 T2Debug("Current array size : %d \n", arraySize);
                 if( arraySize < MAX_ACCUMULATE){
                     Vector_PushBack(lookupEvent->u.accumulatedValues, strdup(eventInfo->value));
@@ -566,7 +567,10 @@ T2ERROR enableProfile(const char *profileName)
     else
     {
         profile->enable = true;
-        pthread_mutex_init(&profile->triggerCondMutex, NULL);
+        if(pthread_mutex_init(&profile->triggerCondMutex, NULL) != 0){
+            T2Error(" %s Mutex init has failed\n", __FUNCTION__);
+            return T2ERROR_FAILURE;
+        }
 
         int emIndex = 0;
         EventMarker *eMarker = NULL;
@@ -880,8 +884,14 @@ T2ERROR initProfileList()
         return T2ERROR_SUCCESS;
     }
     initialized = true;
-    pthread_mutex_init(&plMutex, NULL);
-    pthread_mutex_init(&reportLock, NULL);
+    if(pthread_mutex_init(&plMutex, NULL) != 0){
+        T2Error("%s mutex init has failed\n", __FUNCTION__);
+        return T2ERROR_FAILURE;
+    }
+    if(pthread_mutex_init(&reportLock, NULL) != 0 ){
+        T2Error("%s mutex init has failed\n", __FUNCTION__);
+        return T2ERROR_FAILURE;
+    }
 
     Vector_Create(&profileList);
 

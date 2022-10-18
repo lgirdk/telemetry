@@ -124,12 +124,10 @@ static T2ERROR initJSONReportXconf(cJSON** jsonObj, cJSON **valArray)
 #endif
     cJSON_AddItemToArray(*valArray, arrayItem);
 
-    getTimeStamp(&currenTime);
+    currenTime = getTimeStamp();
     arrayItem = cJSON_CreateObject( );
     if (NULL != currenTime) {
         cJSON_AddStringToObject(arrayItem, "Time", currenTime);
-        free(currenTime);
-        currenTime = NULL;
     } else {
         cJSON_AddStringToObject(arrayItem, "Time", "Unknown");
     }
@@ -281,8 +279,10 @@ T2ERROR ProfileXConf_init()
         Config *config = NULL;
 
         initialized = true;
-        pthread_mutex_init(&plMutex, NULL);
-
+        if(pthread_mutex_init(&plMutex, NULL) != 0){
+            T2Error("%s Mutex init has failed\n", __FUNCTION__);
+            return T2ERROR_FAILURE;
+        }
         Vector_Create(&configList);
         fetchLocalConfigs(XCONFPROFILE_PERSISTENCE_PATH, configList);
 
@@ -581,7 +581,7 @@ T2ERROR ProfileXConf_storeMarkerEvent(T2Event *eventInfo)
         }
     }
     pthread_mutex_unlock(&plMutex);
-
+    int arraySize = 0;
     if(lookupEvent != NULL)
     {
         pthread_mutex_lock(&plMutex);
@@ -594,7 +594,7 @@ T2ERROR ProfileXConf_storeMarkerEvent(T2Event *eventInfo)
 
             case MTYPE_XCONF_ACCUMULATE:
                 T2Debug("Marker type is ACCUMULATE Event Value : %s\n",eventInfo->value);
-                int arraySize = Vector_Size(lookupEvent->u.accumulatedValues);
+                arraySize = Vector_Size(lookupEvent->u.accumulatedValues);
                 T2Debug("Current array size : %d \n", arraySize);
                 if( arraySize < MAX_ACCUMULATE){
                     Vector_PushBack(lookupEvent->u.accumulatedValues, strdup(eventInfo->value));

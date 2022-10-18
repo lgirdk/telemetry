@@ -260,7 +260,10 @@ T2ERROR initScheduler(TimeoutNotificationCB notificationCb, ActivationTimeoutCB 
     activationTimeoutCb = activationCB;
 
     sc_initialized = true;
-    pthread_mutex_init(&scMutex, NULL);
+    if(pthread_mutex_init(&scMutex, NULL) != 0){
+        T2Error("%s Mutex init has failed\n", __FUNCTION__);
+        return T2ERROR_FAILURE;
+    }
 
     T2Debug("%s --out\n", __FUNCTION__);
     return Vector_Create(&profileList);
@@ -338,7 +341,10 @@ T2ERROR registerProfileWithScheduler(const char* profileName, unsigned int timeI
         tProfile->timeToLive = activationTimeout;
 	tProfile->deleteonTime = deleteonTimeout;
         tProfile->terminated = false;
-        pthread_mutex_init(&tProfile->tMutex, NULL);
+        if(pthread_mutex_init(&tProfile->tMutex, NULL) != 0){
+            T2Error("%s Mutex init has failed\n",  __FUNCTION__);
+            return T2ERROR_FAILURE;
+        }
         pthread_cond_init(&tProfile->tCond, NULL);
         T2Info("Starting TimeoutThread for profile : %s\n", profileName);
         pthread_create(&tProfile->tId, NULL, TimeoutThread, (void*)tProfile);

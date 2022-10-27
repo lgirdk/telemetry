@@ -35,8 +35,7 @@ static char* LOG_PATH        = NULL;
 static char* DEVICE_TYPE     = NULL;
 static bool  isPropsIntialized = false ;
 static long  LAST_SEEK_VALUE = 0;
-
-
+static bool isinitialized = false;
 // Map holding profile name to Map ( logfile -> seek value) ]
 static hash_map_t *profileSeekMap = NULL;
 static pthread_mutex_t pSeekLock = PTHREAD_MUTEX_INITIALIZER;
@@ -58,8 +57,13 @@ GrepSeekProfile *addToProfileSeekMap(char* profileName){
         gsProfile = malloc(sizeof(GrepSeekProfile));
         gsProfile->logFileSeekMap = hash_map_create();
         fd = stat(path, &st);
+        if(isinitialized == false){
+            isinitialized = true;
+            gsProfile->execCounter = 0;
+        }
         if(fd != -1){
             gsProfile->execCounter = 0;
+            T2Debug("Execution count = %d\n",gsProfile->execCounter);
             remove("/tmp/telemetry_logupload");
         }
         hash_map_put(profileSeekMap, strdup(profileName), (void*)gsProfile);

@@ -305,7 +305,10 @@ void *cacheEventToFile(void *arg)
         {
                 EVENT_ERROR("%s:%d, T2:fcntl failed\n", __func__, __LINE__);
                 pthread_mutex_unlock(&FileCacheMutex);
-                close(fd);
+                int ret = close(fd);
+                if (ret != 0){
+                    EVENT_ERROR("%s:%d, T2:close failed with error %d\n", __func__, __LINE__,ret);
+                }  
 		free(telemetry_data);
                 return NULL;
         }
@@ -324,7 +327,10 @@ unlock:
         if (fcntl(fd, F_SETLK, &fl) == -1) {
                 EVENT_ERROR("fcntl failed \n");
         }
-        close(fd);
+        int ret = close(fd);
+        if (ret != 0){
+            EVENT_ERROR("%s:%d, T2:close failed with error %d\n", __func__, __LINE__,ret);
+        }
         pthread_mutex_unlock(&FileCacheMutex);
 	free(telemetry_data);
         return NULL;
@@ -631,6 +637,10 @@ T2ERROR t2_event_s(char* marker, char* value) {
     T2ERROR retStatus = T2ERROR_FAILURE ;
     EVENT_DEBUG("%s ++in\n", __FUNCTION__);
 
+    if(componentName == NULL){
+        EVENT_DEBUG("%s:%d, T2:component with pid = %d is trying to send event %s with value %s without component name \n", __func__, __LINE__, (int) getpid(), marker,value);
+        return T2ERROR_COMPONENT_NULL;
+    }
     initMutex();
     pthread_mutex_lock(&sMutex);
     if ( NULL == marker || NULL == value) {
@@ -664,6 +674,11 @@ T2ERROR t2_event_f(char* marker, double value) {
     T2ERROR retStatus = T2ERROR_FAILURE ;
     EVENT_DEBUG("%s ++in\n", __FUNCTION__);
 
+    if(componentName == NULL){
+        EVENT_DEBUG("%s:%d, T2:component with pid = %d is trying to send event %s with value %lf without component name \n", __func__, __LINE__, (int) getpid(), marker,value);
+        return T2ERROR_COMPONENT_NULL;
+    }
+
      initMutex();
      pthread_mutex_lock(&fMutex);
      if ( NULL == marker ) {
@@ -695,6 +710,11 @@ T2ERROR t2_event_d(char* marker, int value) {
     int ret;
     T2ERROR retStatus = T2ERROR_FAILURE ;
     EVENT_DEBUG("%s ++in\n", __FUNCTION__);
+
+    if(componentName == NULL){
+        EVENT_DEBUG("%s:%d, T2:component with pid = %d is trying to send event %s with value %d without component name \n", __func__, __LINE__, (int) getpid(), marker,value);
+        return T2ERROR_COMPONENT_NULL;
+    }
 
      initMutex();
      pthread_mutex_lock(&dMutex);

@@ -38,9 +38,30 @@
 #define T2REPORT_HEADER "T2"
 #define T2REPORT_HEADERVAL  "1.0"
 
+#define MAX_TIME_INFO_LEN  35
+
 static bool initialized = false;
 static ProfileXConf *singleProfile = NULL;
 static pthread_mutex_t plMutex; /* TODO - we can remove plMutex most likely but first check that CollectAndReport doesn't cause issue */
+
+static char *getTimeStamp (void)
+{
+    char *timeStamp;
+    timeStamp = malloc(MAX_TIME_INFO_LEN);
+    if (timeStamp)
+    {
+        time_t timeObj = time(NULL);
+        struct tm *tmInfo = localtime(&timeObj);
+        // Format -  yyyy-mm-dd hh:mm:ss
+        if (strftime(timeStamp, MAX_TIME_INFO_LEN, "%F %H:%M:%S" , tmInfo) == 0)
+        {
+            free(timeStamp);
+            timeStamp = NULL;
+        }
+    }
+
+    return timeStamp;
+}
 
 static void freeConfig(void *data)
 {
@@ -128,6 +149,8 @@ static T2ERROR initJSONReportXconf(cJSON** jsonObj, cJSON **valArray)
     arrayItem = cJSON_CreateObject( );
     if (NULL != currenTime) {
         cJSON_AddStringToObject(arrayItem, "Time", currenTime);
+        free(currenTime);
+        currenTime = NULL;
     } else {
         cJSON_AddStringToObject(arrayItem, "Time", "Unknown");
     }

@@ -65,8 +65,6 @@ typedef struct _T2RBUS
 
 void freeProfileValues(void* data);
 
-char* getTimeStamp ();
-
 T2ERROR destroyJSONReport(cJSON *jsonObj);
 
 T2ERROR encodeParamResultInJSON(cJSON *valArray, Vector *paramNameList, Vector *paramValueList);

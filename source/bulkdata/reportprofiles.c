@@ -1080,6 +1080,7 @@ int __ReportProfiles_ProcessReportProfilesMsgPackBlob(void *msgpack)
 
 bool isMtlsEnabled(void) 
 {
+#if !defined (ENABLE_RDKC_SUPPORT)
     char *paramValue = NULL;
 
     if(initT2MtlsEnable == false) {
@@ -1116,4 +1117,8 @@ bool isMtlsEnabled(void)
       }
     }
     return isT2MtlsEnable;
+#else
+    /* Enabling Mtls by default for RDKC */
+    return true;
+#endif
 }

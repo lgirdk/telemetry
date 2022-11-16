@@ -500,7 +500,7 @@ void updateIncludeConfVal(char *logpath, char *perspath) {
     FILE *file = fopen( INCLUDE_PROPERTIES, "r");
     if(NULL != file) {
         char props[255] = { "" };
-        while(fscanf(file, "%255s", props) != EOF) {
+        while(fscanf(file, "%254s", props) != EOF) {
             char *property = NULL;
             if((property = strstr(props, "PERSISTENT_PATH="))) {
                 property = property + strlen("PERSISTENT_PATH=");
@@ -565,7 +565,7 @@ void initProperties(char *logpath, char *perspath) {
     file = fopen( DEVICE_PROPERTIES, "r");
     if(NULL != file) {
         char props[255] = { "" };
-        while(fscanf(file, "%255s", props) != EOF) {
+        while(fscanf(file, "%254s", props) != EOF) {
             char *property = NULL;
             if((property = strstr(props, "DEVICE_TYPE="))) {
                 property = property + strlen("DEVICE_TYPE=");

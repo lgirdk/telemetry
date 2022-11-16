@@ -113,7 +113,7 @@ static T2ERROR getBuildType(char* buildType) {
     }
     deviceFilePtr = fopen( DEVICE_PROPERTIES, "r");
     if (deviceFilePtr) {
-        while (fscanf(deviceFilePtr, "%255s", fileContent) != EOF) {
+        while (fscanf(deviceFilePtr, "%254s", fileContent) != EOF) {
             if ((pBldTypeStr = strstr(fileContent, "BUILD_TYPE")) != NULL) {
                 offsetValue = strlen("BUILD_TYPE=");
                 pBldTypeStr = pBldTypeStr + offsetValue;
@@ -141,7 +141,7 @@ static char *getTimezone () {
     char fileContent[255] = { '\0' };
     fp = fopen( DEVICE_PROPERTIES, "r");
     if (fp) {
-        while (fscanf(fp, "%255s", fileContent) != EOF) {
+        while (fscanf(fp, "%254s", fileContent) != EOF) {
             char *property = NULL;
             if ((property = strstr(fileContent, "CPU_ARCH")) != NULL) {
                 property = property + strlen("CPU_ARCH=");

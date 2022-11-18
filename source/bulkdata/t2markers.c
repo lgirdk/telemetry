@@ -44,13 +44,16 @@ static void freeT2Marker(void *data)
     if(data != NULL)
     {
         hash_element_t *element = (hash_element_t *)data;
-        free(element->key);
+        if(element->key != NULL){
+            free(element->key);
+        }
         T2Marker *t2Marker = (T2Marker *)element->data;
-	if(t2Marker->componentName != NULL)
+        if(t2Marker->componentName != NULL)
            free(t2Marker->componentName);
-	if(t2Marker->markerName != NULL)
+        if(t2Marker->markerName != NULL)
            free(t2Marker->markerName);
-        Vector_Destroy(t2Marker->profileList, free);
+        if(t2Marker->profileList != NULL)
+           Vector_Destroy(t2Marker->profileList, free);
         free(t2Marker);
         free(element);
     }

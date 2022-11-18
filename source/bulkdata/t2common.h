@@ -35,6 +35,12 @@ typedef enum
     MTYPE_ACCUMULATE
 }MarkerType;
 
+typedef enum
+{
+    REPORTTIMESTAMP_UNIXEPOCH,
+    REPORTTIMESTAMP_NONE
+}reportTimestampFormat;
+
 typedef struct _Param
 {
     bool reportEmptyParam;
@@ -57,12 +63,16 @@ typedef struct _EventMarker
     char* paramType;
     char* markerName;
     char* compName;
+    reportTimestampFormat reportTimestampParam;
+    char* timestamp;
+    char* markerName_CT;
     MarkerType mType;
     union{
         unsigned int count;
         char* markerValue;
         Vector* accumulatedValues;
     }u;
+    Vector* accumulatedTimestamp;
     unsigned int skipFreq;
 }EventMarker;
 

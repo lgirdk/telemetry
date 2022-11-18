@@ -65,10 +65,22 @@ void freeEMarker(void *data)
             free(eMarker->markerName);
         if(eMarker->paramType)
             free(eMarker->paramType);
+        if(eMarker->reportTimestampParam == REPORTTIMESTAMP_UNIXEPOCH) {
+            if(eMarker->markerName_CT != NULL){
+                free(eMarker->markerName_CT);
+            }
+            if(eMarker->timestamp != NULL){
+                free(eMarker->timestamp);
+            }
+        }
         if(eMarker->mType == MTYPE_ABSOLUTE && eMarker->u.markerValue)
             free(eMarker->u.markerValue);
-        if(eMarker->mType == MTYPE_ACCUMULATE && eMarker->u.accumulatedValues)
+        if(eMarker->mType == MTYPE_ACCUMULATE && eMarker->u.accumulatedValues) {
             Vector_Destroy(eMarker->u.accumulatedValues, freeAccumulatedParam);
+            if(eMarker->accumulatedTimestamp != NULL && eMarker->reportTimestampParam == REPORTTIMESTAMP_UNIXEPOCH) {
+                Vector_Destroy(eMarker->accumulatedTimestamp, freeAccumulatedParam);
+            }
+        }
         free(eMarker);
     }
 }

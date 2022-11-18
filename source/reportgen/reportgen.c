@@ -192,6 +192,9 @@ T2ERROR encodeEventMarkersInJSON(cJSON *valArray, Vector *eventMarkerList)
                     } else {
                         cJSON_AddStringToObject(arrayItem, eventMarker->markerName, stringValue);
                     }
+                    if(eventMarker->reportTimestampParam == REPORTTIMESTAMP_UNIXEPOCH){
+                        cJSON_AddStringToObject(arrayItem, eventMarker->markerName_CT, eventMarker->timestamp);
+                    }
                     cJSON_AddItemToArray(valArray, arrayItem);
 
                     T2Debug("Marker value for : %s is %d\n", eventMarker->markerName, eventMarker->u.count);
@@ -206,11 +209,20 @@ T2ERROR encodeEventMarkersInJSON(cJSON *valArray, Vector *eventMarkerList)
                     cJSON *vectorToarray = cJSON_CreateArray();
                     convertVectorToJson(vectorToarray, eventMarker->u.accumulatedValues);
                     Vector_Clear(eventMarker->u.accumulatedValues, freeAccumulatedParam);
-                    if (eventMarker->alias) {
-                        cJSON_AddItemToObject(arrayItem,eventMarker->alias, vectorToarray);
-                    } else {
-                        cJSON_AddItemToObject(arrayItem,eventMarker->markerName, vectorToarray);
+                    T2Debug("eventMarker->reportTimestampParam type is %d \n", eventMarker->reportTimestampParam);
+
+                    if(eventMarker->alias) {
+                        cJSON_AddItemToObject(arrayItem, eventMarker->alias, vectorToarray);
+                    }else {
+                        cJSON_AddItemToObject(arrayItem, eventMarker->markerName, vectorToarray);
                     }
+                    if(eventMarker->reportTimestampParam == REPORTTIMESTAMP_UNIXEPOCH) {
+                        cJSON *TimevectorToarray = cJSON_CreateArray();
+                        convertVectorToJson(TimevectorToarray, eventMarker->accumulatedTimestamp);
+                        T2Debug("convertVectorToJson is successful\n");
+                        Vector_Clear(eventMarker->accumulatedTimestamp, freeAccumulatedParam);
+                        cJSON_AddItemToObject(arrayItem, eventMarker->markerName_CT, TimevectorToarray);
+                    }                  
                     cJSON_AddItemToArray(valArray, arrayItem);
                     T2Debug("Marker value Array for : %s is %s\n", eventMarker->markerName, cJSON_Print(vectorToarray));
                 }
@@ -225,6 +237,9 @@ T2ERROR encodeEventMarkersInJSON(cJSON *valArray, Vector *eventMarkerList)
                         cJSON_AddStringToObject(arrayItem, eventMarker->alias, eventMarker->u.markerValue);
                     } else {
                         cJSON_AddStringToObject(arrayItem, eventMarker->markerName, eventMarker->u.markerValue);
+                    }
+                    if(eventMarker->reportTimestampParam == REPORTTIMESTAMP_UNIXEPOCH){
+                        cJSON_AddStringToObject(arrayItem, eventMarker->markerName_CT, eventMarker->timestamp);
                     }
                     cJSON_AddItemToArray(valArray, arrayItem);
                     T2Debug("Marker value for : %s is %s\n", eventMarker->markerName, eventMarker->u.markerValue);

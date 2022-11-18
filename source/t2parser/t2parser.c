@@ -18,7 +18,7 @@
  */
 
 #include "t2parser.h"
-
+#include "t2common.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <limits.h>
@@ -124,7 +124,7 @@ static T2ERROR addRbusMethodParameter(Profile *profile, const char* name, const 
 }
 
 static T2ERROR addParameter(Profile *profile, const char* name, const char* ref, const char* fileName, int skipFreq, const char* ptype,
-        const char* use, bool ReportEmpty) {
+        const char* use, bool ReportEmpty, reportTimestampFormat reportTimestamp) {
 
     T2Debug("%s ++in\n", __FUNCTION__);
 
@@ -170,6 +170,9 @@ static T2ERROR addParameter(Profile *profile, const char* name, const char* ref,
             eMarker->alias = NULL;
         eMarker->paramType = strdup(ptype);
         eMarker->reportEmptyParam = ReportEmpty;
+        eMarker->markerName_CT = NULL;
+        eMarker->timestamp = NULL;
+        eMarker->reportTimestampParam = reportTimestamp;
         if((use == NULL) || (0 == strcmp(use, "absolute"))) {
             eMarker->mType = MTYPE_ABSOLUTE;
             eMarker->u.markerValue = NULL;
@@ -179,6 +182,9 @@ static T2ERROR addParameter(Profile *profile, const char* name, const char* ref,
         }else if (0 == strcmp(use, "accumulate")){
             eMarker->mType = MTYPE_ACCUMULATE;
             Vector_Create(&eMarker->u.accumulatedValues);
+            if(eMarker->reportTimestampParam == REPORTTIMESTAMP_UNIXEPOCH){
+                Vector_Create(&eMarker->accumulatedTimestamp);
+            }
         } else {
             T2Info("Unsupported marker type. Defaulting to absolute \n");
             eMarker->mType = MTYPE_ABSOLUTE;
@@ -902,6 +908,7 @@ T2ERROR processConfiguration(char** configData, char *profileName, char* profile
     size_t profileParamCount = 0;
     int ProfileParameterIndex = 0;
     char* method = NULL;
+    reportTimestampFormat rtformat;
 
     for( ProfileParameterIndex = 0; ProfileParameterIndex < ThisProfileParameter_count; ProfileParameterIndex++ ) {
         header = NULL;
@@ -911,6 +918,7 @@ T2ERROR processConfiguration(char** configData, char *profileName, char* profile
         paramtype = NULL;
         use = NULL;
         reportEmpty = false;
+        rtformat = REPORTTIMESTAMP_NONE;
 
         cJSON* pSubitem = cJSON_GetArrayItem(jprofileParameter, ProfileParameterIndex);
         if(pSubitem != NULL) {
@@ -943,19 +951,26 @@ T2ERROR processConfiguration(char** configData, char *profileName, char* profile
                     }
                 }
                 cJSON *jpMethod = cJSON_GetObjectItem(pSubitem, "method");
-                if (jpMethod)
-                {
-                   method = jpMethod->valuestring;
-                   T2Debug("Method property is present and the value is %s\n",method);
-                   if(!(strcmp(method, "subscribe")))
-                   {
-                      T2Info("Method is subscribe converting the parmeter to event type\n");
-                      paramtype = "event";
-                      header = jpSubitemreference->valuestring;
-                      content =  T2REPORTCOMPONENT;
-                      if(jpSubitemname)
-                          logfile = jpSubitemname->valuestring;
-                   }
+                cJSON *jpSubitemreportTimestamp = cJSON_GetObjectItem(pSubitem, "reportTimestamp");
+                if(jpMethod) {
+                    method = jpMethod->valuestring;
+                    T2Debug("Method property is present and the value is %s\n", method);
+                    if(!(strcmp(method, "subscribe"))) {
+                        T2Info("Method is subscribe converting the parmeter to event type\n");
+                        paramtype = "event";
+                        header = jpSubitemreference->valuestring;
+                        content = T2REPORTCOMPONENT;
+                        if(jpSubitemname) {
+                            logfile = jpSubitemname->valuestring;
+                        }
+
+                        if(jpSubitemreportTimestamp) {
+                            T2Info("reportTimestamp is present and value is %s \n", jpSubitemreportTimestamp->valuestring);
+                            if(!(strcmp(jpSubitemreportTimestamp->valuestring, "Unix-Epoch"))) {
+                                rtformat = REPORTTIMESTAMP_UNIXEPOCH;
+                            }
+                        }
+                    }
                 }
             }else if(!(strcmp(paramtype, "event"))) {
 
@@ -972,6 +987,12 @@ T2ERROR processConfiguration(char** configData, char *profileName, char* profile
 
                 if(jpSubitemcomponent) {
                     content = jpSubitemcomponent->valuestring;
+                }
+		cJSON *jpSubitemreportTimestamp = cJSON_GetObjectItem(pSubitem, "reportTimestamp");
+                if(jpSubitemreportTimestamp) {
+                    if(!(strcmp(jpSubitemreportTimestamp->valuestring, "Unix-Epoch"))){
+                        rtformat = REPORTTIMESTAMP_UNIXEPOCH;
+                    }
                 }
             }else if(!(strcmp(paramtype, "grep"))) { //grep Marker
 
@@ -991,7 +1012,8 @@ T2ERROR processConfiguration(char** configData, char *profileName, char* profile
                 T2Error("%s Unknown parameter type %s \n", __FUNCTION__, paramtype);
                 continue;
             }
-            ret = addParameter(profile, header, content, logfile, skipFrequency, paramtype, use, reportEmpty); //add Multiple Report Profile Parameter
+            T2Debug("%s : reportTimestamp = %d\n", __FUNCTION__, rtformat);
+            ret = addParameter(profile, header, content, logfile, skipFrequency, paramtype, use, reportEmpty, rtformat); //add Multiple Report Profile Parameter
             if(ret != T2ERROR_SUCCESS) {
                 T2Error("%s Error in adding parameter to profile %s \n", __FUNCTION__, profile->name);
                 continue;
@@ -1274,6 +1296,7 @@ T2ERROR processMsgPackConfiguration(msgpack_object *profiles_array_map, Profile 
     msgpack_object *ReportingAdjustments_array;
     msgpack_object *ReportOnUpdate_boolean;
     msgpack_object *FirstReportInterval_u64;
+    msgpack_object *Parameter_reportTimestamp_str;
 
     int i;
     int ret;
@@ -1491,6 +1514,7 @@ T2ERROR processMsgPackConfiguration(msgpack_object *profiles_array_map, Profile 
         char* method;
         bool reportEmpty;
         int skipFrequency;
+        reportTimestampFormat rtformat;
 
         header = NULL;
         content = NULL;
@@ -1500,6 +1524,7 @@ T2ERROR processMsgPackConfiguration(msgpack_object *profiles_array_map, Profile 
         use = NULL;
         method = NULL;
         reportEmpty = false;
+        rtformat =  REPORTTIMESTAMP_NONE;
 
         Parameter_array_map = msgpack_get_array_element(Parameter_array, i);
 
@@ -1533,7 +1558,7 @@ T2ERROR processMsgPackConfiguration(msgpack_object *profiles_array_map, Profile 
             Parameter_method_str = msgpack_get_map_value(Parameter_array_map, "method");
             msgpack_print(Parameter_method_str, msgpack_get_obj_name(Parameter_method_str));
             method = msgpack_strdup(Parameter_method_str);
-
+            Parameter_reportTimestamp_str = msgpack_get_map_value(Parameter_array_map, "reportTimestamp");
             if(method){
                    T2Debug("Method property is present and the value is %s\n", method);
                    if(!(strcmp(method, "subscribe")))
@@ -1543,6 +1568,13 @@ T2ERROR processMsgPackConfiguration(msgpack_object *profiles_array_map, Profile 
                        free(header);
                        free(paramtype);
                        free(content);
+                       //reportTimestamp parameter is applicable only when method is subscribe
+                       if(Parameter_reportTimestamp_str != NULL){
+                           msgpack_print(Parameter_reportTimestamp_str, msgpack_get_obj_name(Parameter_reportTimestamp_str));
+                           if(0 == msgpack_strcmp(Parameter_reportTimestamp_str, "Unix-Epoch")) {
+                                   rtformat =  REPORTTIMESTAMP_UNIXEPOCH;
+                           }
+                       }
                        header = msgpack_strdup(Parameter_reference_str);
                        paramtype = strdup("event");
                        content = strdup(T2REPORTCOMPONENT);
@@ -1564,6 +1596,14 @@ T2ERROR processMsgPackConfiguration(msgpack_object *profiles_array_map, Profile 
             msgpack_print(Parameter_component_str, msgpack_get_obj_name(Parameter_component_str));
             content = msgpack_strdup(Parameter_component_str);
 
+            Parameter_reportTimestamp_str = msgpack_get_map_value(Parameter_array_map, "reportTimestamp");
+            if(Parameter_reportTimestamp_str != NULL){
+                msgpack_print(Parameter_reportTimestamp_str, msgpack_get_obj_name(Parameter_reportTimestamp_str));
+                if(0 == msgpack_strcmp(Parameter_reportTimestamp_str, "Unix-Epoch")) {
+                     rtformat =  REPORTTIMESTAMP_UNIXEPOCH;
+                }
+            }
+
         }else if(0 == msgpack_strcmp(Parameter_type_str, "grep")) {
 
             Parameter_marker_str = msgpack_get_map_value(Parameter_array_map, "marker");
@@ -1584,7 +1624,8 @@ T2ERROR processMsgPackConfiguration(msgpack_object *profiles_array_map, Profile 
             free(use);
             continue;
         }
-        ret = addParameter(profile, header, content, logfile, skipFrequency, paramtype, use, reportEmpty);
+        T2Debug("%s : reportTimestamp = %d\n", __FUNCTION__, rtformat);
+        ret = addParameter(profile, header, content, logfile, skipFrequency, paramtype, use, reportEmpty, rtformat);
         /* Add Multiple Report Profile Parameter */
         if(T2ERROR_SUCCESS != ret) {
             T2Error("%s Error in adding parameter to profile %s \n", __FUNCTION__, profile->name);

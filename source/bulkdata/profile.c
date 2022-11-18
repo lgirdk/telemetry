@@ -36,6 +36,7 @@
 #include "dcautil.h"
 #include "t2parser.h"
 #include "rbusInterface.h"
+#define MAX_LEN 256
 
 static bool initialized = false;
 static Vector *profileList;
@@ -485,12 +486,35 @@ T2ERROR Profile_storeMarkerEvent(const char *profileName, T2Event *eventInfo)
     int arraySize = 0;
     if(lookupEvent != NULL)
     {
+        char buf[256] = {'\0'};
+        char timebuf[256] = {'\0'};
+        time_t timestamp = 0;
         pthread_mutex_lock(&profile->eventMutex);
         switch(lookupEvent->mType)
         {
             case MTYPE_COUNTER:
                 lookupEvent->u.count++;
                 T2Debug("Increment marker count to : %d\n", lookupEvent->u.count);
+                if(lookupEvent->reportTimestampParam == REPORTTIMESTAMP_UNIXEPOCH){
+                    if(lookupEvent->timestamp) {
+                        free(lookupEvent->timestamp);
+                        lookupEvent->timestamp = NULL;
+                    }
+
+                    timestamp = time(NULL);
+                    if(lookupEvent->markerName_CT == NULL){
+                        if(lookupEvent->alias != NULL){
+                            snprintf(buf, MAX_LEN, "%s_CT", lookupEvent->alias);
+                        }
+                        else{
+                            snprintf(buf, MAX_LEN, "%s_CT", lookupEvent->markerName);
+                        }
+                        lookupEvent->markerName_CT = strdup(buf);
+                    }
+                    snprintf(timebuf, MAX_LEN, "%ld", timestamp);
+                    lookupEvent->timestamp = strdup(timebuf);
+                    T2Debug("Timestamp for %s is %s\n", lookupEvent->markerName_CT, lookupEvent->timestamp);
+                }
                 break;
 
             case MTYPE_ACCUMULATE:
@@ -500,6 +524,22 @@ T2ERROR Profile_storeMarkerEvent(const char *profileName, T2Event *eventInfo)
                 if( arraySize < MAX_ACCUMULATE){
                     Vector_PushBack(lookupEvent->u.accumulatedValues, strdup(eventInfo->value));
                     T2Debug("Sucessfully added value into vector New Size : %d\n", ++arraySize);
+                    if(lookupEvent->reportTimestampParam == REPORTTIMESTAMP_UNIXEPOCH){
+                        timestamp = time(NULL);
+                        if(lookupEvent->markerName_CT == NULL){
+                            if(lookupEvent->alias != NULL){
+                                snprintf(buf, MAX_LEN, "%s_CT", lookupEvent->alias);
+                            }
+                            else{
+                                snprintf(buf, MAX_LEN, "%s_CT", lookupEvent->markerName);
+                            }
+                            lookupEvent->markerName_CT = strdup(buf);
+                        }
+                        snprintf(timebuf, MAX_LEN, "%ld", timestamp);
+                        T2Debug("Timestamp for %s is %ld\n", lookupEvent->markerName_CT, timestamp);
+                        Vector_PushBack(lookupEvent->accumulatedTimestamp,  strdup(timebuf));
+                        T2Debug("Vector_PushBack for accumulatedTimestamp is done\n");
+                    }
                 } else if ( arraySize == MAX_ACCUMULATE ){
                     T2Warning("Max size of the array has been reached appending warning message : %s\n", MAX_ACCUMULATE_MSG);
                     Vector_PushBack(lookupEvent->u.accumulatedValues, strdup(MAX_ACCUMULATE_MSG));
@@ -511,10 +551,33 @@ T2ERROR Profile_storeMarkerEvent(const char *profileName, T2Event *eventInfo)
 
             case MTYPE_ABSOLUTE:
             default:
-                if(lookupEvent->u.markerValue)
+                if(lookupEvent->u.markerValue){
                     free(lookupEvent->u.markerValue);
+                    lookupEvent->u.markerValue = NULL;
+                }
+
                 lookupEvent->u.markerValue = strdup(eventInfo->value);
                 T2Debug("New marker value saved : %s\n", lookupEvent->u.markerValue);
+                if(lookupEvent->reportTimestampParam == REPORTTIMESTAMP_UNIXEPOCH){
+                    if(lookupEvent->timestamp) {
+                        free(lookupEvent->timestamp);
+                        lookupEvent->timestamp = NULL;
+                    }
+
+                    timestamp = time(NULL);
+                    if(lookupEvent->markerName_CT == NULL){
+                        if(lookupEvent->alias != NULL){
+                            snprintf(buf, MAX_LEN, "%s_CT", lookupEvent->alias);
+                        }
+                        else{
+                            snprintf(buf, MAX_LEN, "%s_CT", lookupEvent->markerName);
+                        }
+                        lookupEvent->markerName_CT = strdup(buf);
+                    }
+                    snprintf(timebuf, MAX_LEN, "%ld", timestamp);
+                    lookupEvent->timestamp = strdup(timebuf);
+                    T2Debug("Timestamp for %s is %s\n", lookupEvent->markerName_CT, lookupEvent->timestamp);
+                }
                 break;
         }
         pthread_mutex_unlock(&profile->eventMutex);

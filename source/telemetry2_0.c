@@ -69,7 +69,7 @@ sigset_t blocking_signal;
 
 static bool isDebugEnabled = true;
 static int initcomplete = 0;
-
+static pid_t DAEMONPID; //static varible store the Main Pid
 
 T2ERROR initTelemetry()
 {
@@ -153,76 +153,84 @@ static void _print_stack_backtrace(void)
 
 void sig_handler(int sig)
 {
-    int fd;
-    const char *path = "/tmp/telemetry_logupload";
-    if ( sig == SIGINT ) {
-        signal(SIGINT, sig_handler); /* reset it to this function */
-        T2Info(("SIGINT received!\n"));
-        #ifndef DEVICE_EXTENDER
-        uninitXConfClient();
-        #endif
-        ReportProfiles_uninit();
-        exit(0);
-    }
-    else if ( sig == SIGUSR1 || sig == LOG_UPLOAD ) {
-        signal(LOG_UPLOAD, sig_handler); /* reset it to this function */
-        T2Info(("LOG_UPLOAD received!\n"));
-	set_logdemand(false);
-        ReportProfiles_Interrupt();
-    }
-    else if (sig == LOG_UPLOAD_ONDEMAND || sig == SIGIO) {
-        signal(LOG_UPLOAD_ONDEMAND, sig_handler); /* reset it to this function */
-        T2Info(("LOG_UPLOAD_ONDEMAND received!\n"));
-        set_logdemand(true);
-        ReportProfiles_Interrupt();
-    }
-    else if ( sig == SIGCHLD ) {
-        signal(SIGCHLD, sig_handler); /* reset it to this function */
-        T2Info(("SIGCHLD received!\n"));
-    }
-    else if ( sig == SIGPIPE ) {
-        signal(SIGPIPE, sig_handler); /* reset it to this function */
-        T2Info(("SIGPIPE received!\n"));
-    }
-    else if(sig == SIGUSR2 || sig == EXEC_RELOAD)
-    {
-        T2Info(("EXEC_RELOAD received!\n"));
-        fd = open(path, O_RDONLY | O_CREAT, 0400);
-        if(fd  == -1) {
-               T2Warning("Failed to open the file\n");
-        }else{
-            T2Debug("File is created\n");
-            close(fd);
+    T2Debug("Signl Handler sig:%d Mpid:%d Cpid:%d \n",sig,(int)DAEMONPID,(int)getpid());//debug line
+    if(DAEMONPID == getpid()){
+        int fd;
+        const char *path = "/tmp/telemetry_logupload";
+        if ( sig == SIGINT ) {
+            signal(SIGINT, sig_handler); /* reset it to this function */
+            T2Info(("SIGINT received!\n"));
+            #ifndef DEVICE_EXTENDER
+            uninitXConfClient();
+            #endif
+            ReportProfiles_uninit();
+            exit(0);
         }
-        #ifndef DEVICE_EXTENDER
-        stopXConfClient();
-        if(T2ERROR_SUCCESS == startXConfClient()) {
-            T2Info("XCONF config reload - SUCCESS \n");
-        }else {
-            T2Info("XCONF config reload - IN PROGRESS ... Ignore current reload request \n");
+        else if ( sig == SIGUSR1 || sig == LOG_UPLOAD ) {
+            signal(LOG_UPLOAD, sig_handler); /* reset it to this function */
+            T2Info(("LOG_UPLOAD received!\n"));
+            set_logdemand(false);
+            ReportProfiles_Interrupt();
         }
-        #endif
+        else if (sig == LOG_UPLOAD_ONDEMAND || sig == SIGIO) {
+            signal(LOG_UPLOAD_ONDEMAND, sig_handler); /* reset it to this function */
+            T2Info(("LOG_UPLOAD_ONDEMAND received!\n"));
+            set_logdemand(true);
+            ReportProfiles_Interrupt();
+        }
+        else if ( sig == SIGCHLD ) {
+            signal(SIGCHLD, sig_handler); /* reset it to this function */
+            T2Info(("SIGCHLD received!\n"));
+        }
+        else if ( sig == SIGPIPE ) {
+            signal(SIGPIPE, sig_handler); /* reset it to this function */
+            T2Info(("SIGPIPE received!\n"));
+        }
+        else if(sig == SIGUSR2 || sig == EXEC_RELOAD)
+        {
+            T2Info(("EXEC_RELOAD received!\n"));
+            fd = open(path, O_RDONLY | O_CREAT, 0400);
+            if(fd  == -1) {
+                   T2Warning("Failed to open the file\n");
+            }else{
+                T2Debug("File is created\n");
+                close(fd);
+            }
+            #ifndef DEVICE_EXTENDER
+            stopXConfClient();
+            if(T2ERROR_SUCCESS == startXConfClient()) {
+                T2Info("XCONF config reload - SUCCESS \n");
+            }else {
+                T2Info("XCONF config reload - IN PROGRESS ... Ignore current reload request \n");
+            }
+            #endif
 
-    }
-    else if ( sig == SIGTERM || sig == SIGKILL )
-    {
-        T2Info(("SIGTERM received!\n"));
-        terminate();
-        exit(0);
-    }
-    else if ( sig == SIGALRM )
-    {
-        signal(SIGALRM, sig_handler); /* reset it to this function */
-        T2Warning("SIGALRM received!\n");
+        }
+        else if ( sig == SIGTERM || sig == SIGKILL )
+        {
+            T2Info(("SIGTERM received!\n"));
+            terminate();
+            exit(0);
+        }
+        else if ( sig == SIGALRM )
+        {
+            signal(SIGALRM, sig_handler); /* reset it to this function */
+            T2Warning("SIGALRM received!\n");
 
-    }
-    else {
-        /* get stack trace first */
-        _print_stack_backtrace();
-        T2Warning("Signal %d received, exiting!\n", sig);
-        terminate();
-        exit(0);
-    }
+        }
+        else {
+            /* get stack trace first */
+            _print_stack_backtrace();
+            T2Warning("Signal %d received, exiting!\n", sig);
+            terminate();
+            exit(0);
+        }
+    }else{
+      // This logic is added to terminate child imediately if we get terminate signals eg:SIGTERM / SIGKILL ...
+      if(!(sig == SIGUSR1 || sig == LOG_UPLOAD || sig == LOG_UPLOAD_ONDEMAND || sig == SIGIO || sig == SIGCHLD || sig == SIGPIPE || sig == SIGUSR2 || sig == EXEC_RELOAD || sig == SIGALRM )){
+          exit(0);
+      }
+   }
 }
 
 
@@ -250,6 +258,9 @@ static void t2DaemonMainModeInit( ) {
     sigaddset(&blocking_signal, EXEC_RELOAD);
     sigaddset(&blocking_signal, LOG_UPLOAD_ONDEMAND);
     sigaddset(&blocking_signal, SIGIO);
+
+    DAEMONPID = getpid(); // save the pid of the deamon
+    T2Debug("Telemetry 2.0 Process PID %d\n",(int)DAEMONPID);//Debug line
 
     signal(SIGTERM, sig_handler);
     signal(SIGUSR1, sig_handler);

@@ -148,7 +148,7 @@ void* TimeoutThread(void *arg)
     T2Debug("%s ++in\n", __FUNCTION__);
     registerTriggerConditionConsumer();
 
-    while(tProfile->repeat && !tProfile->terminated)
+    while(tProfile->repeat && !tProfile->terminated && tProfile->name)
     {
         memset(&_ts, 0, sizeof(struct timespec));
         memset(&_now, 0, sizeof(struct timespec));

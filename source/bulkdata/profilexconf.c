@@ -43,7 +43,7 @@
 
 static bool initialized = false;
 static ProfileXConf *singleProfile = NULL;
-static pthread_mutex_t plMutex; /* TODO - we can remove plMutex most likely but first check that CollectAndReport doesn't cause issue */
+static pthread_mutex_t plMutex; /* TODO - we can remove plMutex most likely but firseck that CollectAndReport doesn't cause issue */
 
 static char *getTimeStamp (void)
 {
@@ -166,7 +166,11 @@ static void* CollectAndReportXconf(void* data)
 {
     pthread_mutex_lock(&plMutex);
     ProfileXConf* profile = singleProfile;
-
+    if(profile == NULL){
+        T2Error("profile is NULL\n");
+        pthread_mutex_unlock(&plMutex);
+        return NULL;
+    }
     Vector *profileParamVals = NULL;
     Vector *grepResultList = NULL;
     cJSON *valArray = NULL;
@@ -177,11 +181,12 @@ static void* CollectAndReportXconf(void* data)
     struct timespec elapsedTime;
 
     T2ERROR ret = T2ERROR_FAILURE;
-    T2Info("%s ++in profileName : %s\n", __FUNCTION__, profile->name);
+    if(profile->name != NULL)
+        T2Info("%s ++in profileName : %s\n", __FUNCTION__, profile->name);
 
 
     clock_gettime(CLOCK_REALTIME, &startTime);
-    if(!strcmp(profile->encodingType, "JSON"))
+    if(profile->encodingType != NULL && !strcmp(profile->encodingType, "JSON"))
     {
         if(T2ERROR_SUCCESS != initJSONReportXconf(&profile->jsonReportObj, &valArray))
         {
@@ -190,7 +195,7 @@ static void* CollectAndReportXconf(void* data)
             pthread_mutex_unlock(&plMutex);
             return NULL;
         }
-        if(Vector_Size(profile->paramList) > 0)
+        if(profile->paramList != NULL && Vector_Size(profile->paramList) > 0)
         {
 
            profileParamVals = getProfileParameterValues(profile->paramList);
@@ -201,14 +206,14 @@ static void* CollectAndReportXconf(void* data)
            }
            Vector_Destroy(profileParamVals, freeProfileValues);
         }
-        if(Vector_Size(profile->gMarkerList) > 0)
+        if(profile->gMarkerList != NULL && Vector_Size(profile->gMarkerList) > 0)
         {
            getGrepResults(profile->name, profile->gMarkerList, &grepResultList, profile->bClearSeekMap);
            T2Info("Grep complete for %lu markers \n", (unsigned long)Vector_Size(profile->gMarkerList));
            encodeGrepResultInJSON(valArray, grepResultList);
            Vector_Destroy(grepResultList, freeGResult);
         }
-        if(Vector_Size(profile->eMarkerList) > 0)
+        if(profile->eMarkerList != NULL && Vector_Size(profile->eMarkerList) > 0)
         {
            encodeEventMarkersInJSON(valArray, profile->eMarkerList);
         }
@@ -229,7 +234,7 @@ static void* CollectAndReportXconf(void* data)
         if(profile->isUpdated)
         {
            T2Info("Profile is udpated, report is cached to send with updated Profile TIMEOUT\n");
-           if(Vector_Size(profile->cachedReportList) == MAX_CACHED_REPORTS)
+           if(profile->cachedReportList != NULL && Vector_Size(profile->cachedReportList) == MAX_CACHED_REPORTS)
            {
               T2Debug("Max Cached Reports Limit Reached, Overwriting third recent report\n");
               char *thirdCachedReport = (char *)Vector_At(profile->cachedReportList, MAX_CACHED_REPORTS-3);
@@ -249,13 +254,13 @@ static void* CollectAndReportXconf(void* data)
         {
            T2Warning("Report size is exceeding the max limit : %d\n", DEFAULT_MAX_REPORT_SIZE);
         }
-        if(strcmp(profile->protocol, "HTTP") == 0)
+        if(profile->protocol != NULL && strcmp(profile->protocol, "HTTP") == 0)
         {
            ret = sendReportOverHTTP(profile->t2HTTPDest->URL, jsonReport);
 
            if(ret == T2ERROR_FAILURE)
            {
-              if(Vector_Size(profile->cachedReportList) == MAX_CACHED_REPORTS)
+              if(profile->cachedReportList != NULL && Vector_Size(profile->cachedReportList) == MAX_CACHED_REPORTS)
               {
                  T2Debug("Max Cached Reports Limit Reached, Overwriting third recent report\n");
                  char *thirdCachedReport = (char *)Vector_At(profile->cachedReportList, MAX_CACHED_REPORTS-3);
@@ -268,7 +273,7 @@ static void* CollectAndReportXconf(void* data)
               // Save messages from cache to a file in persistent location.
               saveCachedReportToPersistenceFolder(profile->name, profile->cachedReportList);
            }
-           else if(Vector_Size(profile->cachedReportList) > 0)
+           else if(profile->cachedReportList != NULL && Vector_Size(profile->cachedReportList) > 0)
            {
                T2Info("Trying to send  %lu cached reports\n", (unsigned long)Vector_Size(profile->cachedReportList));
                ret = sendCachedReportsOverHTTP(profile->t2HTTPDest->URL, profile->cachedReportList);

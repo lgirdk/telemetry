@@ -254,6 +254,7 @@ static void* CollectAndReport(void* data)
         return NULL;
     }
     Profile* profile = (Profile *)data;
+
     profile->reportInProgress = true;
 
     Vector *profileParamVals = NULL;
@@ -272,11 +273,16 @@ static void* CollectAndReport(void* data)
 
 
     T2ERROR ret = T2ERROR_FAILURE;
+    if( profile->name == NULL || profile->encodingType == NULL || profile->protocol == NULL ){
+        T2Error("Incomplete profile parameters\n");
+        return NULL;
+    }
+
     T2Info("%s ++in profileName : %s\n", __FUNCTION__, profile->name);
 
 
     clock_gettime(CLOCK_REALTIME, &startTime);
-    if(!strcmp(profile->encodingType, "JSON") || !strcmp(profile->encodingType, "MessagePack"))
+    if( !strcmp(profile->encodingType, "JSON") || !strcmp(profile->encodingType, "MessagePack"))
     {
         JSONEncoding *jsonEncoding = profile->jsonEncoding;
         if (jsonEncoding->reportFormat != JSONRF_KEYVALUEPAIR)
@@ -302,12 +308,12 @@ static void* CollectAndReport(void* data)
         }
         else
         {
-            if(Vector_Size(profile->staticParamList) > 0)
+            if(profile->staticParamList != NULL && Vector_Size(profile->staticParamList) > 0)
             {
                 T2Debug(" Adding static Parameter Values to Json report\n");
                 encodeStaticParamsInJSON(valArray, profile->staticParamList);
             }
-            if(Vector_Size(profile->paramList) > 0)
+            if(profile->paramList != NULL && Vector_Size(profile->paramList) > 0)
             {
                 T2Debug("Fetching TR-181 Object/Parameter Values\n");
                 profileParamVals = getProfileParameterValues(profile->paramList);
@@ -317,13 +323,13 @@ static void* CollectAndReport(void* data)
                 }
                 Vector_Destroy(profileParamVals, freeProfileValues);
             }
-            if(Vector_Size(profile->gMarkerList) > 0)
+            if(profile->gMarkerList != NULL && Vector_Size(profile->gMarkerList) > 0)
             {
                 getGrepResults(profile->name, profile->gMarkerList, &grepResultList, profile->bClearSeekMap);
                 encodeGrepResultInJSON(valArray, grepResultList);
                 Vector_Destroy(grepResultList, freeGResult);
             }
-            if(Vector_Size(profile->eMarkerList) > 0)
+            if(profile->eMarkerList != NULL && Vector_Size(profile->eMarkerList) > 0)
             {
                 pthread_mutex_lock(&profile->eventMutex);
                 encodeEventMarkersInJSON(valArray, profile->eMarkerList);
@@ -422,7 +428,7 @@ static void* CollectAndReport(void* data)
                     }
                 }
                 if((ret == T2ERROR_FAILURE && strcmp(profile->protocol, "HTTP") == 0) || ret == T2ERROR_NO_RBUS_METHOD_PROVIDER) {
-                    if(Vector_Size(profile->cachedReportList) == MAX_CACHED_REPORTS) {
+                    if(profile->cachedReportList != NULL && Vector_Size(profile->cachedReportList) == MAX_CACHED_REPORTS) {
                         T2Debug("Max Cached Reports Limit Reached, Overwriting third recent report\n");
                         char *thirdCachedReport = (char*) Vector_At(profile->cachedReportList, MAX_CACHED_REPORTS - 3);
                         Vector_RemoveItem(profile->cachedReportList, thirdCachedReport, NULL);
@@ -450,7 +456,7 @@ static void* CollectAndReport(void* data)
                             return NULL;
                         }
                     }
-                }else if(Vector_Size(profile->cachedReportList) > 0) {
+                }else if(profile->cachedReportList != NULL && Vector_Size(profile->cachedReportList) > 0) {
                     T2Info("Trying to send  %lu cached reports\n", (unsigned long )Vector_Size(profile->cachedReportList));
                     if(strcmp(profile->protocol, "HTTP") == 0) {
                         ret = sendCachedReportsOverHTTP(httpUrl, profile->cachedReportList);

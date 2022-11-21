@@ -29,7 +29,8 @@
 #include <sys/wait.h>
 #include <signal.h>
 
-#include "cJSON.h"
+#include <cjson/cJSON.h>
+
 #include "t2log_wrapper.h"
 #include "reportprofiles.h"
 #include "profilexconf.h"

@@ -349,37 +349,46 @@ static void* CollectAndReport(void* data)
                     ret = sendReportsOverRBUSMethod(profile->t2RBUSDest->rbusMethodName, profile->t2RBUSDest->rbusMethodParamList, jsonReport);
                 }
                 if((ret == T2ERROR_FAILURE && strcmp(profile->protocol, "HTTP") == 0) || ret == T2ERROR_NO_RBUS_METHOD_PROVIDER) {
-                     if(Vector_Size(profile->cachedReportList) == MAX_CACHED_REPORTS) {
-                         T2Debug("Max Cached Reports Limit Reached, Overwriting third recent report\n");
-                         char *thirdCachedReport = (char *) Vector_At(profile->cachedReportList, MAX_CACHED_REPORTS - 3);
-                         Vector_RemoveItem(profile->cachedReportList, thirdCachedReport, NULL);
-                         free(thirdCachedReport);
-                     }
-                        Vector_PushBack(profile->cachedReportList, jsonReport);
+                    if(Vector_Size(profile->cachedReportList) == MAX_CACHED_REPORTS) {
+                        T2Debug("Max Cached Reports Limit Reached, Overwriting third recent report\n");
+                        char *thirdCachedReport = (char*) Vector_At(profile->cachedReportList, MAX_CACHED_REPORTS - 3);
+                        Vector_RemoveItem(profile->cachedReportList, thirdCachedReport, NULL);
+                        free(thirdCachedReport);
+                    }
+                    Vector_PushBack(profile->cachedReportList, jsonReport);
 
-                        T2Info("Report Cached, No. of reportes cached = %lu\n", (unsigned long)Vector_Size(profile->cachedReportList));
-                        if(strcmp(profile->protocol, "RBUS_METHOD") == 0){
-                            profile->SendErr++;
-                            if(profile->SendErr > 3 && !(rbusCheckMethodExists(profile->t2RBUSDest->rbusMethodName))){ //to delete the profile in the next CollectAndReport or triggercondition
-                                T2Debug("RBUS_METHOD doesn't exists after 3 retries\n");
-                                profile->reportInProgress = false;
-                                T2Error("ERROR: no method provider; profile will be deleted: %s %s\n", profile->name, profile->t2RBUSDest->rbusMethodName);
-                                if(T2ERROR_SUCCESS != deleteProfile(profile->name)){
-                                    T2Error("Failed to delete profile after RBUS_METHOD failures: %s\n", profile->name);
-                                    T2Info("%s --out\n", __FUNCTION__);
-                                    return NULL;
-                                }
+                    T2Info("Report Cached, No. of reportes cached = %lu\n", (unsigned long )Vector_Size(profile->cachedReportList));
+                    // Save messages from profile->cachedReportList to a file in persistent location .
+                    saveCachedReportToPersistenceFolder(profile->name, profile->cachedReportList);
+
+                    if(strcmp(profile->protocol, "RBUS_METHOD") == 0) {
+                        profile->SendErr++;
+                        if(profile->SendErr > 3 && !(rbusCheckMethodExists(profile->t2RBUSDest->rbusMethodName))) { //to delete the profile in the next CollectAndReport or triggercondition
+                            T2Debug("RBUS_METHOD doesn't exists after 3 retries\n");
+                            profile->reportInProgress = false;
+                            T2Error("ERROR: no method provider; profile will be deleted: %s %s\n", profile->name,
+                                    profile->t2RBUSDest->rbusMethodName);
+                            if(T2ERROR_SUCCESS != deleteProfile(profile->name)) {
+                                T2Error("Failed to delete profile after RBUS_METHOD failures: %s\n", profile->name);
                                 T2Info("%s --out\n", __FUNCTION__);
                                 return NULL;
                             }
+                            T2Info("%s --out\n", __FUNCTION__);
+                            return NULL;
                         }
+                    }
                 }else if(Vector_Size(profile->cachedReportList) > 0) {
-                        T2Info("Trying to send  %lu cached reports\n", (unsigned long)Vector_Size(profile->cachedReportList));
-                        if ( strcmp(profile->protocol, "HTTP") == 0 ) {
-                            ret = sendCachedReportsOverHTTP(httpUrl, profile->cachedReportList);
-                        } else {
-                            ret = sendCachedReportsOverRBUSMethod(profile->t2RBUSDest->rbusMethodName, profile->t2RBUSDest->rbusMethodParamList, profile->cachedReportList);
-                       }
+                    T2Info("Trying to send  %lu cached reports\n", (unsigned long )Vector_Size(profile->cachedReportList));
+                    if(strcmp(profile->protocol, "HTTP") == 0) {
+                        ret = sendCachedReportsOverHTTP(httpUrl, profile->cachedReportList);
+                    }else {
+                        ret = sendCachedReportsOverRBUSMethod(profile->t2RBUSDest->rbusMethodName, profile->t2RBUSDest->rbusMethodParamList,
+                                profile->cachedReportList);
+                    }
+
+                    if(ret == T2ERROR_SUCCESS){
+                        removeProfileFromDisk(CACHED_MESSAGE_PATH, profile->name);
+                    }
                 }
                 if (httpUrl) {
                     free(httpUrl);
@@ -833,6 +842,7 @@ static void loadReportProfilesFromDisk()
         fclose (fp);
         __ReportProfiles_ProcessReportProfilesMsgPackBlob((void *)&msgpack);
         free(msgpack.msgpack_blob);
+        clearPersistenceFolder(CACHED_MESSAGE_PATH);
         return;
     }
     T2Info("JSON: loadReportProfilesFromDisk \n");
@@ -860,6 +870,9 @@ static void loadReportProfilesFromDisk()
                  if(T2ERROR_SUCCESS != enableProfile(profile->name))
                  {
                      T2Error("Failed to enable profile name : %s\n", profile->name);
+                 } else{
+                     // Load the cached messages from previous boot, if any
+                     populateCachedReportList(profile->name, profile->cachedReportList);
                  }
              }
              else
@@ -871,6 +884,7 @@ static void loadReportProfilesFromDisk()
      T2Info("Completed processing %lu profiles on the disk,trying to fetch new/updated profiles\n", (unsigned long)Vector_Size(configList));
      T2totalmem_calculate();
      Vector_Destroy(configList, freeReportProfileConfig);
+     clearPersistenceFolder(CACHED_MESSAGE_PATH);
 
     T2Debug("%s --out\n", __FUNCTION__);
 }

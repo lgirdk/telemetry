@@ -24,12 +24,21 @@
 #include <stdlib.h>
 #include <string.h>
 #include <fcntl.h>
+#include <pthread.h>
 
 #include "persistence.h"
 #include "t2log_wrapper.h"
 #include "telemetry2_0.h"
 
 #define MAX_FILENAME_LENGTH 128
+
+static pthread_once_t persistCahedReporMutexOnce = PTHREAD_ONCE_INIT;
+static pthread_mutex_t persistCachedReportMutex;
+
+static void persistReportMethodInit( ) {
+    pthread_mutex_init(&persistCachedReportMutex, NULL);
+}
+
 
 T2ERROR fetchLocalConfigs(const char* path, Vector *configList)
 {
@@ -38,7 +47,6 @@ T2ERROR fetchLocalConfigs(const char* path, Vector *configList)
     DIR *dir = opendir(path);
     if (dir == NULL) {
         T2Error("Failed to open persistence folder : %s, creating folder\n", path);
-
         if (mkdir(path,S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH) != 0) {
             T2Error("%s,%d: Failed to make directory : %s  \n", __FUNCTION__ , __LINE__, path);
         }
@@ -180,4 +188,111 @@ void removeProfileFromDisk(const char* path, const char* fileName)
     free(str);
 
     T2Debug("%s --out\n", __FUNCTION__);
+}
+
+T2ERROR saveCachedReportToPersistenceFolder(const char *profileName, Vector *reportList)
+{
+    T2ERROR ret = T2ERROR_FAILURE ;
+
+    T2Debug("%s ++in\n", __FUNCTION__);
+
+    if( NULL == profileName || NULL == reportList ){
+        T2Error("%s : %d Either of input arguments are NULL \n", __FUNCTION__ , __LINE__);
+        return ret ;
+    }
+
+    // Lock a mutex to write to common file
+    pthread_once(&persistCahedReporMutexOnce, persistReportMethodInit);
+
+
+    // Create directory at CACHED_MESSAGE_PATH if not present
+    DIR *dir = opendir(CACHED_MESSAGE_PATH);
+    FILE *filePtr = NULL ;
+    char absFilePath[MAX_FILENAME_LENGTH] = {'0'};
+
+    pthread_mutex_lock(&persistCachedReportMutex);
+    if(dir == NULL) {
+        T2Info("Persistence folder %s not present, creating folder\n", CACHED_MESSAGE_PATH);
+        if(mkdir(CACHED_MESSAGE_PATH, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH) != 0) {
+            T2Error("%s,%d: Failed to make directory : %s  \n", __FUNCTION__, __LINE__, CACHED_MESSAGE_PATH);
+            pthread_mutex_unlock(&persistCachedReportMutex);
+            T2Debug("%s --out\n", __FUNCTION__);
+            return T2ERROR_FAILURE;
+        }
+    } else {
+        closedir(dir);
+    }
+
+    snprintf(absFilePath,(MAX_FILENAME_LENGTH -1), "%s/%s", CACHED_MESSAGE_PATH, profileName );
+    filePtr = fopen(absFilePath, "w+");
+    if(NULL != filePtr) {
+        // if absFilePath present, wipe it off
+        int vectorSize = Vector_Size(reportList);
+        int loop = 0 ;
+        T2Debug("Writing %d data to file %s \n", vectorSize, absFilePath);
+        for(loop = 0; loop < vectorSize; loop++ ) {
+            char *payload = (char*) Vector_At(reportList, loop);
+            fprintf(filePtr, "%s\n", payload);
+        }
+        fclose(filePtr);
+        ret = T2ERROR_SUCCESS ;
+    }else {
+        T2Error("Unable to open file %s for caching unsent reports \n", absFilePath);
+    }
+    // Release the mutex
+    pthread_mutex_unlock(&persistCachedReportMutex);
+    T2Debug("%s --out\n", __FUNCTION__);
+    return ret;
+}
+
+
+T2ERROR populateCachedReportList(const char *profileName, Vector *outReportList)
+{
+    T2ERROR ret = T2ERROR_FAILURE ;
+
+    T2Debug("%s ++in\n", __FUNCTION__);
+
+    if( NULL == profileName || NULL == outReportList ){
+        T2Error("%s : %d Either of input arguments are NULL \n", __FUNCTION__ , __LINE__);
+        T2Debug("%s --out\n", __FUNCTION__);
+        return ret ;
+    }
+
+    FILE *filePtr = NULL ;
+    char absFilePath[MAX_FILENAME_LENGTH] = {'0'};
+
+    pthread_once(&persistCahedReporMutexOnce, persistReportMethodInit);
+    pthread_mutex_lock(&persistCachedReportMutex);
+
+    snprintf(absFilePath,(MAX_FILENAME_LENGTH -1), "%s/%s", CACHED_MESSAGE_PATH, profileName );
+    filePtr = fopen(absFilePath, "r+");
+    if(NULL != filePtr) {
+        char *payload = NULL ;
+        size_t dataLength = 1 ;
+        payload = (char *) malloc(1);
+        T2Info("Reading data from file %s \n", absFilePath);
+        while(-1 != getline(&payload, &dataLength, filePtr)){
+            Vector_PushBack(outReportList, strdup(payload));
+            if(payload){
+                free(payload);
+                payload = NULL ;
+            }
+        }
+        if(payload){
+            free(payload);
+        }
+        fclose(filePtr);
+        if (remove(absFilePath) == 0){
+            T2Info("Remove cached report file - %s \n", absFilePath);
+        }else{
+            T2Error("Unable to remove cached report file - %s \n", absFilePath);
+        }
+        ret = T2ERROR_SUCCESS ;
+    }else {
+        T2Debug("Unable to open file %s. \n", absFilePath);
+    }
+    pthread_mutex_unlock(&persistCachedReportMutex);
+
+    T2Debug("%s --out\n", __FUNCTION__);
+    return ret;
 }

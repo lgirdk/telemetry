@@ -24,19 +24,25 @@
 #include "vector.h"
 
 #if defined(ENABLE_RDKB_SUPPORT)
-#define XCONFPROFILE_PERSISTENCE_PATH "/nvram/.t2persistentfolder/"
-#define REPORTPROFILES_PERSISTENCE_PATH "/nvram/.t2reportprofiles/"
+#define PERSISTENCE_PATH "/nvram"
 #elif defined(DEVICE_EXTENDER)
-#define XCONFPROFILE_PERSISTENCE_PATH ""
-#define REPORTPROFILES_PERSISTENCE_PATH "/usr/opensync/data/.t2reportprofiles/"
+#define PERSISTENCE_PATH "/usr/opensync/data"
 #else
-#define XCONFPROFILE_PERSISTENCE_PATH "/opt/.t2persistentfolder/"
-#define REPORTPROFILES_PERSISTENCE_PATH "/opt/.t2reportprofiles/"
+#define PERSISTENCE_PATH "/opt"
 #endif
+
+#if defined(DEVICE_EXTENDER)
+#define XCONFPROFILE_PERSISTENCE_PATH ""
+#else
+#define XCONFPROFILE_PERSISTENCE_PATH PERSISTENCE_PATH"/.t2persistentfolder/"
+#endif
+#define REPORTPROFILES_PERSISTENCE_PATH PERSISTENCE_PATH"/.t2reportprofiles/"
 
 #define SHORTLIVED_PROFILES_PATH               "/tmp/t2reportprofiles/"
 #define MSGPACK_REPORTPROFILES_PERSISTENT_FILE "profiles.msgpack"
 #define REPORTPROFILES_FILE_PATH_SIZE 256
+
+#define CACHED_MESSAGE_PATH PERSISTENCE_PATH"/.t2cachedmessages/"
 
 typedef struct _Config
 {
@@ -47,6 +53,10 @@ typedef struct _Config
 T2ERROR fetchLocalConfigs(const char* path, Vector *configList);
 
 T2ERROR saveConfigToFile(const char* path, const char *profileName, const char* configuration);
+
+T2ERROR saveCachedReportToPersistenceFolder(const char *profileName, Vector *reportList);
+
+T2ERROR populateCachedReportList(const char *profileName, Vector *outReportList);
 
 void clearPersistenceFolder(const char* path);
 

@@ -242,11 +242,17 @@ static void* CollectAndReportXconf(void* data)
               Vector_PushBack(profile->cachedReportList, strdup(jsonReport));
 
               T2Info("Report Cached, No. of reportes cached = %lu\n", (unsigned long)Vector_Size(profile->cachedReportList));
+              // Save messages from cache to a file in persistent location.
+              saveCachedReportToPersistenceFolder(profile->name, profile->cachedReportList);
            }
            else if(Vector_Size(profile->cachedReportList) > 0)
            {
                T2Info("Trying to send  %lu cached reports\n", (unsigned long)Vector_Size(profile->cachedReportList));
                ret = sendCachedReportsOverHTTP(profile->t2HTTPDest->URL, profile->cachedReportList);
+               if(ret == T2ERROR_SUCCESS){
+	               // Do not get misleaded by function name. Call is to delete the directory for storing cached reports
+                   removeProfileFromDisk(CACHED_MESSAGE_PATH, profile->name);
+               }
            }
         }
         else
@@ -305,6 +311,7 @@ T2ERROR ProfileXConf_init()
               if(T2ERROR_SUCCESS == ProfileXConf_set(profile))
               {
                   T2Info("Successfully set new profile: %s\n", profile->name);
+                  populateCachedReportList(profile->name, profile->cachedReportList);
               }
               else
               {

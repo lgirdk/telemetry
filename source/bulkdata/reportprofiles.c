@@ -1028,7 +1028,7 @@ int __ReportProfiles_ProcessReportProfilesMsgPackBlob(void *msgpack)
             continue;
         }
 
-        char* profileName = NULL;
+        char *profileName = NULL;
         char *existingProfileHash = NULL;
         Profile *profile = NULL;
         profileName = msgpack_strdup(nameObj);
@@ -1036,26 +1036,29 @@ int __ReportProfiles_ProcessReportProfilesMsgPackBlob(void *msgpack)
         if(NULL == existingProfileHash) {
             if(T2ERROR_SUCCESS == processMsgPackConfiguration(singleProfile, &profile)) {
                 ReportProfiles_addReportProfile(profile);
+                populateCachedReportList(profileName, profile->cachedReportList);
                 save_flag = true;
             }
-        } else {
+        }else {
             if(0 == msgpack_strcmp(hashObj, existingProfileHash)) {
                 T2Info("Profile %s with %s hash already exist \n", profileName, existingProfileHash);
                 continue;
-            } else {
-                if(T2ERROR_SUCCESS == processMsgPackConfiguration(singleProfile, &profile)){
-		if (profile->reportOnUpdate){
-                         T2Info("%s Profile %s present in current config and hash value is different. Generating  cjson report for the profile. \n", __FUNCTION__, profileName);
-                         NotifyTimeout(profileName, true);
-			 }
-                if(T2ERROR_SUCCESS == ReportProfiles_deleteProfile(profile->name)) {
-                    ReportProfiles_addReportProfile(profile);
-                    save_flag = true;
+            }else {
+                if(T2ERROR_SUCCESS == processMsgPackConfiguration(singleProfile, &profile)) {
+                    if(profile->reportOnUpdate) {
+                        T2Info("%s Profile %s present in current config and hash value is different. Generating  cjson report for the profile. \n",
+                                __FUNCTION__, profileName);
+                        NotifyTimeout(profileName, true);
+                    }
+                    if(T2ERROR_SUCCESS == ReportProfiles_deleteProfile(profile->name)) {
+                        ReportProfiles_addReportProfile(profile);
+                        populateCachedReportList(profileName, profile->cachedReportList);
+                        save_flag = true;
+                    }
                 }
             }
+            free(profileName);
         }
-        free(profileName);
-	}
     } /* End of looping through report profiles */
     if (save_flag) {
         clearPersistenceFolder(REPORTPROFILES_PERSISTENCE_PATH);
@@ -1074,6 +1077,7 @@ int __ReportProfiles_ProcessReportProfilesMsgPackBlob(void *msgpack)
     }
     msgpack_unpacked_destroy(&result);
     hash_map_destroy(profileHashMap, freeProfilesHashMap);
+    clearPersistenceFolder(CACHED_MESSAGE_PATH);
     T2Debug("%s --out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;
 }

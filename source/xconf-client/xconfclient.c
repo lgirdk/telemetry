@@ -55,7 +55,7 @@ extern sigset_t blocking_signal;
 
 #if defined(ENABLE_RDKB_SUPPORT)
 
-#if defined(WAN_FAILOVER_SUPPORTED)
+#if defined(WAN_FAILOVER_SUPPORTED) || defined(FEATURE_RDKB_CONFIGURABLE_WAN_INTERFACE)
    static char waninterface[256];
 #endif
 #endif
@@ -410,7 +410,7 @@ static T2ERROR doHttpGet(char* httpsUrl, char **data) {
     }
 #if defined(ENABLE_RDKB_SUPPORT)
 
-#if defined(WAN_FAILOVER_SUPPORTED)
+#if defined(WAN_FAILOVER_SUPPORTED) || defined(FEATURE_RDKB_CONFIGURABLE_WAN_INTERFACE)
     char *paramVal = NULL;
     memset(waninterface, 0, sizeof(waninterface));
     snprintf(waninterface, sizeof(waninterface), "%s", IFINTERFACE); 
@@ -419,15 +419,16 @@ static T2ERROR doHttpGet(char* httpsUrl, char **data) {
         if(strlen(paramVal) >0) {
             memset(waninterface, 0, sizeof(waninterface));
             snprintf(waninterface, sizeof(waninterface), "%s", paramVal);
+	    T2Info("TR181_DEVICE_CURRENT_WAN_IFNAME -- %s\n", waninterface);
         }
         free(paramVal);
         paramVal = NULL;
     } else {
           T2Error("Failed to get Value for %s\n", TR181_DEVICE_CURRENT_WAN_IFNAME);
     }
- #endif
- #endif
     mtls_enable = isMtlsEnabled();
+#endif
+#endif
     // block the userdefined signal handlers before fork
     pthread_sigmask(SIG_BLOCK,&blocking_signal,NULL);
     if((childPid = fork()) < 0) {
@@ -516,7 +517,7 @@ static T2ERROR doHttpGet(char* httpsUrl, char **data) {
 
 #if defined(ENABLE_RDKB_SUPPORT)
 
-#if defined(WAN_FAILOVER_SUPPORTED)
+#if defined(WAN_FAILOVER_SUPPORTED) || defined(FEATURE_RDKB_CONFIGURABLE_WAN_INTERFACE)
 /*    char *paramVal = NULL;
     char waninterface[256];
     snprintf(waninterface, sizeof(waninterface), "%s", IFINTERFACE); 
@@ -532,6 +533,7 @@ static T2ERROR doHttpGet(char* httpsUrl, char **data) {
           T2Error("Failed to get Value for %s\n", TR181_DEVICE_CURRENT_WAN_IFNAME);
     }*/
     code = curl_easy_setopt(curl, CURLOPT_INTERFACE, waninterface);
+    T2Info("TR181_DEVICE_CURRENT_WAN_IFNAME ---- %s\n", waninterface);
     if(code != CURLE_OK) {
         T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
     }

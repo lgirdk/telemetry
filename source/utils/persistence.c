@@ -25,6 +25,9 @@
 #include <string.h>
 #include <fcntl.h>
 #include <pthread.h>
+#ifdef LIBSYSWRAPPER_BUILD
+#include "secure_wrapper.h"
+#endif
 
 #include "persistence.h"
 #include "t2log_wrapper.h"
@@ -60,6 +63,15 @@ T2ERROR fetchLocalConfigs(const char* path, Vector *configList)
         clearPersistenceFolder(SHORTLIVED_PROFILES_PATH);        
 	return T2ERROR_SUCCESS;
     }
+    #if defined(DROP_ROOT_PRIV)
+      #ifdef LIBSYSWRAPPER_BUILD
+       v_secure_system("chmod 755 %s", path);
+      #else
+       char cmd[512];
+       snprintf(cmd,sizeof(cmd),"chmod 755 %s", path);
+       system(cmd);
+      #endif
+    #endif
 
     while ((entry = readdir(dir)) != NULL)
     {
@@ -161,14 +173,21 @@ T2ERROR MsgPackSaveConfig(const char* path, const char *fileName, const char *ms
 
 void clearPersistenceFolder(const char* path)
 {
-    char command[256] = {'\0'};
     T2Debug("%s ++in\n", __FUNCTION__);
-
+  
+    #ifdef LIBSYSWRAPPER_BUILD
+    T2Debug("Executing command : rm -f %s* \n", path);
+    if (v_secure_system("sh -c 'rm -rf %s*'",path) != 0) {
+        T2Error("%s,%d:command failed\n", __FUNCTION__ , __LINE__);
+    }
+    #else
+    char command[256] = {'\0'};
     snprintf(command, sizeof(command), "rm -f %s*", path);
     T2Debug("Executing command : %s\n", command);
     if (system(command) != 0) {
         T2Error("%s,%d: %s command failed\n", __FUNCTION__ , __LINE__, command);
     }
+    #endif
 
     T2Debug("%s --out\n", __FUNCTION__);
 }

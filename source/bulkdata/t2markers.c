@@ -48,10 +48,14 @@ static void freeT2Marker(void *data)
             free(element->key);
         }
         T2Marker *t2Marker = (T2Marker *)element->data;
-        if(t2Marker->componentName != NULL)
+        if(t2Marker->componentName != NULL){
            free(t2Marker->componentName);
-        if(t2Marker->markerName != NULL)
+           t2Marker->componentName = NULL;
+        }
+        if(t2Marker->markerName != NULL){
            free(t2Marker->markerName);
+           t2Marker->markerName = NULL;
+        }
         if(t2Marker->profileList != NULL)
            Vector_Destroy(t2Marker->profileList, free);
         free(t2Marker);
@@ -194,6 +198,7 @@ T2ERROR addT2EventMarker(const char* markerName, const char* compName, const cha
         t2Marker = (T2Marker *)malloc(sizeof(T2Marker));
         if(t2Marker != NULL)
         {
+            memset(t2Marker, '\0', sizeof(T2Marker));
             t2Marker->markerName = strdup(markerName);
             t2Marker->componentName = strdup(compName);
             Vector_Create(&t2Marker->profileList);

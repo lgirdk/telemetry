@@ -21,6 +21,7 @@
 #include <malloc.h>
 #include <string.h>
 #include <unistd.h>
+#include <time.h>
 
 #include "profile.h"
 #include "reportprofiles.h"
@@ -42,6 +43,8 @@ static bool initialized = false;
 static Vector *profileList;
 static pthread_mutex_t plMutex;
 static pthread_mutex_t reportLock;
+static pthread_mutex_t reportMutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_cond_t reportcond;
 
 static void freeRequestURIparam(void *data)
 {
@@ -95,6 +98,9 @@ static void freeProfile(void *data)
              free(profile->version);
         if(profile->jsonEncoding)
             free(profile->jsonEncoding);
+	if(profile->timeRef){
+            free(profile->timeRef);
+        }
         if(profile->t2HTTPDest)
         {
             free(profile->t2HTTPDest->URL);
@@ -247,10 +253,15 @@ static void* CollectAndReport(void* data)
     cJSON *valArray = NULL;
     char* jsonReport = NULL;
     cJSON *triggercondition = NULL;
-
+    time_t maxuploadinSec = 0;
+    time_t maxuploadinmilliSec = 0;
+    int n = 0;
     struct timespec startTime;
     struct timespec endTime;
     struct timespec elapsedTime;
+    struct timespec _ts;
+    struct timespec _now;
+
 
     T2ERROR ret = T2ERROR_FAILURE;
     T2Info("%s ++in profileName : %s\n", __FUNCTION__, profile->name);
@@ -341,13 +352,65 @@ static void* CollectAndReport(void* data)
             if(size > DEFAULT_MAX_REPORT_SIZE) {
                 T2Warning("Report size is exceeding the max limit : %d\n", DEFAULT_MAX_REPORT_SIZE);
             }
-            if(strcmp(profile->protocol, "HTTP") == 0 || strcmp(profile->protocol, "RBUS_METHOD") == 0 ) {
+            if(profile->maxUploadLatency > 0){
+                memset(&_ts, 0, sizeof(struct timespec));
+                memset(&_now, 0, sizeof(struct timespec));
+                pthread_cond_init(&reportcond, NULL);
+                clock_gettime(CLOCK_REALTIME, &_now);
+                _ts.tv_sec = _now.tv_sec;
+                srand(time(0)); // Initialise the random number generator
+                maxuploadinmilliSec = rand()%(profile->maxUploadLatency - 1);
+                maxuploadinSec =  (maxuploadinmilliSec + 1) / 1000;
+            }
+            if( strcmp(profile->protocol, "HTTP") == 0 || strcmp(profile->protocol, "RBUS_METHOD") == 0 ){
                 char *httpUrl = NULL ;
                 if ( strcmp(profile->protocol, "HTTP") == 0 ) {
                     httpUrl = prepareHttpUrl(profile->t2HTTPDest); /* Append URL with http properties */
-                    ret = sendReportOverHTTP(httpUrl, jsonReport);
+                    if(profile->maxUploadLatency > 0){
+                        pthread_mutex_lock(&reportMutex);
+                        T2Info("waiting for %ld sec of macUploadLatency\n",(long) maxuploadinSec);
+                        _ts.tv_sec += maxuploadinSec;
+                        n = pthread_cond_timedwait(&reportcond, &reportMutex, &_ts);
+                       if(n == ETIMEDOUT)
+                       {
+                           T2Info("TIMEOUT for maxUploadLatency of profile %s\n",profile->name);
+                           ret = sendReportOverHTTP(httpUrl, jsonReport);
+                       }
+                       else{
+                           T2Error("Profile : %s pthread_cond_timedwait ERROR!!!\n", profile->name);
+                           pthread_mutex_unlock(&reportMutex);
+                           pthread_cond_destroy(&reportcond);
+                           return NULL;
+                       }
+                       pthread_mutex_unlock(&reportMutex);
+                       pthread_cond_destroy(&reportcond);
+                    }
+                    else{
+                       ret = sendReportOverHTTP(httpUrl, jsonReport);
+                    }
                 } else {
-                    ret = sendReportsOverRBUSMethod(profile->t2RBUSDest->rbusMethodName, profile->t2RBUSDest->rbusMethodParamList, jsonReport);
+                    if(profile->maxUploadLatency > 0 ){
+                        pthread_mutex_lock(&reportMutex);
+                        T2Info("waiting for %ld sec of macUploadLatency\n",(long) maxuploadinSec);
+                        _ts.tv_sec += maxuploadinSec;
+                        n = pthread_cond_timedwait(&reportcond, &reportMutex, &_ts);
+                        if(n == ETIMEDOUT)
+                        {
+                           T2Info("TIMEOUT for maxUploadLatency of profile %s\n",profile->name);
+                           ret = sendReportsOverRBUSMethod(profile->t2RBUSDest->rbusMethodName, profile->t2RBUSDest->rbusMethodParamList, jsonReport);
+                        }
+                        else{
+                            T2Error("Profile : %s pthread_cond_timedwait ERROR!!!\n", profile->name);
+                            pthread_mutex_unlock(&reportMutex);
+                            pthread_cond_destroy(&reportcond);
+                            return NULL;
+                        }
+                        pthread_mutex_unlock(&reportMutex);
+                        pthread_cond_destroy(&reportcond);
+                    }
+                    else{
+                        ret = sendReportsOverRBUSMethod(profile->t2RBUSDest->rbusMethodName, profile->t2RBUSDest->rbusMethodParamList, jsonReport);
+                    }
                 }
                 if((ret == T2ERROR_FAILURE && strcmp(profile->protocol, "HTTP") == 0) || ret == T2ERROR_NO_RBUS_METHOD_PROVIDER) {
                     if(Vector_Size(profile->cachedReportList) == MAX_CACHED_REPORTS) {
@@ -651,7 +714,7 @@ T2ERROR enableProfile(const char *profileName)
             eMarker = (EventMarker *)Vector_At(profile->eMarkerList, emIndex);
             addT2EventMarker(eMarker->markerName, eMarker->compName, profile->name, eMarker->skipFreq);
         }
-        if(registerProfileWithScheduler(profile->name, profile->reportingInterval, profile->activationTimeoutPeriod, profile->deleteonTimeout, true, profile->reportOnUpdate, profile->firstReportingInterval) != T2ERROR_SUCCESS)
+        if(registerProfileWithScheduler(profile->name, profile->reportingInterval, profile->activationTimeoutPeriod, profile->deleteonTimeout, true, profile->reportOnUpdate, profile->firstReportingInterval, profile->timeRef) != T2ERROR_SUCCESS)
         {
             profile->enable = false;
             T2Error("Unable to register profile : %s with Scheduler\n", profileName);

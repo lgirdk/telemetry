@@ -32,6 +32,11 @@
 #include "scheduler.h"
 #include "vector.h"
 #include "profile.h"
+#ifndef _XOPEN_SOURCE
+#define _XOPEN_SOURCE
+#endif
+#define DEFAULT_TIME_REFERENCE "0001-01-01T00:00:00Z"
+char *strptime(const char *s, const char *format, struct tm *tm);
 
 static TimeoutNotificationCB timeoutNotificationCb;
 static ActivationTimeoutCB activationTimeoutCb;
@@ -106,6 +111,29 @@ int getLapsedTime (struct timespec *output, struct timespec *time1, struct times
     return 0;
 }
 
+// This function is used to calculate the difference between the currentUTC time and UTC time configured in the TimeReference.It takes hr:min:sec for the time calculation. When the timeRef value is missed the report will be generated at the same time ref after 24 hrs.
+static unsigned int getSchdInSec(char* timeRef)
+{
+   struct tm timeptr, currtimeptr;
+   time_t timeref = 0, timenow = 0, curtime;
+   char * currtime = NULL;
+   memset(&timeptr, '\0', sizeof(timeptr));
+   memset(&currtimeptr, '\0', sizeof(currtimeptr));
+   strptime(timeRef, "%Y-%m-%dT%H:%M:%SZ", &timeptr);
+   timeref = (timeptr.tm_hour * 3600) + (timeptr.tm_min * 60) + timeptr.tm_sec;
+   T2Debug("TimeReference given = %ld\n",(long) timeref);
+   time(&curtime);
+   currtime = ctime(&curtime);
+   T2Debug("Current time = %s\n", currtime);
+   strptime(currtime,"%a %b %d %H:%M:%S %Y", &currtimeptr);
+   timenow = (currtimeptr.tm_hour * 3600) + (currtimeptr.tm_min * 60) + currtimeptr.tm_sec;
+   T2Debug("timestamp_now = %ld\n",(long) timenow);
+   if(timeref > timenow)
+       return (timeref - timenow);
+   else
+       return (timenow - timeref);
+}
+
 void* TimeoutThread(void *arg)
 {
     T2Debug("%s ++in\n", __FUNCTION__);
@@ -114,6 +142,7 @@ void* TimeoutThread(void *arg)
     struct timespec _now;
     struct timespec _MinThresholdTimeTs;
     struct timespec _MinThresholdTimeStart;
+    unsigned int timeRefinSec = 0;
     unsigned int minThresholdTime = 0;
     int n;
     T2Debug("%s ++in\n", __FUNCTION__);
@@ -123,31 +152,50 @@ void* TimeoutThread(void *arg)
     {
         memset(&_ts, 0, sizeof(struct timespec));
         memset(&_now, 0, sizeof(struct timespec));
-
         pthread_mutex_lock(&tProfile->tMutex);
 
         clock_gettime(CLOCK_REALTIME, &_now);
         //update the timevalues for profiles
         _ts.tv_sec = _now.tv_sec;
+
+        if(tProfile->timeRef && strcmp(tProfile->timeRef, DEFAULT_TIME_REFERENCE) != 0){
+            timeRefinSec = getSchdInSec(tProfile->timeRef);
+            T2Debug("TimeRefinSec is %d\n", timeRefinSec);
+        }
+
         if(tProfile->firstexecution == true){
              T2Info("First Reporting Interval %d sec is given for profile %s\n", tProfile->firstreportint, tProfile->name);
              _ts.tv_sec += tProfile->firstreportint;
         }
         else{
-             _ts.tv_sec += tProfile->timeOutDuration;
+             if(timeRefinSec != 0){ // this loop is used to choose the minimum waiting value based on the comparison b/w TimeRef and Reporting Interval
+                 if(tProfile->timeOutDuration <= timeRefinSec){
+                      _ts.tv_sec += tProfile->timeOutDuration;
+                      T2Info("Waiting for %d sec for next TIMEOUT for profile as reporting interval is taken - %s\n", tProfile->timeOutDuration, tProfile->name);
+                 }
+                 else if(tProfile->timeOutDuration > timeRefinSec)
+                 {
+                      _ts.tv_sec += timeRefinSec;
+                      T2Info("Waiting for %d sec for next TIMEOUT for profile as Time Reference is taken - %s\n", timeRefinSec, tProfile->name);
+                 }
+             }
+             else{
+                 _ts.tv_sec += tProfile->timeOutDuration;
+                 T2Info("Waiting for %d sec for next TIMEOUT for profile as reporting interval is taken - %s\n", tProfile->timeOutDuration, tProfile->name);
+             }
         }
-        //When first reporting interval is given waiting for first report int value
+        //When first reporting interval is given waiting for first report int vale
         if(tProfile->firstreportint > 0 && tProfile->firstexecution == true ){
              T2Info("Waiting for %d sec for next TIMEOUT for profile as firstreporting interval is given - %s\n", tProfile->firstreportint, tProfile->name);
              n = pthread_cond_timedwait(&tProfile->tCond, &tProfile->tMutex, &_ts);
         }
         else{
-             if(tProfile->timeOutDuration == UINT_MAX){
+             if(tProfile->timeOutDuration == UINT_MAX && timeRefinSec == 0){
                  T2Info("Waiting for condition as reporting interval is not configured for profile - %s\n", tProfile->name);
                  n = pthread_cond_wait(&tProfile->tCond, &tProfile->tMutex);
              }
              else{
-                 T2Info("Waiting for %d sec for next TIMEOUT for profile - %s\n", tProfile->timeOutDuration, tProfile->name);
+                 T2Info("Waiting for timeref or reporting interval for the profile - %s is started\n", tProfile->name);
                  n = pthread_cond_timedwait(&tProfile->tCond, &tProfile->tMutex, &_ts);
              }
         }
@@ -320,7 +368,7 @@ void uninitScheduler()
     T2Debug("%s --out\n", __FUNCTION__);
 }
 
-T2ERROR registerProfileWithScheduler(const char* profileName, unsigned int timeInterval, unsigned int activationTimeout, bool deleteonTimeout, bool repeat,bool reportOnUpdate, unsigned int firstReportingInterval)
+T2ERROR registerProfileWithScheduler(const char* profileName, unsigned int timeInterval, unsigned int activationTimeout, bool deleteonTimeout, bool repeat,bool reportOnUpdate, unsigned int firstReportingInterval, char *timeRef)
 {
     T2ERROR ret;
     T2Debug("%s ++in : profile - %s \n", __FUNCTION__,profileName);
@@ -361,6 +409,7 @@ T2ERROR registerProfileWithScheduler(const char* profileName, unsigned int timeI
         tProfile->reportonupdate = reportOnUpdate;
         tProfile->firstreportint = firstReportingInterval;
         tProfile->firstexecution = false;
+        tProfile->timeRef = timeRef;
         if(tProfile->timeOutDuration < tProfile->firstreportint){
             tProfile->firstreportint = 0;
         }

@@ -26,6 +26,7 @@
 #include "reportprofiles.h"
 #include "t2log_wrapper.h"
 #include "rbusInterface.h"
+#define DEFAULT_TIME_REFERENCE "0001-01-01T00:00:00Z"
 
 static const int MAX_STATIC_PROP_VAL_LEN = 128 ;
 char *msgpack_strdup(msgpack_object *obj);
@@ -66,7 +67,7 @@ static char * getProfileParameter(Profile * profile, const char *ref) {
             snprintf(pValue, MAX_STATIC_PROP_VAL_LEN, "%d", profile->reportingInterval);
     }else if(!strcmp(pName, "TimeReference")) {
         if(profile->timeRef)
-            snprintf(pValue, MAX_STATIC_PROP_VAL_LEN, "%d", profile->timeRef);
+            snprintf(pValue, MAX_STATIC_PROP_VAL_LEN, "%s", profile->timeRef);
     }else if(!strcmp(pName, "ActivationTimeOut")) {
         if(profile->activationTimeoutPeriod)
             snprintf(pValue, MAX_STATIC_PROP_VAL_LEN, "%d", profile->activationTimeoutPeriod);
@@ -545,7 +546,20 @@ T2ERROR processConfiguration(char** configData, char *profileName, char* profile
     cJSON *jprofileDeleteOnTimeout = cJSON_GetObjectItem(json_root, "DeleteOnTimeout");
     cJSON *jprofileTriggerCondition = cJSON_GetObjectItem(json_root, "TriggerCondition");
     cJSON *jprofileReportingAdjustments =  cJSON_GetObjectItem(json_root, "ReportingAdjustments");
-
+    cJSON *jprofileReportOnUpdate = NULL;
+    cJSON *jprofilefirstReportingInterval =  NULL;
+    cJSON *jprofilemaxUploadLatency = NULL;
+    if(jprofileReportingAdjustments){
+            int ReportAdjustments_count = cJSON_GetArraySize(jprofileReportingAdjustments);
+            for( ReportAdjustments_index = 0; ReportAdjustments_index < ReportAdjustments_count ; ReportAdjustments_index++ ) {
+              cJSON *Reportadjustment_subitem = cJSON_GetArrayItem(jprofileReportingAdjustments, ReportAdjustments_index);
+              if(Reportadjustment_subitem != NULL){
+                  jprofileReportOnUpdate = cJSON_GetObjectItem(Reportadjustment_subitem, "ReportOnUpdate");
+                  jprofilefirstReportingInterval = cJSON_GetObjectItem(Reportadjustment_subitem, "FirstReportingInterval");
+                  jprofilemaxUploadLatency = cJSON_GetObjectItem(Reportadjustment_subitem, "MaxUploadLatency");
+              }
+            }
+    }
     if(jprofileParameter) {
         ThisProfileParameter_count = cJSON_GetArraySize(jprofileParameter);
     }
@@ -554,7 +568,16 @@ T2ERROR processConfiguration(char** configData, char *profileName, char* profile
         cJSON_Delete(json_root);
         return T2ERROR_FAILURE;
     }
-
+    if(jprofileReportingInterval && jprofilemaxUploadLatency && ((jprofileReportingInterval->valueint * 1000) < jprofilemaxUploadLatency->valueint)){
+        T2Error("MaxUploadLatency is greater than reporting interval. Invalid Profile\n");
+        cJSON_Delete(json_root);
+	return T2ERROR_FAILURE;
+    }
+    if(!jprofileTriggerCondition && !jprofileReportingInterval){
+        T2Error("If TriggerCondition is not given ReportingInterval parameter is mandatory. Reporting interval is not configured for this profile..Invalid Profile\n");
+        cJSON_Delete(json_root);
+        return T2ERROR_FAILURE;
+    }
     if(!jprofileHash) {
         cJSON_AddStringToObject(json_root, "Hash", profileHash); // updating the versionHash to persist the hash along with profile configuration
         free(*configData);
@@ -708,41 +731,23 @@ T2ERROR processConfiguration(char** configData, char *profileName, char* profile
     profile->generateNow = false;
     profile->deleteonTimeout = false;
     profile->activationTimeoutPeriod = INFINITE_TIMEOUT;
+    // Default values for Reporting Adjustments and timeRef
     profile->reportOnUpdate = false;
     profile->firstReportingInterval = 0;
+    profile->maxUploadLatency = 0;
+    profile->timeRef = NULL;
     if(jprofileDeleteOnTimeout) {
         profile->deleteonTimeout = (cJSON_IsTrue(jprofileDeleteOnTimeout) == 1);
         T2Info("profile->deleteonTimeout: %i\n", profile->deleteonTimeout);
     }
-    if(jprofileTriggerCondition) {
-        profile->reportingInterval = UINT_MAX;
-    }
     if(jprofileGenerateNow)
         profile->generateNow = (cJSON_IsTrue(jprofileGenerateNow) == 1);
 
-    if(jprofileReportingAdjustments){
-        int ReportAdjustments_count = cJSON_GetArraySize(jprofileReportingAdjustments);
-        for( ReportAdjustments_index = 0; ReportAdjustments_index < ReportAdjustments_count ; ReportAdjustments_index++ ) {
-              cJSON *Reportadjustment_subitem = cJSON_GetArrayItem(jprofileReportingAdjustments, ReportAdjustments_index);
-              if(Reportadjustment_subitem != NULL){
-                  cJSON *jprofileReportOnUpdate = cJSON_GetObjectItem(Reportadjustment_subitem, "ReportOnUpdate");
-                  if(jprofileReportOnUpdate){
-                      profile->reportOnUpdate = (cJSON_IsTrue(jprofileReportOnUpdate) == 1);
-                      T2Debug("[[profile->reportOnUpdate:%u]]\n",  profile->reportOnUpdate);
-                  }
-                  cJSON *jprofilefirstReportingInterval = cJSON_GetObjectItem(Reportadjustment_subitem, "FirstReportingInterval");
-                  if(jprofilefirstReportingInterval){
-                      int firstReportIntervalInSec = jprofilefirstReportingInterval->valueint;
-                      profile->firstReportingInterval = firstReportIntervalInSec;
-                      T2Debug("[[profile->firstReportingInterval:%d]]\n",  profile->firstReportingInterval);
-                  }
-              }
-        }
-    }
-    if(profile->generateNow) {
+    if(profile->generateNow) { //If GenerateNow is true and ReportingAdjustments is present, ReportingAdjustments shall be ignored 
         profile->reportingInterval = 0;
         profile->reportOnUpdate = false;
         profile->firstReportingInterval = 0;
+        profile->maxUploadLatency = 0;
     }else {
         if(jprofileReportingInterval) {
             int reportIntervalInSec = jprofileReportingInterval->valueint;
@@ -753,19 +758,45 @@ T2ERROR processConfiguration(char** configData, char *profileName, char* profile
             profile->activationTimeoutPeriod = jprofileActivationTimeout->valueint;
             T2Debug("[[ profile->activationTimeout:%d]]\n", profile->activationTimeoutPeriod);
         }
-    }
 
-    if(jprofileTimeReference) {
+        if(jprofileTimeReference && jprofileReportingInterval) {
         // profile->timeRef = strdup(jprofileTimeReference->valuestring);
         /*  MUST TODO: Seems timeref is an unsigned int in profile structure . Handle the scenario accordingly */
+                profile->timeRef = strdup(jprofileTimeReference->valuestring);
+        }
 
+	if(jprofileReportingAdjustments){
+            if(jprofileReportOnUpdate){
+                profile->reportOnUpdate = (cJSON_IsTrue(jprofileReportOnUpdate) == 1);
+                T2Debug("[[profile->reportOnUpdate:%u]]\n",  profile->reportOnUpdate);
+            }
+            if((profile->timeRef == NULL) || strcmp(profile->timeRef, DEFAULT_TIME_REFERENCE) == 0){ //Property 'FirstReportingInterval' if present along with Timereference,  FirstReportingInterval shall be ignored
+                 if(jprofilefirstReportingInterval){
+                     int firstReportIntervalInSec = jprofilefirstReportingInterval->valueint;
+                     profile->firstReportingInterval = firstReportIntervalInSec;
+                     T2Debug("[[profile->firstReportingInterval:%d]]\n",  profile->firstReportingInterval);
+                 }
+            }
+            if(profile->timeRef != NULL && strcmp(profile->timeRef, DEFAULT_TIME_REFERENCE) != 0){ //This value is only valid when TimeReference is different from the default.
+                if(jprofilemaxUploadLatency){ //randomize the upload time of a generated report.
+                    int maxUploadLatencyInMilliSec = jprofilemaxUploadLatency->valueint;
+                    profile->maxUploadLatency = maxUploadLatencyInMilliSec;
+                    T2Debug("[[profile->maxUploadLatency:%dms]]\n",  profile->maxUploadLatency);
+                }
+            }
+       }
     }
+    if(jprofileTriggerCondition && (!jprofileReportingInterval) && (!profile->generateNow)) {
+        profile->reportingInterval = UINT_MAX;
+     }
+
     T2Debug("[[profile->name:%s]]\n", profile->name);
     T2Debug("[[ profile->Description:%s]]\n", profile->Description);
     T2Debug("[[profile->version:%s]]\n", profile->version);
     T2Debug("[[profile->protocol:%s]]\n", profile->protocol);
     T2Debug("[[profile->encodingType:%s]]\n", profile->encodingType);
     T2Debug("[[profile->RootName:%s]]\n", profile->RootName);
+    T2Debug("[[profile->timeRef:%s]]\n", profile->timeRef);
 
     if(profile->reportingInterval)
         T2Debug("[[ profile->reportingInterval:%d]]\n", profile->reportingInterval);
@@ -1294,8 +1325,9 @@ T2ERROR processMsgPackConfiguration(msgpack_object *profiles_array_map, Profile 
     msgpack_object *DeleteOnTimout_boolean;
     msgpack_object *TriggerConditionArray;
     msgpack_object *ReportingAdjustments_array;
-    msgpack_object *ReportOnUpdate_boolean;
-    msgpack_object *FirstReportInterval_u64;
+    msgpack_object *ReportOnUpdate_boolean = NULL;
+    msgpack_object *FirstReportInterval_u64 = NULL;
+    msgpack_object *MaxUploadLatency_u64 = NULL;
     msgpack_object *Parameter_reportTimestamp_str;
 
     int i;
@@ -1338,6 +1370,52 @@ T2ERROR processMsgPackConfiguration(msgpack_object *profiles_array_map, Profile 
           T2Error("TriggerCondition is invalid, unable to create profile\n");
           return T2ERROR_FAILURE;
        }  
+    }
+    ReportingAdjustments_array = msgpack_get_map_value(value_map, "ReportingAdjustments");
+    if(ReportingAdjustments_array){
+        MSGPACK_GET_ARRAY_SIZE(ReportingAdjustments_array, ReportingAdjustments_array_size);
+        for (int i=0; i < ReportingAdjustments_array_size; i++){
+            msgpack_object *ReportingAdjustments_array_map = msgpack_get_array_element(ReportingAdjustments_array, i);
+            ReportOnUpdate_boolean = msgpack_get_map_value(ReportingAdjustments_array_map, "ReportOnUpdate");
+            FirstReportInterval_u64 = msgpack_get_map_value(ReportingAdjustments_array_map, "FirstReportingInterval");
+            MaxUploadLatency_u64 = msgpack_get_map_value(ReportingAdjustments_array_map, "MaxUploadLatency");
+        }
+    }
+
+    ReportingInterval_u64 = msgpack_get_map_value(value_map, "ReportingInterval");
+    msgpack_print(ReportingInterval_u64, msgpack_get_obj_name(ReportingInterval_u64));
+    MSGPACK_GET_NUMBER(ReportingInterval_u64, profile->reportingInterval);
+
+    msgpack_print(MaxUploadLatency_u64, msgpack_get_obj_name(MaxUploadLatency_u64));
+    MSGPACK_GET_NUMBER(MaxUploadLatency_u64, profile->maxUploadLatency);
+
+    if(ReportingInterval_u64 && MaxUploadLatency_u64 && ((profile->reportingInterval * 1000) < profile->maxUploadLatency)){
+         T2Error("MaxUploadLatency is greater than reporting interval. Invalid Profile\n");
+         if(profile->name){
+             free(profile->name);
+         }
+         if(profile->hash){
+             free(profile->hash);
+         }
+         if(profile){
+             free(profile);
+         }
+         return T2ERROR_FAILURE;
+    }
+
+    TriggerConditionArray = msgpack_get_map_value(value_map, "TriggerCondition");
+    if(TriggerConditionArray == NULL && !ReportingInterval_u64){
+        T2Error("If TriggerCondition is not given ReportingInterval parameter is mandatory. Reporting interval is not configured for this profile..Invalid Profile\n");
+	if(profile->name){
+             free(profile->name);
+         }
+         if(profile->hash){
+             free(profile->hash);
+         }
+         if(profile){
+             free(profile);
+         }
+	 return T2ERROR_FAILURE;
     }
 
     Protocol_str = msgpack_get_map_value(value_map, "Protocol");
@@ -1413,44 +1491,21 @@ T2ERROR processMsgPackConfiguration(msgpack_object *profiles_array_map, Profile 
     MSGPACK_GET_NUMBER(DeleteOnTimout_boolean, profile->deleteonTimeout);
     T2Debug("profile->deleteonTimeout: %u\n", profile->deleteonTimeout);
 
+    profile->reportOnUpdate = false;
+    profile->maxUploadLatency = 0;
+    profile->timeRef = NULL;
+
     GenerateNow_boolean = msgpack_get_map_value(value_map, "GenerateNow");
     msgpack_print(GenerateNow_boolean, msgpack_get_obj_name(GenerateNow_boolean));
     MSGPACK_GET_NUMBER(GenerateNow_boolean, profile->generateNow);
     T2Debug("profile->generateNow: %u\n", profile->generateNow);
 
-    profile->firstReportingInterval = 0;
-    profile->reportOnUpdate = false;
-    ReportingAdjustments_array = msgpack_get_map_value(value_map, "ReportingAdjustments");
-    if(ReportingAdjustments_array){
-        MSGPACK_GET_ARRAY_SIZE(ReportingAdjustments_array, ReportingAdjustments_array_size);
-        for (int i=0; i < ReportingAdjustments_array_size; i++){
-              msgpack_object *ReportingAdjustments_array_map = msgpack_get_array_element(ReportingAdjustments_array, i);
-              ReportOnUpdate_boolean = msgpack_get_map_value(ReportingAdjustments_array_map, "ReportOnUpdate");
-              if(ReportOnUpdate_boolean != NULL){
-                  msgpack_print(ReportOnUpdate_boolean, msgpack_get_obj_name(ReportOnUpdate_boolean));
-                  MSGPACK_GET_NUMBER(ReportOnUpdate_boolean, profile->reportOnUpdate);
-                  T2Debug("profile->reportingAdjust->reportOnUpdate: %u\n", profile->reportOnUpdate);
-              }
-              FirstReportInterval_u64 = msgpack_get_map_value(ReportingAdjustments_array_map, "FirstReportingInterval");
-              if(FirstReportInterval_u64 != NULL){
-                  msgpack_print(FirstReportInterval_u64, msgpack_get_obj_name(FirstReportInterval_u64));
-                  MSGPACK_GET_NUMBER(FirstReportInterval_u64, profile->firstReportingInterval);
-                  T2Debug("profile->reportingAdjust->firstReportingInterval: %d\n", profile->firstReportingInterval);
-              }
-        }
-    }
-
-    if(profile->generateNow) {
+    if(profile->generateNow) { ////If GenerateNow is true and ReportingAdjustments is present, ReportingAdjustments shall be ignored
         profile->reportingInterval = 0;
         profile->reportOnUpdate = false;
         profile->firstReportingInterval = 0;
+	profile->maxUploadLatency = 0;
     }else {
-
-        ReportingInterval_u64 = msgpack_get_map_value(value_map, "ReportingInterval");
-        msgpack_print(ReportingInterval_u64, msgpack_get_obj_name(ReportingInterval_u64));
-        MSGPACK_GET_NUMBER(ReportingInterval_u64, profile->reportingInterval);
-        T2Debug("profile->reportingInterval: %u\n", profile->reportingInterval);
-
         ActivationTimeout_u64 = msgpack_get_map_value(value_map, "ActivationTimeOut");
         msgpack_print(ActivationTimeout_u64, msgpack_get_obj_name(ActivationTimeout_u64));
         MSGPACK_GET_NUMBER(ActivationTimeout_u64, profile->activationTimeoutPeriod);
@@ -1471,13 +1526,41 @@ T2ERROR processMsgPackConfiguration(msgpack_object *profiles_array_map, Profile 
             free(profile);
             return T2ERROR_FAILURE;
         }
-    }
 
-    TriggerConditionArray = msgpack_get_map_value(value_map, "TriggerCondition");
-    if(TriggerConditionArray && (!profile->reportingInterval)){
+        TimeReference_str = msgpack_get_map_value(value_map, "TimeReference");
+        msgpack_print(TimeReference_str, msgpack_get_obj_name(TimeReference_str));
+       //TimeReference is only valid for profiles that specify a ReportingInterval
+        if(TimeReference_str != NULL && ReportingInterval_u64){
+            profile->timeRef = msgpack_strdup(TimeReference_str);
+        }
+        if(ReportingAdjustments_array){
+              if(ReportOnUpdate_boolean != NULL){
+                  msgpack_print(ReportOnUpdate_boolean, msgpack_get_obj_name(ReportOnUpdate_boolean));
+                  MSGPACK_GET_NUMBER(ReportOnUpdate_boolean, profile->reportOnUpdate);
+                  T2Debug("profile->reportingAdjust->reportOnUpdate: %u\n", profile->reportOnUpdate);
+              }
+              if(profile->timeRef == NULL || strcmp(profile->timeRef, DEFAULT_TIME_REFERENCE) == 0){ //Property 'FirstReportingInterval' if present along with Timereference,  FirstReportingInterval shall be ignored
+                  if(FirstReportInterval_u64 != NULL){
+                      msgpack_print(FirstReportInterval_u64, msgpack_get_obj_name(FirstReportInterval_u64));
+                      MSGPACK_GET_NUMBER(FirstReportInterval_u64, profile->firstReportingInterval);
+                      T2Debug("profile->reportingAdjust->firstReportingInterval: %d\n", profile->firstReportingInterval);
+                  }
+              }
+              if(profile->timeRef != NULL && strcmp(profile->timeRef, DEFAULT_TIME_REFERENCE) != 0){ //This value is only valid when TimeReference is different from the default.
+                  if(MaxUploadLatency_u64 != NULL){
+                      msgpack_print(MaxUploadLatency_u64, msgpack_get_obj_name(MaxUploadLatency_u64));
+                      MSGPACK_GET_NUMBER(MaxUploadLatency_u64, profile->maxUploadLatency);
+                      T2Debug("profile->reportingAdjust->maxUploadLatency: %dms\n", profile->maxUploadLatency);
+                  }
+              }
+        }
+    }
+    if(TriggerConditionArray && (!profile->generateNow) && (!profile->reportingInterval)){
          profile->reportingInterval = UINT_MAX;
     }
-
+    if(profile->reportingInterval){
+      T2Debug("profile->reportingInterval: %u\n", profile->reportingInterval);
+    }
     RootName_str = msgpack_get_map_value(value_map, "RootName");
     msgpack_print(RootName_str, msgpack_get_obj_name(RootName_str));
     profile->RootName = msgpack_strdup(RootName_str);
@@ -1486,9 +1569,6 @@ T2ERROR processMsgPackConfiguration(msgpack_object *profiles_array_map, Profile 
     }
     T2Debug("profile->RootName: %s\n", profile->RootName);
 
-    TimeReference_str = msgpack_get_map_value(value_map, "TimeReference");
-    msgpack_print(TimeReference_str, msgpack_get_obj_name(TimeReference_str));
-    /* profile->timeRef = msgpack_strdup(TimeReference_str); */
     /* MUST TODO: Seems timeref is an unsigned int in profile structure. */
     /* Handle the scenario accordingly */
 

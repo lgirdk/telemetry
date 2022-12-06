@@ -344,7 +344,11 @@ static bool initRFC( ) {
     }
     if((isRFCT2Enable == false) && bus_handle) {
         //Check for PamdM and wifi-agent status  before getting RFC_T2_ENABLE_PARAM value
-        if ((access(PAM_FILE,  F_OK) != 0) || (access( "/tmp/wifi_initialized", F_OK ) != 0)) //PAM_FILE does not exist
+        if ((access(PAM_FILE,  F_OK) != 0) || (access( "/tmp/wifi_initialized", F_OK ) != 0)
+#ifndef _LG_MV3_
+            || (access("/tmp/cfg_file_applied", F_OK) != 0)
+#endif
+           ) //PAM_FILE does not exist
         {          
           EVENT_DEBUG("file pam_initialized doesn't exist..return !!! \n");
           return false;

@@ -1005,7 +1005,7 @@ T2ERROR rbusT2ConsumerUnReg(Vector *triggerConditionList)
         rbusFilter_RelationOperator_t filterOperator = RBUS_FILTER_OPERATOR_EQUAL;
         rbusFilter_t filter;
         rbusValue_t filterValue;
-        rbusEventSubscription_t subscription = {triggerCondition->reference, NULL, 0, 0, (void *)triggerCondtionReceiveHandler, NULL, NULL, NULL};
+        rbusEventSubscription_t subscription = {triggerCondition->reference, NULL, 0, 0, (void *)triggerCondtionReceiveHandler, NULL, NULL, NULL, false};
 
         if(strcmp(triggerCondition->oprator,"lt") == 0)
         {
@@ -1060,7 +1060,7 @@ T2ERROR T2RbusConsumer(TriggerCondition *triggerCondition)
     rbusFilter_RelationOperator_t filterOperator; 
     rbusFilter_t filter;
     rbusValue_t filterValue;
-    rbusEventSubscription_t subscription = {triggerCondition->reference, NULL, 0, 0, triggerCondtionReceiveHandler, NULL, NULL, NULL};
+    rbusEventSubscription_t subscription = {triggerCondition->reference, NULL, 0, 0, triggerCondtionReceiveHandler, NULL, NULL, NULL, false};
       
     if(strcmp(triggerCondition->oprator,"lt") == 0)
     {

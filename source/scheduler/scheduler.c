@@ -267,12 +267,12 @@ void* TimeoutThread(void *arg)
             T2Info("Profile activation timeout for %s \n", tProfile->name);
             char *profileName = strdup(tProfile->name);
             tProfile->repeat = false;
-            pthread_mutex_unlock(&tProfile->tMutex);
-            pthread_detach(pthread_self());
             if(tProfile->deleteonTime) {
                deleteProfile(profileName);
+               pthread_mutex_unlock(&tProfile->tMutex);
                break;
             }
+            pthread_mutex_unlock(&tProfile->tMutex);
             pthread_mutex_lock(&scMutex);
             Vector_RemoveItem(profileList, tProfile, freeSchedulerProfile);
             pthread_mutex_unlock(&scMutex);

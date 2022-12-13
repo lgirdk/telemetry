@@ -42,7 +42,7 @@ extern sigset_t blocking_signal;
 
 #if defined(ENABLE_RDKB_SUPPORT)
 
-#if defined(WAN_FAILOVER_SUPPORTED)
+#if defined(WAN_FAILOVER_SUPPORTED) || defined(FEATURE_RDKB_CONFIGURABLE_WAN_INTERFACE)
    static char waninterface[256];
 #endif
 #endif
@@ -92,8 +92,7 @@ static T2ERROR setHeader(CURL *curl, const char* destURL, struct curl_slist **he
 
 #if defined(ENABLE_RDKB_SUPPORT)
 
-#if defined(WAN_FAILOVER_SUPPORTED)
-
+#if defined(WAN_FAILOVER_SUPPORTED) || defined(FEATURE_RDKB_CONFIGURABLE_WAN_INTERFACE)
     code = curl_easy_setopt(curl, CURLOPT_INTERFACE, waninterface);
     if(code != CURLE_OK) {
         T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
@@ -188,7 +187,7 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char* payload) {
     }
 #if defined(ENABLE_RDKB_SUPPORT)
 
-#if defined(WAN_FAILOVER_SUPPORTED)
+#if defined(WAN_FAILOVER_SUPPORTED) || defined(FEATURE_RDKB_CONFIGURABLE_WAN_INTERFACE)
     char *paramVal = NULL;
     memset(waninterface, 0, sizeof(waninterface));
     snprintf(waninterface, sizeof(waninterface), "%s", INTERFACE); 

@@ -21,7 +21,7 @@
 <environment>
   <components>
     <telemetry>
-     <dependencies>sdk,curl,cjson,rtmessage,rbus,libsyswrapper,libexchanger,webconfig-framework</dependencies>
+     <dependencies>sdk,curl,cjson,rbus,libsyswrapper,libexchanger,webconfig-framework</dependencies>
      <paths>
        <scripts>telemetry/</scripts>
        <target>telemetry/</target>

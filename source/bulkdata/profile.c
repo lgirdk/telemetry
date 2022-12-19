@@ -574,7 +574,7 @@ T2ERROR Profile_storeMarkerEvent(const char *profileName, T2Event *eventInfo)
                         }
                         lookupEvent->markerName_CT = strdup(buf);
                     }
-                    snprintf(timebuf, MAX_LEN, "%ld", timestamp);
+                    snprintf(timebuf, MAX_LEN, "%ld",(long) timestamp);
                     lookupEvent->timestamp = strdup(timebuf);
                     T2Debug("Timestamp for %s is %s\n", lookupEvent->markerName_CT, lookupEvent->timestamp);
                 }
@@ -598,8 +598,8 @@ T2ERROR Profile_storeMarkerEvent(const char *profileName, T2Event *eventInfo)
                             }
                             lookupEvent->markerName_CT = strdup(buf);
                         }
-                        snprintf(timebuf, MAX_LEN, "%ld", timestamp);
-                        T2Debug("Timestamp for %s is %ld\n", lookupEvent->markerName_CT, timestamp);
+                        snprintf(timebuf, MAX_LEN, "%ld",(long) timestamp);
+                        T2Debug("Timestamp for %s is %ld\n", lookupEvent->markerName_CT,(long) timestamp);
                         Vector_PushBack(lookupEvent->accumulatedTimestamp,  strdup(timebuf));
                         T2Debug("Vector_PushBack for accumulatedTimestamp is done\n");
                     }
@@ -637,7 +637,7 @@ T2ERROR Profile_storeMarkerEvent(const char *profileName, T2Event *eventInfo)
                         }
                         lookupEvent->markerName_CT = strdup(buf);
                     }
-                    snprintf(timebuf, MAX_LEN, "%ld", timestamp);
+                    snprintf(timebuf, MAX_LEN, "%ld", (long)timestamp);
                     lookupEvent->timestamp = strdup(timebuf);
                     T2Debug("Timestamp for %s is %s\n", lookupEvent->markerName_CT, lookupEvent->timestamp);
                 }

@@ -401,7 +401,7 @@ int getMemInfo(procMemCpuInfo *pmInfo) {
     return 1;
 }
 
-#if !defined(ENABLE_XCAM_SUPPORT) && !defined(ENABLE_RDKB_SUPPORT)
+#if !defined(ENABLE_RDKC_SUPPORT) && !defined(ENABLE_RDKB_SUPPORT)
 /**
  * @brief To get CPU info.
  *
@@ -509,7 +509,7 @@ int getCPUInfo(procMemCpuInfo *pInfo) {
 
 }
 
-#else //ENABLE_XCAM_SUPPORT & ENABLE_RDKB_SUPPORT
+#else //ENABLE_RDKC_SUPPORT & ENABLE_RDKB_SUPPORT
 
 /**
  * @brief To get total CPU time of the device.
@@ -619,7 +619,7 @@ int getCPUInfo(procMemCpuInfo *pmInfo) {
     return 1;
 }
 
-#endif //ENABLE_XCAM_SUPPORT & ENABLE_RDKB_SUPPORT
+#endif //ENABLE_RDKC_SUPPORT & ENABLE_RDKB_SUPPORT
 
 /** @} */  //END OF GROUP DCA_APIS
 /** @} */

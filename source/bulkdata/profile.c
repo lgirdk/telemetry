@@ -141,6 +141,11 @@ static void freeProfile(void *data)
         {
             Vector_Destroy(profile->triggerConditionList, freeTriggerCondition);
         }
+
+        if(profile->cachedReportList){
+            Vector_Destroy(profile->cachedReportList, free);
+        }
+
         free(profile);
     }
     T2Debug("%s ++out \n", __FUNCTION__);
@@ -230,11 +235,14 @@ void getMarkerCompRbusSub(bool subscription){
                     int ret = T2RbusReportEventConsumer(markerName,subscription);
                     T2Debug("%d T2RbusEventReg with name = %s: subscription = %s ret %d \n", i, markerName,(subscription?"Subscribe":"Un-Subscribe"),ret);
                 }
-                else
+                else {
                     T2Error("Error while retrieving Marker Name at index : %d \n",i);
+                }
             }
-            Vector_Destroy(eventMarkerListForComponent, free);
-        }
+            if(eventMarkerListForComponent != NULL){
+                 Vector_Destroy(eventMarkerListForComponent, free);
+            }
+	}
     T2Debug("%s --out\n", __FUNCTION__);
 }
 
@@ -371,22 +379,23 @@ static void* CollectAndReport(void* data)
                         T2Info("waiting for %ld sec of macUploadLatency\n",(long) maxuploadinSec);
                         _ts.tv_sec += maxuploadinSec;
                         n = pthread_cond_timedwait(&reportcond, &reportMutex, &_ts);
-                       if(n == ETIMEDOUT)
-                       {
-                           T2Info("TIMEOUT for maxUploadLatency of profile %s\n",profile->name);
-                           ret = sendReportOverHTTP(httpUrl, jsonReport);
-                       }
-                       else{
-                           T2Error("Profile : %s pthread_cond_timedwait ERROR!!!\n", profile->name);
-                           pthread_mutex_unlock(&reportMutex);
-                           pthread_cond_destroy(&reportcond);
-                           return NULL;
-                       }
-                       pthread_mutex_unlock(&reportMutex);
-                       pthread_cond_destroy(&reportcond);
-                    }
-                    else{
-                       ret = sendReportOverHTTP(httpUrl, jsonReport);
+                        if(n == ETIMEDOUT) {
+                            T2Info("TIMEOUT for maxUploadLatency of profile %s\n", profile->name);
+                            ret = sendReportOverHTTP(httpUrl, jsonReport);
+                        }else {
+                            T2Error("Profile : %s pthread_cond_timedwait ERROR!!!\n", profile->name);
+                            pthread_mutex_unlock(&reportMutex);
+                            pthread_cond_destroy(&reportcond);
+                            if(httpUrl){
+                                free(httpUrl);
+                                httpUrl = NULL;
+                            }
+                            return NULL;
+                        }
+                        pthread_mutex_unlock(&reportMutex);
+                        pthread_cond_destroy(&reportcond);
+                    }else {
+                        ret = sendReportOverHTTP(httpUrl, jsonReport);
                     }
                 } else {
                     if(profile->maxUploadLatency > 0 ){

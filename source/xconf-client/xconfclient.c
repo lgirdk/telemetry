@@ -205,6 +205,10 @@ static char *getTimezone () {
                               char *zone = (char*)malloc(sizeof(char)*(numbytes + 1));
                               fseek(file, 0, SEEK_SET);
                               while (fscanf (file, "%s", zone) != EOF){
+                                        if(zoneValue){
+                                            free(zoneValue);
+                                            zoneValue = NULL ;
+                                        }
                                         zoneValue = strdup(zone);
                               }
                         fclose(file);

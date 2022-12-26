@@ -396,13 +396,22 @@ rbusError_t t2PropertyDataSetHandler(rbusHandle_t handle, rbusProperty_t prop, r
                 webConfigString = g_base64_decode(data, &decodedDataLen);
                 if(NULL == webConfigString ||  0 == decodedDataLen ){
                     T2Error("Invalid base64 input string. Ignore processing input configuration.\n");
-		    free(data); //CID 168770: Resource leak
-		    return RBUS_ERROR_INVALID_INPUT;
+                    if(webConfigString != NULL){
+                         g_free(webConfigString);
+                         webConfigString = NULL;
+                    }
+                    free(data);
+                    return RBUS_ERROR_INVALID_INPUT;
                 }
 
                 if(T2ERROR_SUCCESS != dmMsgPckProcessingCallBack((char *)webConfigString, decodedDataLen))
                 {
                     free(data);
+                    T2Info("RBUS_ERROR_INVALID_INPUT freeing the webconfigString\n");
+                    if(webConfigString != NULL) {
+                        g_free(webConfigString);
+                        webConfigString = NULL;
+                    }
                     return RBUS_ERROR_INVALID_INPUT;
                 }
 
@@ -600,7 +609,6 @@ rbusError_t t2PropertyDataGetHandler(rbusHandle_t handle, rbusProperty_t propert
         rbusValue_Release(value);
         rbusProperty_Release(propertyList);
         rbusObject_Release(object);
-
     }
 
     if(propertyName) {
@@ -782,6 +790,23 @@ T2ERROR regDEforCompEventList(const char* componentName, T2EventMarkerListCallba
     return status;
 }
 
+void freeComponentEventList(void *data) {
+    hash_element_t *componentEventList = (hash_element_t*) data;
+    if(componentEventList) {
+        if(componentEventList->data) {
+            free(componentEventList->data);
+            componentEventList->data = NULL;
+        }
+
+        if(componentEventList->key) {
+            free(componentEventList->key);
+            componentEventList->data = NULL;
+        }
+        free(componentEventList);
+        componentEventList = NULL;
+    }
+}
+
 /**
  * Unregister data elements for COMPONENT marker list over bus
  * Data element over bus will be of the format :Telemetry.ReportProfiles.<componentName>.EventMarkerList
@@ -823,7 +848,7 @@ void unregisterDEforCompEventList(){
         }
     }
     T2Debug("Freeing compTr181ParamMap \n");
-    hash_map_destroy(compTr181ParamMap, free);
+    hash_map_destroy(compTr181ParamMap, freeComponentEventList);
     compTr181ParamMap = NULL;
     T2Debug("%s --out\n", __FUNCTION__);
 }
@@ -914,6 +939,10 @@ T2ERROR publishEventsProfileUpdates() {
     }
 
     rbusValue_Release(value);
+    if(data != NULL){
+        T2Debug("Releasing the rbusobject \n");
+	rbusObject_Release(data);
+    }
 	T2Debug("%s --out\n", __FUNCTION__);
     return status;
     
@@ -944,14 +973,33 @@ void triggerCondtionReceiveHandler(
     rbusValue_t oldValue = rbusObject_GetValue(event->data, "oldValue");
     rbusValue_t filter = rbusObject_GetValue(event->data, "filter");
     const char* eventName = event->name;
-    const char* eventValue = rbusValue_ToString(newValue,NULL,0);
+    char* eventValue = rbusValue_ToString(newValue,NULL,0);
+
+    if( NULL == eventName) {
+        T2Warning("%s : eventName is published as null, ignoring trigger condition \n ", __FUNCTION__);
+        return ;
+    }
+
+    if( NULL == eventValue) {
+        T2Warning("%s : eventValue is published as null, ignoring trigger condition \n ", __FUNCTION__);
+        return ;
+    }
+
     T2Debug("Consumer receiver event for param %s\n and the value %s\n", event->name, eventValue);
 
     if(newValue){
-        T2Info("  New Value: %s \n", rbusValue_ToString(newValue,NULL,0));
+        char* newVal = rbusValue_ToString(newValue,NULL,0);
+        if(newVal){
+            T2Info("  New Value: %s \n", newVal);
+            free(newVal);
+        }
     }
     if(oldValue){
-        T2Info("  Old Value: %s \n",  rbusValue_ToString(oldValue,NULL,0));
+        char* oldVal = rbusValue_ToString(oldValue,NULL,0);
+        if(oldVal){
+            T2Info("  Old Value: %s \n", oldVal );
+            free(oldVal);
+        }
     }
 
     if(filter) {
@@ -963,7 +1011,10 @@ void triggerCondtionReceiveHandler(
     else {
       T2Debug("ValueChange event\n");
       triggerReportOnCondtion(eventName, eventValue);
-    }  
+    }
+
+    free(eventValue);
+    eventValue = NULL ;
 
 }
 

@@ -264,6 +264,7 @@ Vector* getCCSPProfileParamValues(Vector *paramList) {
             if(ccspParamValues == NULL)
 	    {
 	       T2Info("unable to get ccspParamValues \n");
+               free(profVals);
 	       return profileValueList;
 	    }
             if(paramValCount == 0)

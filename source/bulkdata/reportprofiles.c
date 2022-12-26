@@ -565,6 +565,7 @@ T2ERROR RemovePreRPfromDisk(const char* path , hash_map_t *map)
        }
 
     }
+    closedir(dir);
     T2Debug("%s ++out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;
 }
@@ -605,6 +606,9 @@ static void freeReportProfileHashMap(void *data) {
 
             free(entry);
         }
+
+        free(element);
+        element = NULL ;
     }
     T2Debug("%s --out\n", __FUNCTION__);
 }
@@ -937,7 +941,6 @@ void ReportProfiles_ProcessReportProfilesMsgPackBlob(char *msgpack_blob , int ms
     T2Debug("PushBlobRequest complete\n");
     msgpack_unpacked_destroy(&result);
 #endif
-
     T2Debug("%s --out\n", __FUNCTION__);
     return;
 }
@@ -1051,6 +1054,8 @@ int __ReportProfiles_ProcessReportProfilesMsgPackBlob(void *msgpack)
         }else {
             if(0 == msgpack_strcmp(hashObj, existingProfileHash)) {
                 T2Info("Profile %s with %s hash already exist \n", profileName, existingProfileHash);
+                free(profileName);
+                free(existingProfileHash);
                 continue;
             }else {
                 if(T2ERROR_SUCCESS == processMsgPackConfiguration(singleProfile, &profile)) {
@@ -1066,8 +1071,9 @@ int __ReportProfiles_ProcessReportProfilesMsgPackBlob(void *msgpack)
                     }
                 }
             }
-            free(profileName);
         }
+        free(profileName);
+        free(existingProfileHash);
     } /* End of looping through report profiles */
     if (save_flag) {
         clearPersistenceFolder(REPORTPROFILES_PERSISTENCE_PATH);
@@ -1125,6 +1131,9 @@ bool isMtlsEnabled(void)
         }
         else
         {
+          if(paramValue != NULL){
+               free(paramValue);
+          }
           T2Error("getParameterValue partner id failed\n");
         }
       }

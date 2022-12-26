@@ -85,4 +85,6 @@ T2ERROR publishEventsProfileUpdates() ;
 
 T2ERROR busUninit() ;
 
+void freeComponentEventList(void* data);
+
 #endif /* SOURCE_CCSPINTERFACE_BUSINTERFACE_H_ */

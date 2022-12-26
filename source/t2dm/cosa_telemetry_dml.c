@@ -124,8 +124,12 @@ ULONG Telemetry_GetParamStringValue(ANSC_HANDLE hInsContext, char* ParamName, ch
                 free(temp);
 		free(Unpack);
             }
-	    else
+	    else{
+               if(temp != NULL){
+                    free(temp);
+               }
                return 0;
+            }
         }
         if(*pUlSize < strlen(pMyObject->MsgpackBlob))
         {

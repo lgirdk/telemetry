@@ -269,6 +269,9 @@ void* TimeoutThread(void *arg)
             tProfile->repeat = false;
             if(tProfile->deleteonTime) {
                deleteProfile(profileName);
+               if (profileName != NULL) {
+                   free(profileName);
+               }
                pthread_mutex_unlock(&tProfile->tMutex);
                break;
             }
@@ -277,6 +280,9 @@ void* TimeoutThread(void *arg)
             Vector_RemoveItem(profileList, tProfile, freeSchedulerProfile);
             pthread_mutex_unlock(&scMutex);
             activationTimeoutCb(profileName);
+            if(profileName != NULL){
+                   free(profileName);
+            }
             break;
         }
 

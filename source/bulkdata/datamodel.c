@@ -111,12 +111,13 @@ static void *process_msg_thread(void *data)
     {
     	pthread_mutex_lock(&rpMsgMutex);
         pthread_cond_wait(&msg_Cond, &rpMsgMutex);
-	if(t2_queue_count(rpMsgPkgQueue) > 0)
+	    if(t2_queue_count(rpMsgPkgQueue) > 0)
         {
             msgpack = (struct __msgpack__ *)t2_queue_pop(rpMsgPkgQueue);
             if (msgpack)
             {
-        	ReportProfiles_ProcessReportProfilesMsgPackBlob(msgpack->msgpack_blob,msgpack->msgpack_blob_size);
+        	     ReportProfiles_ProcessReportProfilesMsgPackBlob(msgpack->msgpack_blob,msgpack->msgpack_blob_size);
+        	     free(msgpack);
             }
         }
         pthread_mutex_unlock(&rpMsgMutex);

@@ -60,7 +60,8 @@ T2ERROR fetchLocalConfigs(const char* path, Vector *configList)
     {
         T2Debug("%s alreay created : \n", SHORTLIVED_PROFILES_PATH);
         T2Debug("clearing short lived profile from the disk \n");
-        clearPersistenceFolder(SHORTLIVED_PROFILES_PATH);        
+        clearPersistenceFolder(SHORTLIVED_PROFILES_PATH);
+        closedir(dir);
 	return T2ERROR_SUCCESS;
     }
     #if defined(DROP_ROOT_PRIV)

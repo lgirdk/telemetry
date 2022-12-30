@@ -52,7 +52,7 @@
 
 #elif defined(ENABLE_RDKC_SUPPORT)
 
-#define TR181_DEVICE_FW_VERSION                     "Device.DeviceInfo.X_RDKCENTRAL-COM_FWVersion"
+#define TR181_DEVICE_FW_VERSION                     "Device.DeviceInfo.X_RDK_FirmwareName"
 #define TR181_DEVICE_UPTIME                         "Device.DeviceInfo.UpTime"
 #define TR181_DEVICE_WAN_MAC                        "Device.DeviceInfo.X_RDKCENTRAL-COM_MAC"
 #define TR181_DEVICE_WAN_IPv4                       "Device.WiFi.X_RDKCENTRAL-COM_IPv4Address"

@@ -551,17 +551,15 @@ int getTotalCpuTimes(int * totalTime)
  * @return  Returns status of operation.
  * @retval  Return 1 on success, appropiate errorcode otherwise.
  */
-int getProcessCpuUtilization(int pid, int *procCpuUtil)
+int getProcessCpuUtilization(int pid, float *procCpuUtil)
 {
     procinfo pinfo1;
-    int no_cpu;
     float total_time_process[2],time[2];
     int t[2];
     float sub1;
     float time1;
     float util=0;
 
-    no_cpu=sysconf(_SC_NPROCESSORS_ONLN);
     if( 0 == getProcPidStat(pid, &pinfo1))
     return 0;
 
@@ -591,7 +589,7 @@ int getProcessCpuUtilization(int pid, int *procCpuUtil)
     time[1] = t[1];
     sub1 = total_time_process[1]-total_time_process[0];
     time1= time[1] - time[0];
-    util = (sub1/time1)*100*no_cpu;
+    util = (sub1/time1)*100;
 
     if(procCpuUtil)
     *procCpuUtil = util;
@@ -602,8 +600,8 @@ int getProcessCpuUtilization(int pid, int *procCpuUtil)
 }
 
 int getCPUInfo(procMemCpuInfo *pmInfo) {
-    int cpu = 0;
-    int total_cpu = 0;
+    float cpu = 0;
+    float total_cpu = 0;
     int index = 0;
 
     for(index=0;index<(pmInfo->total_instance);index++)

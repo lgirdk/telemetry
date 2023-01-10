@@ -142,7 +142,6 @@ void* TimeoutThread(void *arg)
     struct timespec _now;
     struct timespec _MinThresholdTimeTs;
     struct timespec _MinThresholdTimeStart;
-    unsigned int timeRefinSec = 0;
     unsigned int minThresholdTime = 0;
     int n;
     T2Debug("%s ++in\n", __FUNCTION__);
@@ -159,8 +158,8 @@ void* TimeoutThread(void *arg)
         _ts.tv_sec = _now.tv_sec;
 
         if(tProfile->timeRef && strcmp(tProfile->timeRef, DEFAULT_TIME_REFERENCE) != 0){
-            timeRefinSec = getSchdInSec(tProfile->timeRef);
-            T2Debug("TimeRefinSec is %d\n", timeRefinSec);
+            tProfile->timeRefinSec = getSchdInSec(tProfile->timeRef);
+            T2Debug("TimeRefinSec is %d\n", tProfile->timeRefinSec);
         }
 
         if(tProfile->firstexecution == true){
@@ -168,15 +167,15 @@ void* TimeoutThread(void *arg)
              _ts.tv_sec += tProfile->firstreportint;
         }
         else{
-             if(timeRefinSec != 0){ // this loop is used to choose the minimum waiting value based on the comparison b/w TimeRef and Reporting Interval
-                 if(tProfile->timeOutDuration <= timeRefinSec){
+             if(tProfile->timeRefinSec != 0){ // this loop is used to choose the minimum waiting value based on the comparison b/w TimeRef and Reporting Interval
+                 if(tProfile->timeOutDuration <= tProfile->timeRefinSec){
                       _ts.tv_sec += tProfile->timeOutDuration;
                       T2Info("Waiting for %d sec for next TIMEOUT for profile as reporting interval is taken - %s\n", tProfile->timeOutDuration, tProfile->name);
                  }
-                 else if(tProfile->timeOutDuration > timeRefinSec)
+                 else if(tProfile->timeOutDuration > tProfile->timeRefinSec)
                  {
-                      _ts.tv_sec += timeRefinSec;
-                      T2Info("Waiting for %d sec for next TIMEOUT for profile as Time Reference is taken - %s\n", timeRefinSec, tProfile->name);
+                      _ts.tv_sec += tProfile->timeRefinSec;
+                      T2Info("Waiting for %d sec for next TIMEOUT for profile as Time Reference is taken - %s\n", tProfile->timeRefinSec, tProfile->name);
                  }
              }
              else{
@@ -190,7 +189,7 @@ void* TimeoutThread(void *arg)
              n = pthread_cond_timedwait(&tProfile->tCond, &tProfile->tMutex, &_ts);
         }
         else{
-             if(tProfile->timeOutDuration == UINT_MAX && timeRefinSec == 0){
+             if(tProfile->timeOutDuration == UINT_MAX && tProfile->timeRefinSec == 0){
                  T2Info("Waiting for condition as reporting interval is not configured for profile - %s\n", tProfile->name);
                  n = pthread_cond_wait(&tProfile->tCond, &tProfile->tMutex);
              }
@@ -416,6 +415,7 @@ T2ERROR registerProfileWithScheduler(const char* profileName, unsigned int timeI
         tProfile->firstreportint = firstReportingInterval;
         tProfile->firstexecution = false;
         tProfile->timeRef = timeRef;
+        tProfile->timeRefinSec = 0;
         if(tProfile->timeOutDuration < tProfile->firstreportint){
             tProfile->firstreportint = 0;
         }

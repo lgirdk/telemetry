@@ -31,6 +31,7 @@ typedef struct _SchedulerProfile
     char* timeRef;
     unsigned int timeOutDuration;
     unsigned int timeToLive;
+    unsigned int timeRefinSec;
     bool repeat;
     bool terminated;
     bool deleteonTime;

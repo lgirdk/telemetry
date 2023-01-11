@@ -215,9 +215,12 @@ T2ERROR processConfigurationXConf(char* configData, ProfileXConf **localProfile)
     Vector_Create(&profile->cachedReportList);
 
     addParameter(profile, "mac", TR181_DEVICE_WAN_MAC, NULL, -1);
-#if defined(ENABLE_RDKB_SUPPORT) ||  defined (ENABLE_RDKC_SUPPORT)
+#if defined(ENABLE_RDKB_SUPPORT)
     addParameter(profile, "erouterIpv4", TR181_DEVICE_WAN_IPv4, NULL, -1);
     addParameter(profile, "erouterIpv6", TR181_DEVICE_WAN_IPv6, NULL, -1);
+#elif defined (ENABLE_RDKC_SUPPORT)
+    addParameter(profile, "camIp", TR181_DEVICE_WAN_IPv4, NULL, -1);
+    addParameter(profile, "camIpv6", TR181_DEVICE_WAN_IPv6, NULL, -1);
 #elif defined(ENABLE_STB_SUPPORT)
     addParameter(profile, "StbIp", TR181_DEVICE_WAN_IPv6, NULL, -1);
     addParameter(profile, "receiverId", TR181_DEVICE_RECEIVER_ID, NULL, -1);

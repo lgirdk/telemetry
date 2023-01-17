@@ -46,6 +46,15 @@ static pthread_mutex_t reportLock;
 static pthread_mutex_t reportMutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t reportcond;
 
+static pthread_mutex_t triggerConditionQueMutex = PTHREAD_MUTEX_INITIALIZER;
+static queue_t *triggerConditionQueue = NULL;
+
+
+typedef struct __triggerConditionObj__ {
+    char referenceName[MAX_LEN];
+    char referenceValue[MAX_LEN];
+} triggerConditionObj ;
+
 static void freeRequestURIparam(void *data)
 {
     if(data != NULL)
@@ -289,21 +298,34 @@ static void* CollectAndReport(void* data)
         {
             //TODO: Support 'ObjectHierarchy' format in RDKB-26154.
             T2Error("Only JSON name-value pair format is supported \n");
+            if(profile->triggerReportOnCondition) {
+                T2Info(" Unlock trigger condition mutex and set report on condition to false \n");
+                profile->triggerReportOnCondition = false ;
+                pthread_mutex_unlock(&profile->triggerCondMutex);
+            } else {
+                T2Debug(" profile->triggerReportOnCondition is not set \n");
+            }
             profile->reportInProgress = false;
             return NULL;
         }
 
-        pthread_mutex_lock(&profile->triggerCondMutex);
-        if(profile->triggerReportOnCondition && (profile->jsonReportObj != NULL))
-        {
-            triggercondition=profile->jsonReportObj;
+        // pthread_mutex_lock(&profile->triggerCondMutex);
+        if(profile->triggerReportOnCondition && (profile->jsonReportObj != NULL)) {
+            triggercondition = profile->jsonReportObj;
             profile->jsonReportObj = NULL;
         }
         if(T2ERROR_SUCCESS != initJSONReportProfile(&profile->jsonReportObj, &valArray, profile->RootName))
         {
             T2Error("Failed to initialize JSON Report\n");
             profile->reportInProgress = false;
-            pthread_mutex_unlock(&profile->triggerCondMutex);
+            //pthread_mutex_unlock(&profile->triggerCondMutex);
+            if(profile->triggerReportOnCondition) {
+                T2Info(" Unlock trigger condition mutex and set report on condition to false \n");
+                profile->triggerReportOnCondition = false;
+                pthread_mutex_unlock(&profile->triggerCondMutex);
+                if(profile->callBackOnReportGenerationComplete)
+                    profile->callBackOnReportGenerationComplete(profile->name);
+            }
             return NULL;
         }
         else
@@ -346,21 +368,38 @@ static void* CollectAndReport(void* data)
             {
                 T2Error("Unable to generate report for : %s\n", profile->name);
                 profile->reportInProgress = false;
+                if(profile->triggerReportOnCondition) {
+                    profile->triggerReportOnCondition = false ;
+
+                    if(profile->callBackOnReportGenerationComplete)
+                        profile->callBackOnReportGenerationComplete(profile->name);
+                } else {
+                    T2Debug(" profile->triggerReportOnCondition is not set \n");
+                }
                 return NULL;
             }
             long size = strlen(jsonReport);
             T2Info("cJSON Report = %s\n", jsonReport);
-	    cJSON *root = cJSON_Parse(jsonReport);
-	    if(root != NULL){
-		     cJSON *array = cJSON_GetObjectItem(root, profile->RootName);
-		     if(cJSON_GetArraySize(array) == 0){
-			     T2Warning("Array size of Report is %d. Report is empty. Cannot send empty report\n", cJSON_GetArraySize(array));
-			     profile->reportInProgress = false;
-			     cJSON_Delete(root);
-			     return NULL;
-		     }
-		     cJSON_Delete(root);
-	    }
+            cJSON *root = cJSON_Parse(jsonReport);
+            if(root != NULL) {
+                cJSON *array = cJSON_GetObjectItem(root, profile->RootName);
+                if(cJSON_GetArraySize(array) == 0) {
+                    T2Warning("Array size of Report is %d. Report is empty. Cannot send empty report\n", cJSON_GetArraySize(array));
+                    profile->reportInProgress = false;
+                    if(profile->triggerReportOnCondition) {
+                        T2Info(" Unlock trigger condition mutex and set report on condition to false \n");
+                        profile->triggerReportOnCondition = false ;
+                        pthread_mutex_unlock(&profile->triggerCondMutex);
+                        if(profile->callBackOnReportGenerationComplete)
+                            profile->callBackOnReportGenerationComplete(profile->name);
+                    } else {
+                        T2Debug(" profile->triggerReportOnCondition is not set \n");
+                    }
+                    cJSON_Delete(root);
+                    return NULL;
+                }
+                cJSON_Delete(root);
+            }
 
             T2Info("Report Size = %ld\n", size);
             if(size > DEFAULT_MAX_REPORT_SIZE) {
@@ -453,6 +492,14 @@ static void* CollectAndReport(void* data)
                         if(profile->SendErr > 3 && !(rbusCheckMethodExists(profile->t2RBUSDest->rbusMethodName))) { //to delete the profile in the next CollectAndReport or triggercondition
                             T2Debug("RBUS_METHOD doesn't exists after 3 retries\n");
                             profile->reportInProgress = false;
+                            if(profile->triggerReportOnCondition) {
+                              
+                                profile->triggerReportOnCondition = false ;
+                                if(profile->callBackOnReportGenerationComplete)
+                                    profile->callBackOnReportGenerationComplete(profile->name);
+                            } else {
+                                T2Debug(" profile->triggerReportOnCondition is not set \n");
+                            }
                             T2Error("ERROR: no method provider; profile will be deleted: %s %s\n", profile->name,
                                     profile->t2RBUSDest->rbusMethodName);
                             if(T2ERROR_SUCCESS != deleteProfile(profile->name)) {
@@ -473,35 +520,41 @@ static void* CollectAndReport(void* data)
                                 profile->cachedReportList);
                     }
 
-                    if(ret == T2ERROR_SUCCESS){
+                    if(ret == T2ERROR_SUCCESS) {
                         removeProfileFromDisk(CACHED_MESSAGE_PATH, profile->name);
                     }
                 }
-                if (httpUrl) {
+                if(httpUrl) {
                     free(httpUrl);
-                    httpUrl = NULL ;
+                    httpUrl = NULL;
                 }
-            }
-            else
-            {
-               T2Error("Unsupported report send protocol : %s\n", profile->protocol);
+            }else {
+                T2Error("Unsupported report send protocol : %s\n", profile->protocol);
             }
         }
-    }
-    else
-    {
+    }else {
         T2Error("Unsupported encoding format : %s\n", profile->encodingType);
     }
     clock_gettime(CLOCK_REALTIME, &endTime);
     getLapsedTime(&elapsedTime, &endTime, &startTime);
-    T2Info("Elapsed Time for : %s = %lu.%lu (Sec.NanoSec)\n", profile->name, (unsigned long)elapsedTime.tv_sec, elapsedTime.tv_nsec);
-    if(ret == T2ERROR_SUCCESS && jsonReport)
-    {
+    T2Info("Elapsed Time for : %s = %lu.%lu (Sec.NanoSec)\n", profile->name, (unsigned long )elapsedTime.tv_sec, elapsedTime.tv_nsec);
+    if(ret == T2ERROR_SUCCESS && jsonReport) {
         free(jsonReport);
         jsonReport = NULL;
     }
 
     profile->reportInProgress = false;
+    if(profile->triggerReportOnCondition) {
+        T2Info(" Unlock trigger condition mutex and set report on condition to false \n");
+        profile->triggerReportOnCondition = false ;
+
+        if(profile->callBackOnReportGenerationComplete){
+            T2Debug("Calling callback function profile->callBackOnReportGenerationComplete \n");
+            profile->callBackOnReportGenerationComplete(profile->name);
+        }
+    } else {
+        T2Debug(" profile->triggerReportOnCondition is not set \n");
+    }
     T2Info("%s --out\n", __FUNCTION__);
     return NULL;
 }
@@ -1115,6 +1168,13 @@ T2ERROR uninitProfileList()
 
     initialized = false;
     deleteAllProfiles(false); // avoid removing multiProfiles from Disc
+	
+    if(!pthread_mutex_trylock(&triggerConditionQueMutex)){
+        if(triggerConditionQueue)
+            t2_queue_destroy(triggerConditionQueue, free);
+
+        pthread_mutex_unlock(&triggerConditionQueMutex);
+    }
 
     pthread_mutex_destroy(&reportLock);
     pthread_mutex_destroy(&plMutex);
@@ -1169,22 +1229,113 @@ T2ERROR registerTriggerConditionConsumer()
     return ret;
 }
 
-void appendTriggerCondition (Profile *tempProfile, const char *referenceName, const char *referenceValue){
+T2ERROR appendTriggerCondition (Profile *tempProfile, const char *referenceName, const char *referenceValue){
     T2Debug("%s ++in\n", __FUNCTION__);
-    pthread_mutex_lock(&tempProfile->triggerCondMutex);
-    cJSON *temparrayItem = cJSON_CreateObject();
-    cJSON_AddStringToObject(temparrayItem, "reference",referenceName);
-    cJSON_AddStringToObject(temparrayItem, "value", referenceValue);
-    cJSON *temparrayItem1 = cJSON_CreateObject();
-    cJSON_AddItemToObject(temparrayItem1, "TriggerConditionResult", temparrayItem);
-    tempProfile->jsonReportObj=temparrayItem1;
-    pthread_mutex_unlock(&tempProfile->triggerCondMutex);
+
+    T2ERROR status = T2ERROR_SUCCESS ;
+
+    // triggerCondMutex is purposefully left unlocked from this function.
+    // It gets released from CollectAndReport thread once trigger condition based report is sent out.
+    // Reports from multiple trigger condition has to be sent mutually exclusively as separate reports.
+    if(!pthread_mutex_trylock(&tempProfile->triggerCondMutex)) {
+        T2Debug("%s : Lock acquisition succeeded for tempProfile->triggerCondMutex\n ", __FUNCTION__);
+        cJSON *temparrayItem = cJSON_CreateObject();
+        cJSON_AddStringToObject(temparrayItem, "reference",referenceName);
+        cJSON_AddStringToObject(temparrayItem, "value", referenceValue);
+        cJSON *temparrayItem1 = cJSON_CreateObject();
+
+        cJSON_AddItemToObject(temparrayItem1, "TriggerConditionResult", temparrayItem);
+        tempProfile->jsonReportObj=temparrayItem1;
+        //pthread_mutex_unlock(&tempProfile->triggerCondMutex);
+
+    }else {
+        T2Warning("%s : Failed to get a lock on tempProfile->triggerCondMutex for condition %s \n ", __FUNCTION__, referenceName);
+        status =  T2ERROR_FAILURE;
+        // Push this trigger condition to a que.
+        // Implement a callback function to trigger report generation for referenceName & value
+
+        if(!pthread_mutex_trylock(&triggerConditionQueMutex)) {
+            T2Debug("%s : Lock on triggerConditionQueMutex\n", __FUNCTION__);
+            if(NULL == triggerConditionQueue) {
+                triggerConditionQueue = t2_queue_create();
+                if(!triggerConditionQueue){
+                    T2Error("Failed to create triggerConditionQueue, not proceeding further\n");
+                    T2Debug("%s : Unlock on triggerConditionQueMutex\n", __FUNCTION__);
+                    pthread_mutex_unlock(&triggerConditionQueMutex);
+                    T2Debug("%s --out\n", __FUNCTION__);
+                    return status ;
+                }
+                T2Debug("%s : Que for storing the trigger conditions is created \n", __FUNCTION__);
+            }
+            triggerConditionObj *triggerCond = (triggerConditionObj*) malloc(sizeof(triggerConditionObj));
+            if(triggerCond) {
+                if(NULL != referenceName && NULL != referenceValue) {
+                    T2Info("%s : Push referenceName = %s  & referenceValue = %s to que \n ", __FUNCTION__, referenceName, referenceValue);
+                    memset(triggerCond, 0, sizeof(triggerConditionObj));
+                    strncpy(triggerCond->referenceName, referenceName, (MAX_LEN - 1));
+                    strncpy(triggerCond->referenceValue, referenceValue, (MAX_LEN - 1));
+                    t2_queue_push(triggerConditionQueue, (void*) triggerCond);
+                }else {
+                    T2Warning("%s : referenceName or referenceValue is published as null, ignoring trigger condition \n ", __FUNCTION__);
+                }
+
+            }else {
+                T2Error("Failed to allocate memory for triggerConditionObj\n");
+            }
+
+            T2Debug("%s : Unlock on triggerConditionQueMutex\n", __FUNCTION__);
+            pthread_mutex_unlock(&triggerConditionQueMutex);
+
+        } else {
+            T2Warning("%s : Failed to get a lock on triggerConditionQueMutex for condition %s \n ", __FUNCTION__, referenceName);
+
+        }
+    }
+
+    T2Debug("%s --out\n", __FUNCTION__);
+    return status;
+}
+
+void reportGenerationCompleteReceiver(char *profileName) {
+
+    T2Debug("%s ++in\n", __FUNCTION__);
+    T2Info("%s called with argument %s\n", __FUNCTION__, profileName);
+
+    if(!pthread_mutex_lock(&triggerConditionQueMutex)) {
+        if(NULL != triggerConditionQueue) {
+            T2Info("%s : %d report generating triggers pending in que \n ", __FUNCTION__, t2_queue_count(triggerConditionQueue));
+            if(t2_queue_count(triggerConditionQueue) > 0) {
+                triggerConditionObj *triggerCond = (triggerConditionObj*) t2_queue_pop(triggerConditionQueue);
+                if(triggerCond) {
+                    // Que has to be unlocked before generating a trigger condition
+                    pthread_mutex_unlock(&triggerConditionQueMutex);
+                    triggerReportOnCondtion(triggerCond->referenceName, triggerCond->referenceValue);
+                    free(triggerCond);
+                    triggerCond = NULL;
+                }else{
+                    T2Debug("%s : Trigger condition is null \n", __FUNCTION__);
+                    pthread_mutex_unlock(&triggerConditionQueMutex);
+                }
+            }else {
+                T2Debug("%s : Unlock on triggerConditionQueMutex\n", __FUNCTION__);
+                pthread_mutex_unlock(&triggerConditionQueMutex);
+                T2Debug("No more report on condition events present in que \n");
+            }
+        }else {
+            pthread_mutex_unlock(&triggerConditionQueMutex);
+        }
+    }else {
+        T2Error("Failed to get lock on triggerConditionQueMutex \n");
+    }
+
     T2Debug("%s --out\n", __FUNCTION__);
 }
 
 T2ERROR triggerReportOnCondtion(const char *referenceName, const char *referenceValue)
 {
     T2Debug("%s ++in\n", __FUNCTION__);
+	
+	T2Debug("referenceName = %s  referenceValue = %s \n", referenceName, referenceValue);
 
     int j, profileIndex = 0;
     Profile *tempProfile = NULL;
@@ -1197,20 +1348,31 @@ T2ERROR triggerReportOnCondtion(const char *referenceName, const char *reference
         {
              for( j = 0; j < tempProfile->triggerConditionList->count; j++ ) {
                 TriggerCondition *triggerCondition = ((TriggerCondition *) Vector_At(tempProfile->triggerConditionList, j));
-                if(strcmp(triggerCondition->reference,referenceName) == 0)
-                {
-	                 T2Info("Triggering report on condition for %s with %s operator, %d threshold\n",
-				     triggerCondition->reference, triggerCondition->oprator, triggerCondition->threshold);
-                     tempProfile->triggerReportOnCondition = true;
-                     if(triggerCondition->report)
-                         appendTriggerCondition(tempProfile, referenceName, referenceValue);
-                     tempProfile->minThresholdDuration = triggerCondition->minThresholdDuration;
-                     char *tempProfilename = strdup(tempProfile->name); //RDKB-42640
-                     pthread_mutex_unlock(&plMutex); 
-                     SendInterruptToTimeoutThread(tempProfilename);
-                     free(tempProfilename); //RDKB-42640
-                     T2Debug("%s --out\n", __FUNCTION__);
-                     return T2ERROR_SUCCESS;
+                if(strcmp(triggerCondition->reference, referenceName) == 0) {
+                    if(triggerCondition->report) {
+                        if ( T2ERROR_SUCCESS == appendTriggerCondition(tempProfile, referenceName, referenceValue)){
+                            tempProfile->triggerReportOnCondition = true;
+                            tempProfile->minThresholdDuration = triggerCondition->minThresholdDuration;
+                            T2Debug("%s : Assign callback function as reportGenerationCompleteReceiver \n", __FUNCTION__);
+                            tempProfile->callBackOnReportGenerationComplete = reportGenerationCompleteReceiver;
+
+                            char *tempProfilename = strdup(tempProfile->name); //RDKB-42640
+
+                            // plmutex should be unlocked before sending interrupt for report generation
+                            T2Debug("%s : Release lock on &plMutex\n ", __FUNCTION__);
+                            pthread_mutex_unlock(&plMutex);
+                            T2Info("Triggering report on condition for %s with %s operator, %d threshold\n", triggerCondition->reference,
+                                                        triggerCondition->oprator, triggerCondition->threshold);
+                            SendInterruptToTimeoutThread(tempProfilename);
+                            free(tempProfilename); //RDKB-42640
+                            return T2ERROR_SUCCESS ;
+                        } else {
+                            T2Info("Report generation will take place by popping up from the que by callback function \n");
+                            T2Debug("%s : Release lock on &plMutex\n ", __FUNCTION__);
+                            pthread_mutex_unlock(&plMutex);
+                            return T2ERROR_SUCCESS;
+                        }
+                    }
                 }
              }
         }

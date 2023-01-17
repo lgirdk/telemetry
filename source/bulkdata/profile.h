@@ -47,6 +47,7 @@ typedef struct _Profile
     bool deleteonTimeout;
     bool bClearSeekMap;
     bool triggerReportOnCondition;
+    void (*callBackOnReportGenerationComplete)(char*);
     char* hash;
     char* name;
     char* protocol;
@@ -115,5 +116,7 @@ T2ERROR registerTriggerConditionConsumer();
 T2ERROR triggerReportOnCondtion(const char *referenceName, const char *referenceValue);
 
 unsigned int getMinThresholdDuration(char *profileName);
+
+void reportGenerationCompleteReceiver(char* profileName);
 
 #endif /* _PROFILE_H_ */

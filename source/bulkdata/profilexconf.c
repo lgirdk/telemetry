@@ -599,11 +599,9 @@ T2ERROR ProfileXConf_storeMarkerEvent(T2Event *eventInfo)
         pthread_mutex_unlock(&plMutex);
         return T2ERROR_FAILURE;
     }
-    pthread_mutex_unlock(&plMutex);
 
     int eventIndex = 0;
     EventMarker *lookupEvent = NULL;
-    pthread_mutex_lock(&plMutex);
     for(; eventIndex < Vector_Size(singleProfile->eMarkerList); eventIndex++)
     {
         EventMarker *tempEventMarker = (EventMarker *)Vector_At(singleProfile->eMarkerList, eventIndex);
@@ -613,11 +611,9 @@ T2ERROR ProfileXConf_storeMarkerEvent(T2Event *eventInfo)
             break;
         }
     }
-    pthread_mutex_unlock(&plMutex);
     int arraySize = 0;
     if(lookupEvent != NULL)
     {
-        pthread_mutex_lock(&plMutex);
         switch(lookupEvent->mType)
         {
             case MTYPE_XCONF_COUNTER:
@@ -649,14 +645,16 @@ T2ERROR ProfileXConf_storeMarkerEvent(T2Event *eventInfo)
                 T2Debug("New marker value saved : %s\n", lookupEvent->u.markerValue);
                 break;
         }
-         pthread_mutex_unlock(&plMutex);
     }
     else
     {
         T2Error("Event name : %s value : %s\n", eventInfo->name, eventInfo->value);
         T2Error("Event doens't match any marker information, shouldn't come here\n");
+        pthread_mutex_unlock(&plMutex);
         return T2ERROR_FAILURE;
     }
+
+    pthread_mutex_unlock(&plMutex);
 
     T2Debug("%s --out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;

@@ -1374,7 +1374,8 @@ T2ERROR processMsgPackConfiguration(msgpack_object *profiles_array_map, Profile 
     ReportingAdjustments_array = msgpack_get_map_value(value_map, "ReportingAdjustments");
     if(ReportingAdjustments_array){
         MSGPACK_GET_ARRAY_SIZE(ReportingAdjustments_array, ReportingAdjustments_array_size);
-        for (int i=0; i < ReportingAdjustments_array_size; i++){
+        int i;
+        for(i = 0; i < ReportingAdjustments_array_size; i++){
             msgpack_object *ReportingAdjustments_array_map = msgpack_get_array_element(ReportingAdjustments_array, i);
             ReportOnUpdate_boolean = msgpack_get_map_value(ReportingAdjustments_array_map, "ReportOnUpdate");
             FirstReportInterval_u64 = msgpack_get_map_value(ReportingAdjustments_array_map, "FirstReportingInterval");

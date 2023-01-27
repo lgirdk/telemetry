@@ -28,7 +28,6 @@
 typedef struct _SchedulerProfile
 {
     char* name;
-    char* timeRef;
     unsigned int timeOutDuration;
     unsigned int timeToLive;
     bool repeat;
@@ -52,7 +51,7 @@ T2ERROR initScheduler(TimeoutNotificationCB notificationCb, ActivationTimeoutCB 
 
 void uninitScheduler();
 
-T2ERROR registerProfileWithScheduler(const char* profileName, unsigned int timeInterval, unsigned int activationTimeout, bool deleteonTimout, bool repeat, bool reportOnUpdate, unsigned int firstReportingInterval, char *timeRef);
+T2ERROR registerProfileWithScheduler(const char* profileName, unsigned int timeInterval, unsigned int activationTimeout, bool deleteonTimout, bool repeat, bool reportOnUpdate, unsigned int firstReportingInterval);
 
 T2ERROR unregisterProfileFromScheduler(const char* profileName);
 

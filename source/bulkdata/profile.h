@@ -54,14 +54,13 @@ typedef struct _Profile
     char* Description;
     char* version;
     char* RootName;
-    char* timeRef;
     JSONEncoding *jsonEncoding;
     bool reportOnUpdate;
     unsigned int firstReportingInterval;
     unsigned int SendErr;
     unsigned int reportingInterval;
     unsigned int activationTimeoutPeriod;
-    unsigned int maxUploadLatency;
+    unsigned int timeRef;
     unsigned int paramNumOfEntries;
     unsigned int minThresholdDuration;
     Vector *paramList;

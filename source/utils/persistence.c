@@ -272,12 +272,16 @@ T2ERROR saveCachedReportToPersistenceFolder(const char *profileName, Vector *rep
     if(NULL != filePtr) {
         // if absFilePath present, wipe it off
         int vectorSize = Vector_Size(reportList);
-        int loop = 0 ;
+	int loop = 0 ;
         T2Debug("Writing %d data to file %s \n", vectorSize, absFilePath);
-        for(loop = 0; loop < vectorSize; loop++ ) {
-            char *payload = (char*) Vector_At(reportList, loop);
-            fprintf(filePtr, "%s\n", payload);
-        }
+	if(vectorSize > 0){
+	    char *payload = (char*) Vector_At(reportList, loop);
+            fprintf(filePtr, "%s", payload);
+            for(loop = 1; loop < vectorSize; loop++ ) {
+                char *payload = (char*) Vector_At(reportList, loop);
+                fprintf(filePtr, "\n%s", payload);
+            }
+	}
         fclose(filePtr);
         ret = T2ERROR_SUCCESS ;
     }else {
@@ -313,10 +317,15 @@ T2ERROR populateCachedReportList(const char *profileName, Vector *outReportList)
     if(NULL != filePtr) {
         char *payload = NULL ;
         size_t dataLength = 1 ;
-        payload = (char *) malloc(1);
+        size_t linelength;
+	payload = (char *) malloc(1);
         T2Info("Reading data from file %s \n", absFilePath);
-        while(-1 != getline(&payload, &dataLength, filePtr)){
-            Vector_PushBack(outReportList, strdup(payload));
+        while((linelength = getline(&payload, &dataLength, filePtr)) != -1){
+            T2Debug("Payload Value = %s\n", payload);
+	    if (linelength < 2)
+                continue;
+            Vector_PushBack(outReportList, (void *)strdup(payload));
+            T2Debug("vector size = %lu\n", (unsigned long )Vector_Size(outReportList));
             if(payload){
                 free(payload);
                 payload = NULL ;

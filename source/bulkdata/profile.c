@@ -363,12 +363,12 @@ static void* CollectAndReport(void* data)
             ret = prepareJSONReport(profile->jsonReportObj, &jsonReport);
 	        destroyJSONReport(profile->jsonReportObj);
             profile->jsonReportObj = NULL;
-            pthread_mutex_unlock(&profile->triggerCondMutex);
             if(ret != T2ERROR_SUCCESS)
             {
                 T2Error("Unable to generate report for : %s\n", profile->name);
                 profile->reportInProgress = false;
                 if(profile->triggerReportOnCondition) {
+                    pthread_mutex_unlock(&profile->triggerCondMutex);
                     profile->triggerReportOnCondition = false ;
 
                     if(profile->callBackOnReportGenerationComplete)
@@ -388,6 +388,7 @@ static void* CollectAndReport(void* data)
                     profile->reportInProgress = false;
                     if(profile->triggerReportOnCondition) {
                         T2Info(" Unlock trigger condition mutex and set report on condition to false \n");
+                        pthread_mutex_unlock(&profile->triggerCondMutex);
                         profile->triggerReportOnCondition = false ;
                         pthread_mutex_unlock(&profile->triggerCondMutex);
                         if(profile->callBackOnReportGenerationComplete)
@@ -546,6 +547,7 @@ static void* CollectAndReport(void* data)
     profile->reportInProgress = false;
     if(profile->triggerReportOnCondition) {
         T2Info(" Unlock trigger condition mutex and set report on condition to false \n");
+        pthread_mutex_unlock(&profile->triggerCondMutex);
         profile->triggerReportOnCondition = false ;
 
         if(profile->callBackOnReportGenerationComplete){

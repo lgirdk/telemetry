@@ -57,7 +57,7 @@ typedef enum _ADDRESS_TYPE
 }ADDRESS_TYPE;
 
 static void sendOverHTTPInit(){
-	pthread_mutex_init(&curlFileMutex, NULL);
+    pthread_mutex_init(&curlFileMutex, NULL);
 }
 
 
@@ -70,24 +70,32 @@ static T2ERROR setHeader(CURL *curl, const char* destURL, struct curl_slist **he
 {
     
     T2Debug("%s ++in\n", __FUNCTION__);
+    if(curl == NULL || destURL == NULL)
+    {
+          return T2ERROR_FAILURE;
+    }
 
     T2Debug("%s DEST URL %s \n", __FUNCTION__, destURL);
     CURLcode code=CURLE_OK;
     code = curl_easy_setopt(curl, CURLOPT_URL, destURL);
     if(code != CURLE_OK){
        T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
+       return T2ERROR_FAILURE;
     }
     code = curl_easy_setopt(curl, CURLOPT_SSLVERSION, TLSVERSION);
     if(code != CURLE_OK){
        T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
+       return T2ERROR_FAILURE;
     }
     code = curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, HTTP_METHOD);
     if(code != CURLE_OK){
        T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
+       return T2ERROR_FAILURE;
     }
     code = curl_easy_setopt(curl, CURLOPT_TIMEOUT, TIMEOUT);
     if(code != CURLE_OK){
        T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
+       return T2ERROR_FAILURE;
     }
 
 #if defined(ENABLE_RDKB_SUPPORT)
@@ -96,12 +104,14 @@ static T2ERROR setHeader(CURL *curl, const char* destURL, struct curl_slist **he
     code = curl_easy_setopt(curl, CURLOPT_INTERFACE, waninterface);
     if(code != CURLE_OK) {
         T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
+	return T2ERROR_FAILURE;
     }
 #else
      /* CID 125287: Unchecked return value from library */
     code = curl_easy_setopt(curl, CURLOPT_INTERFACE, INTERFACE);
     if(code != CURLE_OK){
        T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
+       return T2ERROR_FAILURE;
     }
 
 #endif
@@ -112,11 +122,13 @@ static T2ERROR setHeader(CURL *curl, const char* destURL, struct curl_slist **he
     code = curl_easy_setopt(curl, CURLOPT_HTTPHEADER, *headerList);
     if(code != CURLE_OK){
        T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
+       return T2ERROR_FAILURE;
     }
 
     code = curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, writeToFile);
     if(code != CURLE_OK){
        T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
+       return T2ERROR_FAILURE;
     }
 
     T2Debug("%s --out\n", __FUNCTION__);
@@ -124,28 +136,36 @@ static T2ERROR setHeader(CURL *curl, const char* destURL, struct curl_slist **he
 }
 
 static T2ERROR setMtlsHeaders(CURL *curl, const char* certFile, const char* pPasswd) {
+    if(curl == NULL || certFile == NULL || pPasswd == NULL){
+          return T2ERROR_FAILURE;
+    }
     CURLcode code = CURLE_OK;
     code = curl_easy_setopt(curl, CURLOPT_SSLENGINE_DEFAULT, 1L);
     if(code != CURLE_OK) {
         T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
+	return T2ERROR_FAILURE;
     }
     code = curl_easy_setopt(curl, CURLOPT_SSLCERTTYPE, "P12");
     if(code != CURLE_OK) {
         T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
+	return T2ERROR_FAILURE;
     }
     /* set the cert for client authentication */
     code = curl_easy_setopt(curl, CURLOPT_SSLCERT, certFile);
     if(code != CURLE_OK) {
         T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
+	return T2ERROR_FAILURE;
     }
     code = curl_easy_setopt(curl, CURLOPT_KEYPASSWD, pPasswd);
     if(code != CURLE_OK) {
         T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
+	return T2ERROR_FAILURE;
     }
     /* disconnect if we cannot authenticate */
     code = curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1L);
     if(code != CURLE_OK) {
         T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
+	return T2ERROR_FAILURE;
     }
 
     return T2ERROR_SUCCESS;
@@ -153,14 +173,19 @@ static T2ERROR setMtlsHeaders(CURL *curl, const char* certFile, const char* pPas
 
 static T2ERROR setPayload(CURL *curl, const char* payload)
 {
+    if(curl == NULL || payload == NULL){
+	  return T2ERROR_FAILURE;
+    }
     CURLcode code = CURLE_OK ;
     code = curl_easy_setopt(curl, CURLOPT_POSTFIELDS, payload);
     if(code != CURLE_OK){
         T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
+	return T2ERROR_FAILURE;
     }
     code = curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, strlen(payload));
     if(code != CURLE_OK){
         T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
+	return T2ERROR_FAILURE;
     }
     return T2ERROR_SUCCESS;
 }
@@ -179,7 +204,10 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char* payload) {
     int sharedPipeFds[2];
 
     T2Debug("%s ++in\n", __FUNCTION__);
-
+    if(httpUrl == NULL || payload == NULL)
+    {
+        return T2ERROR_FAILURE;
+    }
     if(pipe(sharedPipeFds) != 0) {
         T2Error("Failed to create pipe !!! exiting...\n");
         T2Debug("%s --out\n", __FUNCTION__);
@@ -300,6 +328,10 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char* payload) {
 
 T2ERROR sendCachedReportsOverHTTP(char *httpUrl, Vector *reportList)
 {
+    if(httpUrl == NULL || reportList == NULL)
+    {
+        return T2ERROR_FAILURE;
+    }
     while(Vector_Size(reportList) > 0)
     {
         char* payload = (char *)Vector_At(reportList, 0);

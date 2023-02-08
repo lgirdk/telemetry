@@ -49,6 +49,7 @@
 #include "interChipHelper.h"
 #include "telemetry2_0.h"
 #include "t2MtlsUtils.h"
+#include "persistence.h"
 
 //Including Webconfig Framework For Telemetry 2.0 As part of RDKB-28897
 #define SUBDOC_COUNT    1
@@ -392,7 +393,7 @@ T2ERROR initReportProfiles()
         return T2ERROR_FAILURE;
     }
     if(isMtlsEnabled() == true){
-      initMtls();
+        initMtls();
     }
     rpInitialized = true;
 

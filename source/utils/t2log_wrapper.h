@@ -16,7 +16,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
 */
-
 #ifndef  _CCSP_T2LOG_WRPPER_H_
 #define  _CCSP_T2LOG_WRPPER_H_
 
@@ -44,3 +43,4 @@ void T2Log(unsigned int level, const char *msg, ...)
     __attribute__((format (printf, 2, 3)));
 
 #endif
+

@@ -16,7 +16,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
 */
-
 #include <unistd.h>
 #include <dirent.h>
 #include <sys/types.h>
@@ -39,12 +38,19 @@ static pthread_once_t persistCahedReporMutexOnce = PTHREAD_ONCE_INIT;
 static pthread_mutex_t persistCachedReportMutex;
 
 static void persistReportMethodInit( ) {
-    pthread_mutex_init(&persistCachedReportMutex, NULL);
+    if(pthread_mutex_init(&persistCachedReportMutex, NULL) != 0)
+    {
+         return;
+    }
 }
 
 
 T2ERROR fetchLocalConfigs(const char* path, Vector *configList)
 {
+    if(path == NULL || configList == NULL)
+    {
+         return T2ERROR_INVALID_ARGS;
+    }
     struct dirent *entry;
     T2Debug("%s ++in\n", __FUNCTION__);
     DIR *dir = opendir(path);
@@ -61,7 +67,10 @@ T2ERROR fetchLocalConfigs(const char* path, Vector *configList)
         T2Debug("%s alreay created : \n", SHORTLIVED_PROFILES_PATH);
         T2Debug("clearing short lived profile from the disk \n");
         clearPersistenceFolder(SHORTLIVED_PROFILES_PATH);
-        closedir(dir);
+        if(closedir(dir) != 0){
+             T2Error("%s,%d: Failed to close persistent folder\n", __FUNCTION__ , __LINE__);
+	     return T2ERROR_FAILURE;
+	}
 	return T2ERROR_SUCCESS;
     }
     #if defined(DROP_ROOT_PRIV)
@@ -128,6 +137,9 @@ T2ERROR fetchLocalConfigs(const char* path, Vector *configList)
 
 T2ERROR saveConfigToFile(const char* path, const char *profileName, const char* configuration)
 {
+    if(path == NULL || profileName == NULL || configuration == NULL){
+        return T2ERROR_INVALID_ARGS;
+    }
     FILE *fp = NULL;
     char filePath[256] = {'\0'};
     T2Debug("%s ++in\n", __FUNCTION__);
@@ -153,6 +165,10 @@ T2ERROR saveConfigToFile(const char* path, const char *profileName, const char* 
 
 T2ERROR MsgPackSaveConfig(const char* path, const char *fileName, const char *msgpack_blob, size_t blob_size)
 {
+    if(path == NULL || fileName == NULL || msgpack_blob == NULL)
+    {
+        return T2ERROR_INVALID_ARGS;
+    }
     FILE *fp;
     char filePath[256] = {'\0'};
 
@@ -174,12 +190,15 @@ T2ERROR MsgPackSaveConfig(const char* path, const char *fileName, const char *ms
 
 void clearPersistenceFolder(const char* path)
 {
+
     T2Debug("%s ++in\n", __FUNCTION__);
-  
+    if(path == NULL)
+        return;
     #ifdef LIBSYSWRAPPER_BUILD
     T2Debug("Executing command : rm -f %s* \n", path);
     if (v_secure_system("sh -c 'rm -rf %s*'",path) != 0) {
         T2Error("%s,%d:command failed\n", __FUNCTION__ , __LINE__);
+	return;
     }
     #else
     char command[256] = {'\0'};
@@ -187,14 +206,19 @@ void clearPersistenceFolder(const char* path)
     T2Debug("Executing command : %s\n", command);
     if (system(command) != 0) {
         T2Error("%s,%d: %s command failed\n", __FUNCTION__ , __LINE__, command);
+	return;
     }
     #endif
 
     T2Debug("%s --out\n", __FUNCTION__);
+
 }
 
 void removeProfileFromDisk(const char* path, const char* fileName)
 { 
+    if(path == NULL || fileName == NULL){
+         return;
+    }
     size_t len = strlen(path)+strlen(fileName)+1;
     char *str = malloc(len);
     if (! str) {

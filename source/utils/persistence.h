@@ -58,8 +58,11 @@ T2ERROR saveCachedReportToPersistenceFolder(const char *profileName, Vector *rep
 
 T2ERROR populateCachedReportList(const char *profileName, Vector *outReportList);
 
-void clearPersistenceFolder(const char* path);
+void clearPersistenceFolder(const char* path); //change in all places
 
 void removeProfileFromDisk(const char* path, const char* profileName);
+
+T2ERROR MsgPackSaveConfig(const char* path, const char *fileName, const char *msgpack_blob, size_t blob_size);
+
 
 #endif /* _PERSISTENCE_H_ */

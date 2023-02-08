@@ -23,7 +23,6 @@
 #include <curl/curl.h>
 #include "telemetry2_0.h"
 #include "vector.h"
-
 #define TIMEOUT        30
 #define INTERFACE      "erouter0"
 #define TLSVERSION     CURL_SSLVERSION_TLSv1_2

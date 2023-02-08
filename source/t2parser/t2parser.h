@@ -44,6 +44,4 @@ int msgpack_strcmp(msgpack_object *obj, char *str);
 
 T2ERROR processMsgPackConfiguration(msgpack_object *profiles_array_map, Profile **profile_dp);
 
-T2ERROR MsgPackSaveConfig(const char* path, const char *fileName, const char *msgpack_blob, size_t blob_size);
-
 #endif /* _T2PARSER_H_ */

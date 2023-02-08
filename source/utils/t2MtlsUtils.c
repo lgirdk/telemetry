@@ -23,7 +23,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#ifdef LIBSYSWRAPPER_BUILD
 #include <secure_wrapper.h>
+#endif
 #include <stdbool.h>
 
 #include "t2log_wrapper.h"
@@ -55,8 +57,21 @@ void initMtls() {
     // Prepare certs required for mTls commmunication
     // CPG doesn't support api's - will have to use v_secure_system calls
 #if !defined (ENABLE_RDKC_SUPPORT)
+    #ifdef LIBSYSWRAPPER_BUILD
     v_secure_system("/usr/bin/GetConfigFile %s", staticMtlsDestFile);
     v_secure_system("/usr/bin/GetConfigFile %s", dynamicMtlsDestFile);
+    #else
+    char command[256] = { '\0' };
+    snprintf(command, sizeof(command), "/usr/bin/GetConfigFile %s", staticMtlsDestFile);
+    if(system(command) != 0) {
+        T2Error("%s,%d: %s command failed\n", __FUNCTION__, __LINE__, command);
+    }
+    memset(command, '\0', 256);
+    snprintf(command, sizeof(command), "/usr/bin/GetConfigFile %s", dynamicMtlsDestFile);
+    if(system(command) != 0) {
+        T2Error("%s,%d: %s command failed\n", __FUNCTION__, __LINE__, command);
+    }
+    #endif
 #endif
     T2Debug("%s --out\n", __FUNCTION__);
 
@@ -65,8 +80,21 @@ void initMtls() {
 void uninitMtls() {
     T2Debug("%s ++in\n", __FUNCTION__);
 #if !defined (ENABLE_RDKC_SUPPORT)
+    #ifdef LIBSYSWRAPPER_BUILD
     v_secure_system("rm -f %s", staticMtlsDestFile);
     v_secure_system("rm -f %s", dynamicMtlsDestFile);
+    #else
+    char command[256] = { '\0' };
+    snprintf(command, sizeof(command), "rm -f %s", staticMtlsDestFile);
+    if(system(command) != 0) {
+        T2Error("%s,%d: %s command failed\n", __FUNCTION__, __LINE__, command);
+    }
+    memset(command, '\0', 256);
+    snprintf(command, sizeof(command), "rm -f %s", dynamicMtlsDestFile);
+    if(system(command) != 0) {
+        T2Error("%s,%d: %s command failed\n", __FUNCTION__, __LINE__, command);
+    }
+    #endif
 #endif
     T2Debug("%s --out\n", __FUNCTION__);
 
@@ -84,6 +112,11 @@ T2ERROR getMtlsCerts(char **certName, char **phrase) {
     memset(buf, 0, sizeof(buf));
 #if !defined (ENABLE_RDKC_SUPPORT)
     FILE *filePointer;
+    if( certName == NULL || phrase == NULL ){
+        T2Error("Input args are NULL \n");
+        T2Debug("%s --out\n", __FUNCTION__);
+        return ret;
+    }
 
     if(access(dynamicMtlsCert, F_OK) != -1) { // Dynamic cert
 #else
@@ -95,7 +128,11 @@ T2ERROR getMtlsCerts(char **certName, char **phrase) {
         T2Info("Using xpki Dynamic Certs connection certname: %s\n", dynamicMtlsCert);
 #if !defined (ENABLE_RDKC_SUPPORT)
         FILE *fp;
+	#ifdef LIBSYSWRAPPER_BUILD
         fp = v_secure_popen("r", "/usr/bin/rdkssacli \"{STOR=GET,SRC=kquhqtoczcbx,DST=/dev/stdout}\"");
+        #else
+        fp = popen("/usr/bin/rdkssacli \"{STOR=GET,SRC=kquhqtoczcbx,DST=/dev/stdout}\"", "r");
+        #endif
         if(fp == NULL) {
             T2Error("v_secure_popen failed\n");
         }else {
@@ -110,7 +147,11 @@ T2ERROR getMtlsCerts(char **certName, char **phrase) {
                 }
                 *phrase = strdup(buf);
             }
+	    #ifdef LIBSYSWRAPPER_BUILD
             v_secure_pclose(fp);
+            #else
+            pclose(fp);
+            #endif
         }
 #else
         dynamicPassPhrase = getenv("XPKI_PASS");
@@ -134,7 +175,15 @@ T2ERROR getMtlsCerts(char **certName, char **phrase) {
 	filePointer = fopen(staticMtlsDestFile, "r");
         if( !filePointer ) {
             T2Info("%s Destination file %s is not present. Generate now.\n", __FUNCTION__, *phrase);
+            #ifdef LIBSYSWRAPPER_BUILD
             v_secure_system("/usr/bin/GetConfigFile %s", staticMtlsDestFile);
+            #else
+            char command[256] = { '\0' };
+            snprintf(command, sizeof(command), "/usr/bin/GetConfigFile %s", staticMtlsDestFile);
+            if(system(command) != 0) {
+                T2Error("%s,%d: %s command failed\n", __FUNCTION__, __LINE__, command);
+            }
+            #endif
             filePointer = fopen(staticMtlsDestFile, "r");
         }
 

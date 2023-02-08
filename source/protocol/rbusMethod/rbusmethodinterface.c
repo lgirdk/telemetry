@@ -37,7 +37,7 @@ static pthread_mutex_t rbusMethodMutex;
 
 static bool isRbusMethod = false ;
 
-static void sendOverRBUSMethodInit( ) {
+static void sendOverRBUSMethodInit() {
     pthread_mutex_init(&rbusMethodMutex, NULL);
 }
 
@@ -56,6 +56,9 @@ static void asyncMethodHandler(rbusHandle_t handle, char const* methodName, rbus
 }
 
 T2ERROR sendReportsOverRBUSMethod(char *methodName, Vector* inputParams, char* payload) {
+    if(methodName == NULL || inputParams == NULL || payload == NULL){
+          return T2ERROR_FAILURE;
+    }
     T2Debug("%s ++in\n", __FUNCTION__);
     T2ERROR ret = T2ERROR_FAILURE;
     T2Info("methodName = %s payload = %s \n", methodName, payload);
@@ -110,6 +113,9 @@ T2ERROR sendReportsOverRBUSMethod(char *methodName, Vector* inputParams, char* p
 }
 
 T2ERROR sendCachedReportsOverRBUSMethod(char *methodName, Vector* inputParams, Vector* reportList) {
+    if(methodName == NULL || inputParams == NULL || reportList == NULL){
+          return T2ERROR_FAILURE;
+    }
     T2Debug("%s ++in\n", __FUNCTION__);
     while(Vector_Size(reportList) > 0) {
         char* payload = (char *) Vector_At(reportList, 0);

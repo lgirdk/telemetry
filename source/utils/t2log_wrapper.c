@@ -22,11 +22,13 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
+#include <stdio.h>
+#include <stdarg.h>
 #include "t2log_wrapper.h"
 
 unsigned int rdkLogLevel = RDK_LOG_INFO;
 
-void LOGInit()
+void  LOGInit()
 {
      rdk_logger_init(DEBUG_INI_NAME);
 }

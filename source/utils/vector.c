@@ -42,14 +42,17 @@ Vector_Destroy(Vector *v, Vector_Cleanup destroyer)
 {
   size_t i;
 
-  if (!v)
+  if (!v || !destroyer)
     return T2ERROR_INVALID_ARGS;
   if (v->data)
   {
     if (destroyer)
     {
-      for (i = 0; i < v->count; ++i)
-        destroyer(v->data[i]);
+      for (i = 0; i < v->count; ++i){
+	if(v->data[i] != NULL){      
+           destroyer(v->data[i]);
+	}
+      }
     }
     free(v->data);
   }
@@ -78,8 +81,9 @@ Vector_Clear(Vector *v, Vector_Cleanup destroyer)
 T2ERROR
 Vector_PushBack(Vector *v, void* item)
 {
-  if (!v)
+  if ((!v) || item == NULL){
     return T2ERROR_INVALID_ARGS;
+  }
 
   if (!v->data)
   {
@@ -102,6 +106,9 @@ Vector_PushBack(Vector *v, void* item)
 T2ERROR
 Vector_RemoveItem(Vector *v, void* item, Vector_Cleanup destroyer)
 {
+  if(!v || !item){
+      return T2ERROR_INVALID_ARGS;
+  }
   size_t i;
   for (i = 0; i < v->count; ++i)
   {
@@ -149,7 +156,7 @@ Vector_Size(Vector *v)
 T2ERROR
 Vector_Sort(Vector* v, size_t size, Vecor_Comparator comparator)
 {
-    if (!v)
+    if (!v || !comparator)
       return T2ERROR_INVALID_ARGS;
 
     if (comparator) {

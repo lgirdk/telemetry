@@ -40,7 +40,9 @@ queue_t *t2_queue_create(void)
 int8_t t2_queue_push(queue_t *q, void *data)
 {
 	element_t *e, *tmp;
-
+        if(data == NULL || q == NULL){
+              return -1;
+        }
 	e = (element_t *)malloc(sizeof(element_t));
 	if (e == NULL) {
 		return -1;
@@ -60,6 +62,10 @@ int8_t t2_queue_push(queue_t *q, void *data)
 
 void *t2_queue_pop(queue_t *q)
 {
+    if(q == NULL)
+    {
+	 return NULL;
+    }
     element_t *e, *tmp = NULL;
 	void *data;
 
@@ -88,7 +94,9 @@ void *t2_queue_remove(queue_t *q, uint32_t index)
 	element_t	*e, *tmp = NULL;
 	void *data;
 	uint32_t i = 0;
-    
+    if(q == NULL)
+	    return NULL;
+
     if (index > (t2_queue_count(q) - 1)) {
         return NULL;
     }
@@ -119,6 +127,9 @@ void    *t2_queue_peek(queue_t *q, uint32_t index)
 {
 	element_t	*e;
 	uint32_t i = 0;
+        if(q == NULL){
+             return NULL;
+        }
     
     if (index > (t2_queue_count(q) - 1)) {
         return NULL;
@@ -139,6 +150,9 @@ void    *t2_queue_peek(queue_t *q, uint32_t index)
 
 uint32_t t2_queue_count(queue_t *q)
 {
+        if(q == NULL){
+             return 0;
+	}
 	uint32_t i = 0;
 	element_t	*e;
 
@@ -154,6 +168,8 @@ uint32_t t2_queue_count(queue_t *q)
 void t2_queue_destroy(queue_t *q, queue_cleanup freeItem)
 {
 	element_t	*e, *tmp;
+        if(q == NULL || freeItem == NULL)
+             return;
 
 	e = q->head;
 
@@ -239,7 +255,7 @@ int8_t hash_map_put(hash_map_t *map, char *key, void *data)
 {
     hash_element_t *e;
   
-    if (map == NULL) {
+    if ((map == NULL) || (key == NULL) || (data == NULL)) {
         return -1;
     }
 
@@ -319,7 +335,7 @@ void *hash_map_get_next(hash_map_t *map, void *data)
     hash_element_t *e;
     bool found = false;
 
-    if (map == NULL) {
+    if ((map == NULL)|| (data == NULL)) {
         return NULL;
     }
 

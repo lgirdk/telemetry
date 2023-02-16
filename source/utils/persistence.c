@@ -55,7 +55,7 @@ T2ERROR fetchLocalConfigs(const char* path, Vector *configList)
     T2Debug("%s ++in\n", __FUNCTION__);
     DIR *dir = opendir(path);
     if (dir == NULL) {
-        T2Error("Failed to open persistence folder : %s, creating folder\n", path);
+        T2Info("Failed to open persistence folder : %s, creating folder\n", path);
         if (mkdir(path,S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH) != 0) {
             T2Error("%s,%d: Failed to make directory : %s  \n", __FUNCTION__ , __LINE__, path);
         }

@@ -549,7 +549,7 @@ T2ERROR RemovePreRPfromDisk(const char* path , hash_map_t *map)
     struct dirent *entry;
     DIR *dir = opendir(path);
     if (dir == NULL) {
-       T2Error("Failed to open persistence folder : %s, creating folder\n", path);
+       T2Info("Failed to open persistence folder : %s, creating folder\n", path);
        return T2ERROR_FAILURE;
     }
 

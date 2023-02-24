@@ -112,16 +112,9 @@ static void terminate()
         ReportProfiles_uninit();
     }
 
-    if(0 != remove("/tmp/.t2ReadyToReceiveEvents")){
-        T2Info("%s Unable to remove ready to receive event flag \n", __FUNCTION__);
-    }
-    if(0 != remove("/tmp/telemetry_initialized_bootup")){
-        T2Info("%s Unable to remove initialization complete flag \n", __FUNCTION__);
-    }
-    if(0 != remove(T2_CONFIG_READY)){
-        T2Info("%s Unable to remove config initialization complete flag \n", __FUNCTION__);
-    }
-    rdk_logger_deinit();
+    remove("/tmp/.t2ReadyToReceiveEvents");
+    remove("/tmp/telemetry_initialized_bootup");
+    remove(T2_CONFIG_READY);
 }
 
 static void _print_stack_backtrace(void)
@@ -151,14 +144,12 @@ static void _print_stack_backtrace(void)
 #endif
 }
 
-void sig_handler(int sig)
+void sig_handler(int sig, siginfo_t* info, void* uc)
 {
-    T2Debug("Signl Handler sig:%d Mpid:%d Cpid:%d \n",sig,(int)DAEMONPID,(int)getpid());//debug line
     if(DAEMONPID == getpid()){
         int fd;
         const char *path = "/tmp/telemetry_logupload";
         if ( sig == SIGINT ) {
-            signal(SIGINT, sig_handler); /* reset it to this function */
             T2Info(("SIGINT received!\n"));
             #ifndef DEVICE_EXTENDER
             uninitXConfClient();
@@ -167,24 +158,14 @@ void sig_handler(int sig)
             exit(0);
         }
         else if ( sig == SIGUSR1 || sig == LOG_UPLOAD ) {
-            signal(LOG_UPLOAD, sig_handler); /* reset it to this function */
             T2Info(("LOG_UPLOAD received!\n"));
             set_logdemand(false);
             ReportProfiles_Interrupt();
         }
         else if (sig == LOG_UPLOAD_ONDEMAND || sig == SIGIO) {
-            signal(LOG_UPLOAD_ONDEMAND, sig_handler); /* reset it to this function */
             T2Info(("LOG_UPLOAD_ONDEMAND received!\n"));
             set_logdemand(true);
             ReportProfiles_Interrupt();
-        }
-        else if ( sig == SIGCHLD ) {
-            signal(SIGCHLD, sig_handler); /* reset it to this function */
-            T2Info(("SIGCHLD received!\n"));
-        }
-        else if ( sig == SIGPIPE ) {
-            signal(SIGPIPE, sig_handler); /* reset it to this function */
-            T2Info(("SIGPIPE received!\n"));
         }
         else if(sig == SIGUSR2 || sig == EXEC_RELOAD)
         {
@@ -208,20 +189,12 @@ void sig_handler(int sig)
         }
         else if ( sig == SIGTERM || sig == SIGKILL )
         {
-            T2Info(("SIGTERM received!\n"));
             terminate();
             exit(0);
-        }
-        else if ( sig == SIGALRM )
-        {
-            signal(SIGALRM, sig_handler); /* reset it to this function */
-            T2Warning("SIGALRM received!\n");
-
         }
         else {
             /* get stack trace first */
             _print_stack_backtrace();
-            T2Warning("Signal %d received, exiting!\n", sig);
             terminate();
             exit(0);
         }
@@ -251,9 +224,13 @@ static void t2DaemonMainModeInit( ) {
     /**
     * Create a Signal Mask for signals that need to be blocked while using fork 
     */
+    struct sigaction act;
+    memset (&act, 0, sizeof(act));
+    act.sa_sigaction = sig_handler;
+    act.sa_flags = SA_ONSTACK | SA_SIGINFO | SA_NODEFER;
+
     sigaddset(&blocking_signal, SIGUSR2);
     sigaddset(&blocking_signal, SIGUSR1);
-    sigaddset(&blocking_signal, SIGCONT);
     sigaddset(&blocking_signal, LOG_UPLOAD);
     sigaddset(&blocking_signal, EXEC_RELOAD);
     sigaddset(&blocking_signal, LOG_UPLOAD_ONDEMAND);
@@ -262,13 +239,12 @@ static void t2DaemonMainModeInit( ) {
     DAEMONPID = getpid(); // save the pid of the deamon
     T2Debug("Telemetry 2.0 Process PID %d\n",(int)DAEMONPID);//Debug line
 
-    signal(SIGTERM, sig_handler);
-    signal(SIGUSR1, sig_handler);
-    signal(SIGCONT, sig_handler);
-    signal(LOG_UPLOAD, sig_handler);
-    signal(EXEC_RELOAD, sig_handler);
-    signal(LOG_UPLOAD_ONDEMAND, sig_handler);
-    signal(SIGIO, sig_handler);
+    sigaction(SIGTERM, &act, NULL);
+    sigaction(SIGUSR1, &act, NULL);
+    sigaction(LOG_UPLOAD, &act, NULL);
+    sigaction(EXEC_RELOAD, &act, NULL);
+    sigaction(LOG_UPLOAD_ONDEMAND, &act, NULL);
+    sigaction(SIGIO, &act, NULL);
 
     #ifdef _COSA_INTEL_XB3_ARM_
     if ( createNotifyDir() != 0 ) {

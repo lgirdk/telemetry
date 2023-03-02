@@ -430,9 +430,9 @@ static T2ERROR doHttpGet(char* httpsUrl, char **data) {
     } else {
           T2Error("Failed to get Value for %s\n", TR181_DEVICE_CURRENT_WAN_IFNAME);
     }
+#endif
+#endif
     mtls_enable = isMtlsEnabled();
-#endif
-#endif
     // block the userdefined signal handlers before fork
     pthread_sigmask(SIG_BLOCK,&blocking_signal,NULL);
     if((childPid = fork()) < 0) {

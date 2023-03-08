@@ -113,6 +113,7 @@ static void initMutex() {
         pthread_mutex_init(&sMutex, &mutexAttr);
         pthread_mutex_init(&fMutex, &mutexAttr);
         pthread_mutex_init(&dMutex, &mutexAttr);
+        pthread_mutex_init(&eventMutex, &mutexAttr);
         pthread_mutex_init(&FileCacheMutex, &mutexAttr);
         pthread_mutex_init(&markerListMutex, &mutexAttr);
         pthread_mutex_init(&loggerMutex, &mutexAttr);

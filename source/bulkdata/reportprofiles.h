@@ -85,7 +85,7 @@ void ReportProfiles_ProcessReportProfilesBlob(cJSON *profiles_root , bool rprofi
 
 void ReportProfiles_Interrupt();
 
-void generateDcaReport();
+void generateDcaReport(bool isDelayed, bool isOnDemand);
 
 /* MSGPACK Declarations */
 

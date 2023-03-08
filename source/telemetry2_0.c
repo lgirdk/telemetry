@@ -82,7 +82,7 @@ T2ERROR initTelemetry()
         if(T2ERROR_SUCCESS == initXConfClient())
         {
             ret = T2ERROR_SUCCESS;
-            generateDcaReport();
+            generateDcaReport(true, false);
             T2Debug("%s --out\n", __FUNCTION__);
         }
         else

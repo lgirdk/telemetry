@@ -71,9 +71,10 @@ T2ERROR ProfileXConf_delete(ProfileXConf *profile);
 bool    ProfileXConf_isSet();
 bool    ProfileXConf_isNameEqual(char* profileName);
 void    ProfileXConf_updateMarkerComponentMap();
-void    ProfileXConf_notifyTimeout(bool isClearSeekMap);
+void    ProfileXConf_notifyTimeout(bool isClearSeekMap, bool isOnDemand);
 T2ERROR ProfileXConf_storeMarkerEvent(T2Event *eventInfo);
 char*   ProfileXconf_getName();
+T2ERROR ProfileXConf_terminateReport();
 
 
 #endif /* _PROFILE_H_ */

@@ -20,6 +20,7 @@
 #include <stdbool.h>
 #include <malloc.h>
 #include <string.h>
+#include <signal.h>
 #include <cjson/cJSON.h>
 
 #include "profilexconf.h"
@@ -44,6 +45,10 @@
 static bool initialized = false;
 static ProfileXConf *singleProfile = NULL;
 static pthread_mutex_t plMutex; /* TODO - we can remove plMutex most likely but firseck that CollectAndReport doesn't cause issue */
+
+static pid_t xconfReportPid;
+static bool isAbortTriggered = false ;
+static bool isOnDemandReport = false ;
 
 static char *getTimeStamp (void)
 {
@@ -256,8 +261,16 @@ static void* CollectAndReportXconf(void* data)
         }
         if(profile->protocol != NULL && strcmp(profile->protocol, "HTTP") == 0)
         {
-           ret = sendReportOverHTTP(profile->t2HTTPDest->URL, jsonReport);
+           // If a terminate is initiated, do not attempt to upload report
+           if(isAbortTriggered) {
+               T2Info("On-demand report upload has been aborted. Skip report upload \n");
+               ret = T2ERROR_FAILURE ;
+           } else {
+               T2Debug("Abort upload is not yet set.\n");
+               ret = sendReportOverHTTP(profile->t2HTTPDest->URL, jsonReport, &xconfReportPid);
+           }
 
+           xconfReportPid = -1 ;
            if(ret == T2ERROR_FAILURE)
            {
               if(profile->cachedReportList != NULL && Vector_Size(profile->cachedReportList) == MAX_CACHED_REPORTS)
@@ -299,6 +312,23 @@ static void* CollectAndReportXconf(void* data)
     {
         free(jsonReport);
         jsonReport = NULL;
+    }
+
+     // Notify status of upload in case of on demand report upload.
+     if(isOnDemandReport) {
+         if(ret == T2ERROR_FAILURE){
+             if(isAbortTriggered)
+                 publishReportUploadStatus("ABORTED");
+             else
+                 publishReportUploadStatus("FAILURE");
+         } else {
+             publishReportUploadStatus("SUCCESS");
+         }
+     }
+
+    // Reset the abort trigger flags
+    if(isAbortTriggered == true) {
+        isAbortTriggered = false ;
     }
 
     profile->reportInProgress = false;
@@ -610,7 +640,7 @@ char* ProfileXconf_getName() {
     return profileName;
 }
 
-void ProfileXConf_notifyTimeout(bool isClearSeekMap)
+void ProfileXConf_notifyTimeout(bool isClearSeekMap, bool isOnDemand)
 {
     T2Debug("%s ++in\n", __FUNCTION__);
 
@@ -622,6 +652,7 @@ void ProfileXConf_notifyTimeout(bool isClearSeekMap)
         pthread_mutex_unlock(&plMutex);
         return ;
     }
+    isOnDemandReport = isOnDemand;
     if(!singleProfile->reportInProgress)
     {
         singleProfile->bClearSeekMap = isClearSeekMap;
@@ -713,5 +744,36 @@ T2ERROR ProfileXConf_storeMarkerEvent(T2Event *eventInfo)
 
     T2Debug("%s --out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;
+}
+
+
+T2ERROR ProfileXConf_terminateReport(){
+
+    T2ERROR ret = T2ERROR_FAILURE;
+
+    if(!singleProfile) {
+        T2Error("Xconf profile is not set.\n");
+        return ret;
+    }
+
+    // Check whether any XconfReport is in progress
+    if(singleProfile->reportInProgress) {
+        isAbortTriggered = true;
+        // Check if a child pid is still alive
+        if((xconfReportPid > 0) && !kill(xconfReportPid, 0)) {
+            T2Info("Report upload in progress, terminating the forked reporting child : %d \n", xconfReportPid);
+            if(!kill(xconfReportPid, SIGKILL)) {
+                ret = T2ERROR_SUCCESS;
+            }
+        }else {
+            T2Info(" Report upload has net yet started, set the abort flag \n");
+            ret = T2ERROR_SUCCESS;
+        }
+    }else {
+        T2Info("No report generation in progress. No further action required for abort.\n");
+    }
+
+    return ret;
+
 }
 

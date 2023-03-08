@@ -427,7 +427,7 @@ static void* CollectAndReport(void* data)
                         n = pthread_cond_timedwait(&reportcond, &reportMutex, &_ts);
                         if(n == ETIMEDOUT) {
                             T2Info("TIMEOUT for maxUploadLatency of profile %s\n", profile->name);
-                            ret = sendReportOverHTTP(httpUrl, jsonReport);
+                            ret = sendReportOverHTTP(httpUrl, jsonReport, NULL);
                         }else {
                             T2Error("Profile : %s pthread_cond_timedwait ERROR!!!\n", profile->name);
                             pthread_mutex_unlock(&reportMutex);
@@ -441,7 +441,7 @@ static void* CollectAndReport(void* data)
                         pthread_mutex_unlock(&reportMutex);
                         pthread_cond_destroy(&reportcond);
                     }else {
-                        ret = sendReportOverHTTP(httpUrl, jsonReport);
+                        ret = sendReportOverHTTP(httpUrl, jsonReport, NULL);
                     }
                 } else {
                     if(profile->maxUploadLatency > 0 ){

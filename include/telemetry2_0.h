@@ -38,11 +38,15 @@ extern "C" {
 
 #define T2_MTLS_RFC "Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.Telemetry.MTLS.Enable"
 #define T2_ON_DEMAND_REPORT "Device.X_RDKCENTRAL-COM_T2.UploadDCMReport"
+#define T2_ABORT_ON_DEMAND_REPORT "Device.X_RDKCENTRAL-COM_T2.AbortDCMReport"
 
 #define INFINITE_TIMEOUT      (unsigned int)~0
 
 #define T2_RP       0
 #define T2_TEMP_RP  1
+
+#define ON_DEMAND_ACTION_UPLOAD "UPLOAD"
+#define ON_DEMAND_ACTION_ABORT "ABORT"
 
 typedef enum
 {

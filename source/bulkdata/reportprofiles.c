@@ -205,7 +205,7 @@ void ReportProfiles_TimeoutCb(char* profileName, bool isClearSeekMap)
 
     if(ProfileXConf_isNameEqual(profileName)) {
         T2Debug("isclearSeekmap = %s \n", isClearSeekMap ? "true":"false");
-        ProfileXConf_notifyTimeout(isClearSeekMap);
+        ProfileXConf_notifyTimeout(isClearSeekMap, false);
     }else {
         T2Debug("isclearSeekmap = %s \n", isClearSeekMap ? "true":"false");
         NotifyTimeout(profileName, isClearSeekMap);
@@ -378,8 +378,23 @@ void T2totalmem_calculate(){
 static void* reportOnDemand(void *input) {
     T2Debug("%s ++in\n", __FUNCTION__);
 
-    set_logdemand(true);
-    ReportProfiles_Interrupt();
+    char* action = (char*) input;
+    if(!input){
+        T2Warning("Input is NULL, no action specified \n");
+        return NULL ;
+    }
+
+    T2Debug("%s : action = %s \n", __FUNCTION__ , action);
+    if(!strncmp(action, ON_DEMAND_ACTION_UPLOAD, MAX_PROFILENAMES_LENGTH)) {
+        T2Info("Upload XCONF report on demand \n");
+        set_logdemand(true);
+        generateDcaReport(false, true);
+    } else if(!strncmp(action, ON_DEMAND_ACTION_ABORT, MAX_PROFILENAMES_LENGTH)){
+        T2Info("Abort report on demand \n");
+        ProfileXConf_terminateReport();
+    } else {
+        T2Warning("Unkown action - %s \n", action);
+    }
 
     return NULL;
     T2Debug("%s --out\n", __FUNCTION__);
@@ -430,8 +445,22 @@ T2ERROR initReportProfiles()
 #endif
             {
                 T2Debug("Enabling datamodel for report profiles in RBUS mode \n");
-                regDEforProfileDataModel(datamodel_processProfile, datamodel_MsgpackProcessProfile, datamodel_getSavedJsonProfilesasString,
-                        datamodel_getSavedMsgpackProfilesasString, profilemem_usage, reportOnDemand);
+                callBackHandlers *interfaceListForBus = NULL;
+                interfaceListForBus = (callBackHandlers*) malloc(sizeof(callBackHandlers));
+                if(interfaceListForBus) {
+                    interfaceListForBus->dmCallBack = datamodel_processProfile;
+                    interfaceListForBus->dmMsgPckCallBackHandler = datamodel_MsgpackProcessProfile;
+                    interfaceListForBus->dmSavedJsonCallBack = datamodel_getSavedJsonProfilesasString;
+                    interfaceListForBus->dmSavedMsgPackCallBack = datamodel_getSavedMsgpackProfilesasString;
+                    interfaceListForBus->pmCallBack = profilemem_usage;
+                    interfaceListForBus->reportonDemand = reportOnDemand;
+
+                    regDEforProfileDataModel(interfaceListForBus);
+
+                    free(interfaceListForBus);
+                } else{
+                    T2Error("Unable to allocate memory for callback handler registry\n");
+                }
             }
 #if defined(CCSP_SUPPORT_ENABLED)
             else {
@@ -488,15 +517,21 @@ T2ERROR initReportProfiles()
 }
 
 
-void generateDcaReport( ) {
-    T2Info("Triggering XCONF report generation during boot \n");
+void generateDcaReport(bool isDelayed, bool isOnDemand) {
+
     if(ProfileXConf_isSet()) {
         /**
          * Field requirement - Generate the first report at early stage after around 2 mins of stabilization during boot
          * This is to make it at par with legacy dca reporting pattern
          */
-        sleep(120);
-        ProfileXConf_notifyTimeout(false);
+        if(isDelayed) {
+            T2Info("Triggering XCONF report generation during boot with delay \n");
+            sleep(120);
+        } else {
+            T2Info("Triggering XCONF report generation \n");
+        }
+
+        ProfileXConf_notifyTimeout(false, isOnDemand);
     }
 }
 

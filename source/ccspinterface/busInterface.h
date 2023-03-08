@@ -62,6 +62,17 @@ typedef void (*profilememCallBack) (unsigned int *value);
 
 typedef void* (*dataModelReportOnDemandCallBack) (void* input);
 
+typedef struct _callbackhandler {
+    unsigned short numberOfHandlers;
+    dataModelCallBack dmCallBack;
+    dataModelMsgPckCallBack dmMsgPckCallBackHandler;
+    dataModelSavedJsonCallBack dmSavedJsonCallBack;
+    dataModelSavedMsgPackCallBack dmSavedMsgPackCallBack;
+    profilememCallBack pmCallBack;
+    dataModelReportOnDemandCallBack reportonDemand;
+} callBackHandlers;
+
+
 bool isRbusEnabled();
 
 T2ERROR getParameterValue(const char* paramName, char **paramValue);
@@ -77,14 +88,14 @@ T2ERROR regDEforCompEventList(const char* componentName, T2EventMarkerListCallba
 
 void unregisterDEforCompEventList();
 
-T2ERROR regDEforProfileDataModel(dataModelCallBack dmCallBack, dataModelMsgPckCallBack dmMsgPckCallBackHandler,
-        dataModelSavedJsonCallBack dmSavedJsonCallBack, dataModelSavedMsgPackCallBack dmSavedMsgPackCallBack, profilememCallBack pmCallBack,
-        dataModelReportOnDemandCallBack reportonDemand);
+T2ERROR regDEforProfileDataModel(callBackHandlers* cbHandlers);
 
 T2ERROR publishEventsProfileUpdates() ;
 
 T2ERROR busUninit() ;
 
 void freeComponentEventList(void* data);
+
+void publishReportUploadStatus(char* status);
 
 #endif /* SOURCE_CCSPINTERFACE_BUSINTERFACE_H_ */

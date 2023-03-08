@@ -190,7 +190,8 @@ static T2ERROR setPayload(CURL *curl, const char* payload)
     return T2ERROR_SUCCESS;
 }
 
-T2ERROR sendReportOverHTTP(char *httpUrl, char* payload) {
+
+T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid) {
     CURL *curl = NULL;
     FILE *fp = NULL;
     CURLcode res, code = CURLE_OK;
@@ -305,21 +306,32 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char* payload) {
         }
 
         close(sharedPipeFds[0]);
-        write(sharedPipeFds[1], &ret, sizeof(T2ERROR));
+        if( -1 == write(sharedPipeFds[1], &ret, sizeof(T2ERROR))){
+            T2Error("unable to write \n");
+        }
         close(sharedPipeFds[1]);
         exit(0);
 
     }else {
 
         T2ERROR ret = T2ERROR_FAILURE;
+        if(outForkedPid){
+            *outForkedPid = childPid ;
+        }
         // Use waitpid insted of wait we can have multiple child process
         waitpid(childPid,NULL,0);
         // Unblock the userdefined signal handlers before fork
         pthread_sigmask(SIG_UNBLOCK,&blocking_signal,NULL);
         // Get the return status via IPC from child process
-        close(sharedPipeFds[1]);
-        read(sharedPipeFds[0], &ret, sizeof(T2ERROR));
-        close(sharedPipeFds[0]);
+        if ( -1 == close(sharedPipeFds[1])){
+            T2Error("Failed in close \n");
+        }
+        if( -1 == read(sharedPipeFds[0], &ret, sizeof(T2ERROR))){
+            T2Error("unable to write \n");
+        }
+        if ( -1 == close(sharedPipeFds[0])){
+            T2Error("Failed in close \n");
+        }
         T2Debug("%s --out\n", __FUNCTION__);
         return ret;
     }
@@ -335,7 +347,7 @@ T2ERROR sendCachedReportsOverHTTP(char *httpUrl, Vector *reportList)
     while(Vector_Size(reportList) > 0)
     {
         char* payload = (char *)Vector_At(reportList, 0);
-        if(T2ERROR_FAILURE == sendReportOverHTTP(httpUrl, payload))
+        if(T2ERROR_FAILURE == sendReportOverHTTP(httpUrl, payload, NULL))
         {
             T2Error("Failed to send cached report, left with %lu reports in cache \n", (unsigned long)Vector_Size(reportList));
             return T2ERROR_FAILURE;

@@ -94,13 +94,13 @@ class ProtocolTestFixture : public ::testing::Test {
 TEST(SENDREPORTOVERHTTP, 1_NULL_CHECK)
 {
     char *payload = "This is a payload string";
-    EXPECT_EQ(T2ERROR_FAILURE, sendReportOverHTTP(NULL, payload));
+    EXPECT_EQ(T2ERROR_FAILURE, sendReportOverHTTP(NULL, payload, NULL));
 }
 
 TEST(SENDREPORTOVERHTTP, 2_NULL_CHECK)
 {
     char *url = "https://test.com";
-    EXPECT_EQ(T2ERROR_FAILURE, sendReportOverHTTP(url, NULL));
+    EXPECT_EQ(T2ERROR_FAILURE, sendReportOverHTTP(url, NULL, NULL));
 }
 
 TEST(SENDCACREPOVERHTTP, 1_NULL_CHECK)

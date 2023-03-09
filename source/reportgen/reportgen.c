@@ -21,6 +21,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <curl/curl.h>
+#include <stdbool.h>
 
 #include "reportgen.h"
 #include "t2log_wrapper.h"
@@ -29,6 +30,22 @@
 #include "dcautil.h"
 #include "busInterface.h"
 
+static bool checkForEmptyString( char* valueString ){
+    bool isEmpty = false ;
+    T2Debug("%s ++in \n", __FUNCTION__);
+
+    if(valueString){
+        // rbusInterface implementation explicitly adds string as "NULL" for parameters which doesn't exist on device
+        // Consider "NULL" string value as qualified for empty string
+        if(strlen(valueString) < 1 || !strncmp(valueString, " ", 1) || !strncmp(valueString, "NULL", 4)){
+            isEmpty = true ;
+        }
+    }else{
+        isEmpty = true;
+    }
+    T2Debug("%s --Out with return status as %s \n", __FUNCTION__, (isEmpty ? "true" : "false"));
+    return isEmpty;
+}
 
 void freeProfileValues(void *data)
 {
@@ -77,17 +94,23 @@ T2ERROR encodeParamResultInJSON(cJSON *valArray, Vector *paramNameList, Vector *
         T2Debug("Parameter Name : %s valueCount = %d\n", param->name, paramValCount);
         if(paramValCount == 0)
         {
-            cJSON *arrayItem = cJSON_CreateObject();
-            T2Info("Paramter was not successfully retrieved... \n");
-            cJSON_AddStringToObject(arrayItem, param->name, "NULL");
-            cJSON_AddItemToArray(valArray, arrayItem);
+            if(param->reportEmptyParam){
+                cJSON *arrayItem = cJSON_CreateObject();
+                T2Info("Paramter was not successfully retrieved... \n");
+                cJSON_AddStringToObject(arrayItem, param->name, "NULL");
+                cJSON_AddItemToArray(valArray, arrayItem);
+            }else{
+                continue ;
+            }
         }
         else if(paramValCount == 1) // Single value
         {
             if(paramValues[0]) {
-                cJSON *arrayItem = cJSON_CreateObject();
-                cJSON_AddStringToObject(arrayItem, param->name, paramValues[0]->parameterValue);
-                cJSON_AddItemToArray(valArray, arrayItem);
+                if(param->reportEmptyParam || !checkForEmptyString(paramValues[0]->parameterValue)) {
+                    cJSON *arrayItem = cJSON_CreateObject();
+                    cJSON_AddStringToObject(arrayItem, param->name, paramValues[0]->parameterValue);
+                    cJSON_AddItemToArray(valArray, arrayItem);
+                }
             }
         }
         else
@@ -95,17 +118,26 @@ T2ERROR encodeParamResultInJSON(cJSON *valArray, Vector *paramNameList, Vector *
             cJSON *valList = NULL;
             cJSON *valItem = NULL;
             int valIndex = 0;
+            bool isTableEmpty = true ;
             cJSON *arrayItem = cJSON_CreateObject();
             cJSON_AddItemToObject(arrayItem, param->name, valList = cJSON_CreateArray());
             for (; valIndex < paramValCount; valIndex++)
             {
                 if(paramValues[valIndex]){
-                    valItem = cJSON_CreateObject();
-                    cJSON_AddStringToObject(valItem, paramValues[valIndex]->parameterName, paramValues[valIndex]->parameterValue);
-                    cJSON_AddItemToArray(valList, valItem);
+                    if(param->reportEmptyParam || !checkForEmptyString(paramValues[0]->parameterValue)) {
+                        valItem = cJSON_CreateObject();
+                        cJSON_AddStringToObject(valItem, paramValues[valIndex]->parameterName, paramValues[valIndex]->parameterValue);
+                        cJSON_AddItemToArray(valList, valItem);
+                        isTableEmpty = false ;
+                    }
                 }
             }
-            cJSON_AddItemToArray(valArray, arrayItem);
+
+            if(!isTableEmpty) {
+                cJSON_AddItemToArray(valArray, arrayItem);
+            } else {
+                cJSON_free(arrayItem);
+            }
         }
     }
     T2Debug("%s --Out \n", __FUNCTION__);

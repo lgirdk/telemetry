@@ -54,6 +54,8 @@
 #include <fcntl.h>
 #include <mqueue.h>
 
+#define CCSP_T2_START_CFG_FILE "/usr/ccsp/telemetry/T2Agent.cfg"
+
 PDSLH_CPE_CONTROLLER_OBJECT     pDslhCpeController      = NULL;
 PCOMPONENT_COMMON_DM            g_pComponent_Common_Dm  = NULL;
 char                            g_Subsystem[32]         = {0};

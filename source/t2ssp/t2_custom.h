@@ -66,9 +66,6 @@
                       GLOBAL CUSTOM DEFINITIONS
 **********************************************************************/
 
-#define MESSAGE_BUS_CONFIG_FILE                    "msg_daemon.cfg"
-#define CCSP_T2_START_CFG_FILE                     "/usr/ccsp/telemetry/T2Agent.cfg"
-
 int initTR181_dm();
 int unInitTR181_dm();
 

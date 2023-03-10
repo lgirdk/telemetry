@@ -177,10 +177,8 @@ ssp_engage_t2
 {
     ANSC_STATUS                     returnStatus    = ANSC_STATUS_SUCCESS;
     char                            CrName[256]     = {0};
-    PCCSP_DM_XML_CFG_LIST           pXmlCfgList     = NULL;
 
     g_pComponent_Common_Dm->Health = CCSP_COMMON_COMPONENT_HEALTH_Yellow;
-
 
     if ( pT2CcdIf )
     {
@@ -196,13 +194,6 @@ ssp_engage_t2
     pDslhCpeController->Engage((ANSC_HANDLE)pDslhCpeController);
 
      _ansc_snprintf(CrName, sizeof(CrName), "%s%s", g_Subsystem, CCSP_DBUS_INTERFACE_CR);
-
-    returnStatus = CcspComponentLoadDmXmlList(pStartCfg->DmXmlCfgFileName, &pXmlCfgList);
-
-    if ( returnStatus != ANSC_STATUS_SUCCESS )
-    {
-        return  returnStatus;
-    }
 
     returnStatus =
         pDslhCpeController->RegisterCcspDataModel2
@@ -226,8 +217,6 @@ ssp_engage_t2
     {
 	CcspTraceWarning(("T2:%s Telemetry 2.0 registartion with CR fails...\n",__FUNCTION__));
     }
-
-    AnscFreeMemory(pXmlCfgList);
 
     return ANSC_STATUS_SUCCESS;
 }

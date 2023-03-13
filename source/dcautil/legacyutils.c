@@ -45,7 +45,10 @@ static pthread_mutex_t pSeekLock = PTHREAD_MUTEX_INITIALIZER;
  * Start of functions dealing with log seek values
  */
 GrepSeekProfile *addToProfileSeekMap(char* profileName){
-
+    if(profileName == NULL){
+        T2Error("profileName is NULL\n");
+        return NULL;
+    }
     T2Debug("%s ++in for profileName = %s \n", __FUNCTION__, profileName);
     const char *path = "/tmp/telemetry_logupload";
     struct stat st;
@@ -147,6 +150,10 @@ void removeProfileFromSeekMap(char *profileName) {
 GrepSeekProfile *getLogSeekMapForProfile(char* profileName)
 {
     T2Debug("%s ++in\n", __FUNCTION__);
+    if(profileName == NULL){
+        T2Error("profileName is NULL for getLogSeekMap\n");
+        return NULL;
+    }
     GrepSeekProfile* gsProfile = NULL ;
     T2Debug("Get profileseek map for %s \n", profileName);
     pthread_mutex_lock(&pSeekLock);
@@ -210,6 +217,10 @@ static int getLogSeekValue(hash_map_t *logSeekMap, char *name, long *seek_value)
  */
 T2ERROR updateLogSeek(hash_map_t *logSeekMap, char* logFileName) {
     T2Debug("%s ++in\n", __FUNCTION__);
+    if(logSeekMap == NULL || logFileName == NULL){
+       T2Error("Invalid or NULL arguments\n");
+       return T2ERROR_FAILURE;
+    }
 
     pthread_mutex_lock(&pSeekLock);
     if(NULL != logSeekMap) {
@@ -248,6 +259,10 @@ int getLoadAvg(Vector* grepResultList) {
     T2Debug("%s ++in \n", __FUNCTION__);
     FILE *fp;
     char str[LEN + 1];
+    if(grepResultList == NULL){
+        T2Debug("grepResultList is NULL\n");
+        return 0;
+    }
 
     if(NULL == (fp = fopen("/proc/loadavg", "r"))) {
         T2Debug("Error in opening /proc/loadavg file");
@@ -369,6 +384,10 @@ char *getLogLine(hash_map_t *logSeekMap, char *buf, int buflen, char *name) {
     if((NULL == PERSISTENT_PATH) || (NULL == LOG_PATH) || (NULL == name)) {
         T2Debug("Path variables are empty");
         return NULL;
+    }
+    if(logSeekMap == NULL || buf == NULL){
+         T2Debug("Invalid arguments or NULL arguments\n");
+         return NULL;
     }
 
     char *logpath = LOG_PATH;

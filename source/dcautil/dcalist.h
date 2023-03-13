@@ -38,8 +38,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-
 #include <glib.h>
+
+#include "vector.h"
 
 typedef enum {
   OCCURENCE,
@@ -62,7 +63,9 @@ int insertPCNode(GList **pch, char *pattern, char *header, DType_t dtype, int co
 pcdata_t* searchPCNode(GList *pch, char *pattern);
 void printPCNodes(GList *pch);
 void clearPCNodes(GList **pch);
-
+gint  comparePattern(gconstpointer np, gconstpointer sp);
+void print_pc_node(gpointer data, gpointer user_data);
+int processTopPattern(char *logfile, GList *pchead, int pcIndex, Vector* grepResultList);
 
 /** @} */
 

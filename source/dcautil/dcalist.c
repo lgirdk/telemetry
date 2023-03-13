@@ -102,9 +102,9 @@ int insertPCNode(GList **pch, char *pattern, char *header, DType_t dtype, int co
 gint comparePattern(gconstpointer np, gconstpointer sp)
 {
   pcdata_t *tmp = (pcdata_t *)np;
-  if (tmp && tmp->pattern && NULL != strstr(sp, tmp->pattern)) {
+  if (tmp && tmp->pattern && (NULL != sp) && (NULL != strstr(sp, tmp->pattern)))  {
         return 0;
-    }
+  }
   return -1;
 }
 
@@ -119,6 +119,9 @@ gint comparePattern(gconstpointer np, gconstpointer sp)
 pcdata_t* searchPCNode(GList *pch, char *pattern)
 {
   GList *fnode = NULL;
+  if(pch == NULL && pattern == NULL){
+      return NULL;
+  }
   fnode = g_list_find_custom(pch, pattern, (GCompareFunc)comparePattern);
   if (NULL != fnode)
     return fnode->data;
@@ -134,6 +137,9 @@ pcdata_t* searchPCNode(GList *pch, char *pattern)
  */
 void print_pc_node(gpointer data, gpointer user_data)
 {
+  if(data == NULL){
+      return;
+  }
   pcdata_t *node = (pcdata_t *)data;
   if (node) {
     T2Debug("node pattern:%s, header:%s", node->pattern, node->header);
@@ -152,6 +158,9 @@ void print_pc_node(gpointer data, gpointer user_data)
  */
 void printPCNodes(GList *pch)
 {
+  if(pch == NULL){
+      return;
+  }
   g_list_foreach(pch, (GFunc)print_pc_node, NULL);
 }
 
@@ -190,6 +199,8 @@ void printPCNodes(GList *pch)
  */
 void clearPCNodes(GList **pch)
 {
+  if(pch == NULL)
+      return;
   g_list_free_full(*pch, &freePCNode);
 }
 

@@ -74,6 +74,10 @@ static pthread_mutex_t dcaMutex = PTHREAD_MUTEX_INITIALIZER;
  */
 int processTopPattern(char *logfile, GList *pchead, int pcIndex, Vector* grepResultList) {
     T2Debug("%s ++in\n", __FUNCTION__);
+    if(pchead == NULL || grepResultList == NULL || logfile == NULL){
+         T2Error("Invalid arguments for %s\n", __FUNCTION__);
+         return -1;
+    }
     GList *tlist = pchead;
     pcdata_t *tmp = NULL;
     while(NULL != tlist) {
@@ -152,7 +156,10 @@ static T2ERROR processTr181Objects(char *logfile, GList *pchead, int pcIndex) {
     pcdata_t *tmp = NULL;
     char tr181objBuff[TR181BUF_LENGTH + 15] = { '\0' };
     char *tck, *first_tck = NULL;
-
+    if(pchead == NULL){
+        T2Error("pchead is NULL for %s\n", __FUNCTION__);
+        return T2ERROR_FAILURE;
+    }
     //Loop through the given list and fill the data field of each node
     for( tlist = pchead; tlist != NULL; tlist = g_list_next(tlist) ) {
         char* tr181dataBuff = NULL;
@@ -225,7 +232,10 @@ static T2ERROR processTr181Objects(char *logfile, GList *pchead, int pcIndex) {
  * @return Returns status of operation.
  */
 void addToJson(GList *pchead) {
-
+    if(pchead == NULL){
+        T2Error("pchead is NULL for %s\n", __FUNCTION__);
+        return;
+    }
     T2Debug("%s ++in\n", __FUNCTION__);
     GList *tlist = pchead;
     pcdata_t *tmp = NULL;
@@ -262,6 +272,10 @@ void addToJson(GList *pchead) {
 static int addToVector(GList *pchead, Vector* grepResultList) {
 
     T2Debug("%s ++in\n", __FUNCTION__);
+    if(pchead == NULL || grepResultList == NULL){
+        T2Error("Inavlid arguments for %s\n", __FUNCTION__);
+        return -1;
+    }
     GList *tlist = pchead;
     pcdata_t *tmp = NULL;
 
@@ -281,7 +295,7 @@ static int addToVector(GList *pchead, Vector* grepResultList) {
                         GrepResult* grepResult = (GrepResult*) malloc(sizeof(GrepResult));
                         grepResult->markerName = strdup(tmp->header);
                         grepResult->markerValue = strdup(tmp_str);
-			if(tmp->header){
+                        if(tmp->header){
                                 free(tmp->header);
                                 tmp->header = NULL;
                         }
@@ -290,17 +304,17 @@ static int addToVector(GList *pchead, Vector* grepResultList) {
                     }
                 }else if(tmp->d_type == STR) {
                     if(NULL != tmp->data && (strcmp(tmp->data, "0") != 0)) {
-                    	GrepResult* grepResult = (GrepResult*) malloc(sizeof(GrepResult));
+                        GrepResult* grepResult = (GrepResult*) malloc(sizeof(GrepResult));
                         grepResult->markerName = strdup(tmp->header);
                         grepResult->markerValue = strdup(tmp->data);
-			if(tmp->header){
+                        if(tmp->header){
                                 free(tmp->header);
                                 tmp->header = NULL;
                         }
-			if(tmp->data){
-				free(tmp->data);
-				tmp->data = NULL;
-			}
+                        if(tmp->data){
+                               free(tmp->data);
+                               tmp->data = NULL;
+                        }
                         T2Debug("Adding STR to result list %s : %s \n", grepResult->markerName, grepResult->markerValue);
                         Vector_PushBack(grepResultList, grepResult);
 
@@ -328,6 +342,10 @@ static int addToVector(GList *pchead, Vector* grepResultList) {
 static int getSplitParameterValue(char *line, pcdata_t *pcnode) {
 
     char *strFound = NULL;
+    if(line == NULL || pcnode == NULL){
+         T2Error("Invalid arguments for %s\n", __FUNCTION__);
+         return -1;
+    }
     strFound = strstr(line, pcnode->pattern);
 
     if(strFound != NULL) {
@@ -371,6 +389,10 @@ int getErrorCode(char *str, char *ec) {
 
     T2Debug("%s ++in\n", __FUNCTION__);
     int i = 0, j = 0, len = strlen(str);
+    if(str == NULL){
+       T2Error("Str is NULL for %s\n", __FUNCTION__);
+       return -1;
+    }
     char tmpEC[LEN] = { 0 };
     while(str[i] != '\0') {
         if(len >= 4 && str[i] == 'R' && str[i + 1] == 'D' && str[i + 2] == 'K' && str[i + 3] == '-') {
@@ -547,10 +569,11 @@ static int processPattern(char **prev_file, char *logfile, GList **rdkec_head, G
 char *strSplit(char *str, char *delim) {
     static char *next_str;
     char *last = NULL;
-
-    if(NULL != str) {
-        next_str = str;
+    if(delim == NULL || str == NULL){
+       return NULL;
     }
+    next_str = str;
+    
 
     if(NULL == next_str) {
         return next_str;

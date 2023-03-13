@@ -180,6 +180,10 @@ T2ERROR saveGrepConfig(char *name, Vector* grepMarkerList) {
         T2Info("Notified interchip to pick latest config \n");
         returnStatus = T2ERROR_SUCCESS ;
     }
+    else{
+        T2Error("Cannot open the file %s\n",TELEMTERY_LOG_GREP_CONF);
+        return T2ERROR_FAILURE;
+    }
 
     pthread_mutex_unlock(&pInterChipLock);
     return returnStatus ;
@@ -189,7 +193,10 @@ T2ERROR saveGrepConfig(char *name, Vector* grepMarkerList) {
 T2ERROR
 getGrepResults (char *profileName, Vector *markerList, Vector **grepResultList, bool isClearSeekMap) {
     T2Debug("%s ++in\n", __FUNCTION__);
-    
+    if(profileName == NULL || markerList == NULL || grepResultList == NULL){
+        T2Error("Invalid Args or Args are NULL\n");
+        return T2ERROR_FAILURE;
+    }
 	#ifdef  _COSA_INTEL_XB3_ARM_  // Get the grep results from atom in case of XB3 platforms
         cJSON* dcaResultObj = NULL;
         // Notify atom and wait for results from atom

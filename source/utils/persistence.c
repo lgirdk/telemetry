@@ -158,7 +158,10 @@ T2ERROR saveConfigToFile(const char* path, const char *profileName, const char* 
         return T2ERROR_FAILURE;
     }
     fprintf(fp, "%s", configuration);
-    fclose(fp);
+    if(fclose(fp) != 0){
+          T2Error("Unable to close file : %s\n", filePath);
+          return T2ERROR_FAILURE;
+    }
     T2Debug("%s --out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;
 }
@@ -181,10 +184,13 @@ T2ERROR MsgPackSaveConfig(const char* path, const char *fileName, const char *ms
     fp = fopen(filePath, "wb");
     if (NULL == fp) {
         T2Error("%s file open is failed \n", filePath);
-	return T2ERROR_FAILURE;
+        return T2ERROR_FAILURE;
     }
     fwrite(msgpack_blob, sizeof(char), blob_size, fp);
-    fclose(fp); 
+    if(fclose(fp) != 0){
+         T2Error("%s file close is failed \n", filePath);
+         return T2ERROR_FAILURE;
+    }
     return T2ERROR_SUCCESS;
 }
 
@@ -198,7 +204,7 @@ void clearPersistenceFolder(const char* path)
     T2Debug("Executing command : rm -f %s* \n", path);
     if (v_secure_system("sh -c 'rm -rf %s*'",path) != 0) {
         T2Error("%s,%d:command failed\n", __FUNCTION__ , __LINE__);
-	return;
+        return;
     }
     #else
     char command[256] = {'\0'};
@@ -206,7 +212,7 @@ void clearPersistenceFolder(const char* path)
     T2Debug("Executing command : %s\n", command);
     if (system(command) != 0) {
         T2Error("%s,%d: %s command failed\n", __FUNCTION__ , __LINE__, command);
-	return;
+        return;
     }
     #endif
 
@@ -338,7 +344,9 @@ T2ERROR populateCachedReportList(const char *profileName, Vector *outReportList)
         if (remove(absFilePath) == 0){
             T2Info("Remove cached report file - %s \n", absFilePath);
         }else{
-            T2Error("Unable to remove cached report file - %s \n", absFilePath);
+            T2Error("Unable to remove cached report file - %s \n", absFilePath);       
+            pthread_mutex_unlock(&persistCachedReportMutex);
+            return T2ERROR_FAILURE;
         }
         ret = T2ERROR_SUCCESS ;
     }else {

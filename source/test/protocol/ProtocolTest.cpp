@@ -27,6 +27,7 @@ extern "C" {
 #include <utils/t2MtlsUtils.h>
 #include <signal.h>
 #include <protocol/http/curlinterface.h>
+#include <protocol/http/curlinterface.c>
 #include <protocol/rbusMethod/rbusmethodinterface.h>
 #include <bulkdata/reportprofiles.h>
 #include <ccspinterface/busInterface.h>
@@ -49,24 +50,24 @@ using ::testing::_;
 using ::testing::Return;
 using ::testing::StrEq;
 
-SystemMock * g_ssystemMock = NULL; 
-FileIOMock * g_ffileIOMock = NULL;
+SystemMock * g_psystemMock = NULL; 
+FileIOMock * g_pfileIOMock = NULL;
 
 class ProtocolTestFixture : public ::testing::Test {
     protected:
-        SystemMock mockedSsystem;
-        FileIOMock mockedFfileIO;
+        SystemMock mockedpsystem;
+        FileIOMock mockedpfileIO;
 
         ProtocolTestFixture()
         {
-            g_ssystemMock = &mockedSsystem;
-            g_ffileIOMock = &mockedFfileIO;
+            g_psystemMock = &mockedpsystem;
+            g_pfileIOMock = &mockedpfileIO;
 
         }
         virtual ~ProtocolTestFixture()
         {
-            g_ssystemMock = NULL;
-            g_ffileIOMock = NULL;
+            g_psystemMock = NULL;
+            g_pfileIOMock = NULL;
         }
 
          virtual void SetUp()
@@ -90,6 +91,72 @@ class ProtocolTestFixture : public ::testing::Test {
         }
 
 };
+
+class ProtocolFileTestFixture : public ::testing::Test {
+    protected:
+        FileIOMock mockedpfileIO;
+
+        ProtocolFileTestFixture()
+        {
+            g_pfileIOMock = &mockedpfileIO;
+
+        }
+        virtual ~ProtocolFileTestFixture()
+        {
+            g_pfileIOMock = NULL;
+        }
+
+         virtual void SetUp()
+        {
+            printf("%s\n", __func__);
+        }
+
+        virtual void TearDown()
+        {
+            printf("%s\n", __func__);
+        }
+
+        static void SetUpTestCase()
+        {
+            printf("%s\n", __func__);
+        }
+
+        static void TearDownTestCase()
+        {
+            printf("%s\n", __func__);
+        }
+
+};
+
+TEST(SETHEADER, CURL_NULL)
+{
+    char* destURL = "https://google.com";
+    EXPECT_EQ(T2ERROR_FAILURE, setHeader(NULL, destURL, NULL));
+}
+
+TEST(SETHEADER, DEST_NULL)
+{
+    CURL* curl = curl_easy_init();
+     EXPECT_EQ(T2ERROR_FAILURE, setHeader(curl, NULL, NULL));
+}
+
+const char* certFile = "certs/etyeu.txt";
+const char* passwd = "euyeurywi";
+CURL* curl = curl_easy_init();
+TEST(SETMTLSHEADERS, NULL_CHECK)
+{
+   EXPECT_EQ(T2ERROR_FAILURE,  setMtlsHeaders(NULL, certFile, passwd));
+   EXPECT_EQ(T2ERROR_FAILURE,  setMtlsHeaders(curl, NULL, passwd));
+   EXPECT_EQ(T2ERROR_FAILURE,  setMtlsHeaders(curl, certFile, NULL));
+}
+
+const char* payload = "This is a payload string";
+TEST(SETPAYLOAD, NULL_CHECK)
+{
+   EXPECT_EQ(T2ERROR_FAILURE, setPayload(NULL, payload));
+   EXPECT_EQ(T2ERROR_FAILURE, setPayload(curl, NULL));
+}
+
 
 TEST(SENDREPORTOVERHTTP, 1_NULL_CHECK)
 {
@@ -126,7 +193,7 @@ TEST(SENDRBUDREPORTOVERRBUS, 1_NULL_CHECK)
     Vector_Destroy(inputParams, free);
 }
 
-TEST(SENDRBUDREPORTOVERRBUS,2_NULL_CHECK)
+TEST(SENDRBUDREPORTOVERRBUS, 2_NULL_CHECK)
 {
      char* method = "RBUS_METHOD";
      char* payload = "This is a payload string";
@@ -157,3 +224,68 @@ TEST(SENDRBUSCACHEREPORTOVERRBUS, NULL_CHECK)
     Vector_Destroy(inputParams, free);
     Vector_Destroy(reportList, free);
 }
+#if 0
+
+TEST_F(ProtocolFileTestFixture, WRITETOFILE)
+{
+     char str[] = "This is tutorialspoint.com";
+     FILE* fp = NULL;
+     fp = fopen( "/tmp/file.txt" , "w" );
+     EXPECT_CALL(*g_pfileIOMock, fwrite(_, _, _, _))
+           .Times(1)
+           .WillOnce(Return(0));
+     EXPECT_EQ(0, writeToFile(str, 0, 0, fp));
+}
+
+
+TEST_F(ProtocolFileTestFixture, SENDREPORTOVERHTTP)
+{
+     char* httpURL = "https://stbrtl.r53.xcal.tv";
+     char* payload = "This is a payload string";
+     EXPECT_CALL(*g_pfileIOMock, pipe(_))
+             .Times(1)
+             .WillOnce(Return(-1));
+     EXPECT_EQ(T2ERROR_FAILURE, sendReportOverHTTP(httpURL, payload, NULL));
+}
+
+TEST_F(ProtocolFileTestFixture, SENDREPORTOVERHTTP1)
+{
+     char* httpURL = "https://stbrtl.r53.xcal.tv";
+     char* payload = "This is a payload string";
+     CURL *curl = (CURL*)NULL;
+     EXPECT_CALL(*g_pfileIOMock, pipe(_))
+             .Times(1)
+             .WillOnce(Return(0));
+     EXPECT_CALL(*g_pfileIOMock, curl_easy_init())
+             .Times(1)
+             .WillOnce(::testing::ReturnNull());
+     EXPECT_EQ(T2ERROR_FAILURE, sendReportOverHTTP(httpURL, payload, NULL));
+}
+
+TEST_F(ProtocolFileTestFixture, SENDREPORTOVERHTTP2)
+{
+     char* httpURL = "https://stbrtl.r53.xcal.tv";
+     char* payload = "This is a payload string";
+     CURL *curl = (CURL*)0xffffffff;
+     FILE* fp = (FILE*)0xffffffff;
+      CURLcode code = CURLE_OK;
+     
+     EXPECT_CALL(*g_pfileIOMock, pipe(_))
+             .Times(1)
+             .WillOnce(Return(0));
+     EXPECT_CALL(*g_pfileIOMock, curl_easy_init())
+             .Times(1)
+             .WillOnce(Return(curl));
+
+     EXPECT_CALL(*g_pfileIOMock, fopen(_,_))
+             .Times(1)
+             .WillOnce(Return(fp));
+     EXPECT_CALL(*g_pfileIOMock, curl_easy_perform(_))
+             .Times(1)
+             .WillOnce(Return(code));
+     EXPECT_CALL(*g_pfileIOMock, fclose(_))
+              .Times(1)
+              .WillOnce(Return(0));
+     sendReportOverHTTP(httpURL, payload, NULL);
+}
+#endif

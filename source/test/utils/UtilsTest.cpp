@@ -29,6 +29,77 @@ using ::testing::StrEq;
 SystemMock * g_SystemMock = NULL;  /* This is the actual definition of the mock obj */
 FileIOMock * g_fileIOMock = NULL;
 
+
+class UtilsFileTestFixture : public ::testing::Test {
+    protected:
+        FileIOMock mockedFileIO;
+
+        UtilsFileTestFixture()
+        {
+            g_fileIOMock = &mockedFileIO;
+
+        }
+        virtual ~UtilsFileTestFixture()
+        {
+            g_fileIOMock = NULL;
+        }
+
+        virtual void SetUp()
+        {
+            printf("%s\n", __func__);
+        }
+
+        virtual void TearDown()
+        {
+            printf("%s\n", __func__);
+        }
+
+        static void SetUpTestCase()
+        {
+            printf("%s\n", __func__);
+        }
+
+        static void TearDownTestCase()
+        {
+            printf("%s\n", __func__);
+        }
+};
+
+class UtilsSystemTestFixture : public ::testing::Test {
+    protected:
+        SystemMock mockedSystem;
+
+        UtilsSystemTestFixture()
+        {
+            g_SystemMock = &mockedSystem;
+
+        }
+        virtual ~UtilsSystemTestFixture()
+        {
+            g_SystemMock = NULL;
+        }
+
+        virtual void SetUp()
+        {
+            printf("%s\n", __func__);
+        }
+
+        virtual void TearDown()
+        {
+            printf("%s\n", __func__);
+        }
+
+        static void SetUpTestCase()
+        {
+            printf("%s\n", __func__);
+        }
+
+        static void TearDownTestCase()
+        {
+            printf("%s\n", __func__);
+        }
+};
+
 class UtilsTestFixture : public ::testing::Test {
     protected:
         SystemMock mockedSystem;
@@ -119,7 +190,7 @@ TEST(VECTOR_PUSHBACK, VECTOR_ITEM_NULL)
 {
     Vector_Create(&config);
      EXPECT_EQ(T2ERROR_INVALID_ARGS, Vector_PushBack(config, NULL));
-     //Deletion of vector 
+     //Deletion of vector
      Vector_Destroy(config,free);
 }
 
@@ -237,7 +308,7 @@ TEST(VECTOR_SORT, VECTOR_3_NULL)
      Vector_Destroy(config, free);
 }
 
-//QUEUE TESTING 
+//QUEUE TESTING
 //inputs for queue
 
 char* teststr1 = "SYS_TELEMETRY_TEST2";
@@ -250,7 +321,7 @@ void check_queue(queue_t* q1)
 	  throw std::overflow_error("queue is NULL");
      }
 }
-        
+
 
 TEST(QUEUE_CREATE, check_queue)
 {
@@ -434,7 +505,7 @@ TEST(HASH_MAP_GET_FIRST, HASH_MAP_VALUE_NULL)
 
 TEST(HASH_MAP_GET_NEXT, HASH_MAP_1_NULL)
 {
-    
+
     EXPECT_EQ(NULL, hash_map_get_next(NULL, (void *)teststring1));
 }
 
@@ -471,7 +542,7 @@ TEST(HASH_MAP_CLEAR1, check_markercompmap)
 
 TEST(HASH_MAP_CLEAR2, check_markercompmap)
 {
-   hash_map_clear(markerCompMap, free);	
+   hash_map_clear(markerCompMap, free);
    EXPECT_NO_THROW(check_markercompmap(markerCompMap));
 }
 
@@ -518,7 +589,7 @@ TEST(SAVECONFIGTOFILE, CONFIG_NULL_ALL_NULL)
 TEST(SAVECONFIGTOFILE, PROFILENAME_SIZE)
 {
 
-     char* path = NULL; 
+     char* path = NULL;
      path = (char*) malloc(130);
      memset(path, 0, 130);
      if(path){
@@ -545,196 +616,160 @@ TEST(POPULATECACREPORT, ARGS_NULL)
 {
      EXPECT_EQ(T2ERROR_FAILURE,  populateCachedReportList(NULL, NULL));
 }
-#if 0
-static Vector* configlist = NULL;
-TEST_F(UtilsTestFixture, FETCHLOCALCONFIGS_FUNC1)
+
+
+Vector* configlist = NULL;
+
+TEST_F(UtilsFileTestFixture, FETCHLOCALCONFIGS_FUNC1)
 {
     const char* path = "/tmp/profiles";
-    FileIOMock fileIoMock ;
+    DIR *dir = NULL ;
+
     Vector_Create(&configlist);
     Vector_PushBack(configlist, (void *)strdup(marker1));
     EXPECT_CALL(*g_fileIOMock, opendir(_))
            .Times(1)
-           .WillOnce(::testing::ReturnNull());
+           .WillOnce(::testing::Return(dir));
 
     EXPECT_CALL(*g_fileIOMock, mkdir(_, _))
            .Times(1)
            .WillOnce(Return(-1));
 
-    EXPECT_EQ(T2ERROR_FAILURE, fetchLocalConfigs(path, configlist));
+    ASSERT_EQ(T2ERROR_FAILURE, fetchLocalConfigs(path, configlist));
     Vector_Destroy(configlist, free);
 }
 
-TEST_F(UtilsTestFixture, CONFIG_FROM_SSA)
+TEST_F(UtilsSystemTestFixture, CONFIG_FROM_SSA)
 {
     char* buff = NULL ;
     char *dynanixCertLocation = "/tmp/tests.txt";
     char *dynanixCertKey = "hello";
     const char* dynamicMtlsCert = "/nvram/device";
-    SystemMock systemMock;
     buff = (char*) malloc(128);
     memset(buff, '\0' , 128);
     if(buff) {
-        EXPECT_CALL(*g_SystemMock, access(StrEq(dynamicMtlsCert),_))
+        EXPECT_CALL(*g_SystemMock, access(_,_))
                 .Times(2)
                 .WillOnce(Return(-1))
-		.WillOnce(Return(-1));
+                .WillOnce(Return(-1));
         EXPECT_EQ(T2ERROR_FAILURE, getMtlsCerts(&dynanixCertLocation, &dynanixCertKey));
         free(buff);
     }
 
 }
-
-
-TEST_F(UtilsTestFixture, FETCHLOCALCONFIGS_FUNC2)
-{
-    const char* path = "/nvram/.t2persistentfolder";
-    DIR* mockDirFd = (DIR *)0xffffffff;
-    FileIOMock fileIoMock ;
-    SystemMock systemMock;
-    Vector_Create(&configlist);
-    Vector_PushBack(configlist, (void *)strdup(marker1));
-
-    EXPECT_CALL(*g_fileIOMock, opendir(_))
-           .Times(1)
-           .WillOnce(Return(mockDirFd));
-
-    EXPECT_CALL(*g_SystemMock, v_secure_system(_))
-                    .Times(1)
-                    .WillOnce(Return(0));
-
-    EXPECT_CALL(*g_fileIOMock, closedir(_))
-           .Times(1)
-           .WillOnce(Return(0));
-
-    EXPECT_EQ(T2ERROR_FAILURE, fetchLocalConfigs(path, configlist));
-    Vector_Destroy(configlist, free);
-}
+    
 
 TEST_F(UtilsTestFixture, FETCHLOCALCONFIGS_FUNC2)
 {
-    const char* path = "/tmp/t2reportprofiles/";
+    const char* path = "/tmp/t2reportprofiles";
     DIR* mockDirFd = (DIR *)0xffffffff;
-    FileIOMock fileIoMock ;
-    //SystemMock systemMock;
     Vector_Create(&configlist);
     Vector_PushBack(configlist, (void *)strdup(marker1));
 
     EXPECT_CALL(*g_fileIOMock, opendir(_))
            .Times(1)
            .WillOnce(Return(mockDirFd));
-
-  //  EXPECT_CALL(*g_SystemMock, v_secure_system(_))
-    //                .Times(1)
-      //              .WillOnce(Return(0));
 
     EXPECT_CALL(*g_fileIOMock, closedir(_))
            .Times(1)
-           .WillOnce(Return(0));
+           .WillOnce(Return(-1));
 
-    EXPECT_EQ(T2ERROR_SUCCESS, fetchLocalConfigs(path, configlist));
+    ASSERT_EQ(T2ERROR_SUCCESS, fetchLocalConfigs(path, configlist));
     Vector_Destroy(configlist, free);
 }
 
 
-TEST_F(UtilsTestFixture, FETCHLOCALCONFIGS_FUNC3)
-{
-    const char* path = "/tmp/profiles";
-    DIR* mockDirFd = (DIR *)0xffffffff;
-    FileIOMock fileIoMock ;
-    Vector_Create(&configlist);
-    Vector_PushBack(configlist, (void *)strdup(marker1));
-
-    EXPECT_CALL(*g_fileIOMock, opendir(_))
-           .Times(1)
-           .WillOnce(Return(mockDirFd));
-     EXPECT_CALL(*g_fileIOMock, readdir(_))
-            .Times(1)
-            .WillOnce(ReturnNull());
-    fetchLocalConfigs(path, configlist);
-    Vector_Destroy(configlist, free);
-}
-
-TEST_F(UtilsTestFixture, FETCHLOCALCONFIGS_FUNC4)
-{
-    const char* path = "/nvram/.t2persistentfolder/";
-    DIR* mockDirFd = (DIR *)0xffffffff;
-    struct dirent* mockreadDir = (struct dirent *)0xffffffff;
-    FILE* mockfp = (FILE *)0xffffffff;
-    FileIOMock fileIoMock;
-    Vector_Create(&configlist);
-    Vector_PushBack(configlist, (void *)marker1);
-    Vector_PushBack(configlist, (void *)marker2);
-    EXPECT_CALL(*g_fileIOMock, opendir(_))
-           .Times(1)
-	   .WillOnce(Return(mockDirFd));
-    EXPECT_CALL(*g_fileIOMock, readdir(_))
-            .Times(1)
-            .WillOnce(Return(mockreadDir));
-    EXPECT_CALL(*g_fileIOMock, fstat(_,_))
-            .Times(1)
-            .WillOnce(Return(0));
-    EXPECT_CALL(*g_fileIOMock, open(_,_))
-             .Times(1);
-             .WillOnce(Return(0));
-    EXPECT_CALL(*g_fileIOMock, close(_))
-             .Times(1);
-             .WillOnce(Return(0));
-   Vector_Destroy(configlist,free);
-}
-
-
-TEST_F(UtilsTestFixture, SAVECONFITOFILE)
+TEST_F(UtilsFileTestFixture, SAVECONFITOFILE)
 {
      const char* filepath = "/nvram/.t2reportprofiles";
      const char* profilename = "Profile_1";
      const char* config = "This is a config string";
-     FILE* mockfp = (FILE *)0xffffffff;
+     FILE* mockfp = NULL;
      EXPECT_CALL(*g_fileIOMock, fopen(_,_))
             .Times(1)
             .WillOnce(Return(mockfp));
-     EXPECT_CALL(*g_fileIOMock, fclose(_))
+     ASSERT_EQ(T2ERROR_FAILURE, saveConfigToFile(filepath, profilename, config));
+}
+
+TEST_F(UtilsFileTestFixture, MSGPACKSAVECONFIG)
+{
+     const char* path = "/nvram/.t2reportprofiles";
+     const char* fileName = "Profile1";
+     const char* msgpack = "3wAAAAGocHJvZmlsZXPdAAAABN8AAAADpG5hbWW1UkRLQl9DQ1NQV2lmaV9Qcm9maWxlpGhhc2ilaGFzaDeldmFsdWXfAAAAC6ROYW1ltVJES0JfQ0";
+     FILE* mockfp = NULL;
+     EXPECT_CALL(*g_fileIOMock, fopen(_,_))
             .Times(1)
-            .WillOnce(Return(0));
-     saveConfigToFile( filepath, profilename, config);
+            .WillOnce(Return(mockfp));
+     ASSERT_EQ(T2ERROR_FAILURE,  MsgPackSaveConfig(path, fileName, msgpack, 45));
 }
 
-TEST_F(UtilsTestFixture,CLEARPERSISTENT)
+
+TEST_F(UtilsSystemTestFixture, CLEARPERSISTENCEFOLDER)
 {
-     const char* path = "/tmp/profile";
-     EXPECT_CALL(*g_SystemMock, v_secure_system(_))
-                    .Times(1)
-                    .WillOnce(Return(-1));
-     clearPersistenceFolder(path);
+        const char* path = "/tmp/profiles";
+        EXPECT_CALL(*g_SystemMock, v_secure_system(_))
+                .Times(1)
+                .WillOnce(Return(-1));
+         clearPersistenceFolder(path);
 }
 
-TEST_F(UtilsTestFixture, SAVECACHEDREPORTTOPERSF)
+TEST_F(UtilsSystemTestFixture, REMOVEPROFILEFROMDISK)
 {
-     const char* profile = "FR2_US_TC2";
-     FILE* mockfp = (FILE *)0xffffffff;
+	const char* path = "/tmp/profiles";
+        const char* fileName = "Profile1";
+        EXPECT_CALL(*g_SystemMock, unlink(_))
+                .Times(1)
+                .WillOnce(Return(-1));
+	removeProfileFromDisk(path, fileName);
+}
+
+TEST_F(UtilsFileTestFixture, SAVECACHEDREPORTTOPERSF)
+{
+    const char* profile = "FR2_US_TC2";
+     DIR* mockfd = (DIR *)NULL;
      Vector* reportlist = NULL;
      Vector_Create(&reportlist);
-     Vector_PushBack(reportlist, "{"FR2_US_TC2":[{"UPTIME":"NULL"}]}");
-     EXPECT_CALL(*g_fileIOMock, fopen(_,_))
+     Vector_PushBack(reportlist, strdup("{FR2_US_TC2:[{UPTIME:NULL}]}"));
+     EXPECT_CALL(*g_fileIOMock, opendir(_))
+           .Times(1)
+           .WillOnce(::testing::Return(mockfd));
+     EXPECT_CALL(*g_fileIOMock, mkdir(_, _))
+           .Times(1)
+           .WillOnce(Return(-1));
+     ASSERT_EQ(T2ERROR_FAILURE, saveCachedReportToPersistenceFolder(profile, reportlist));
+     Vector_Destroy(reportlist, free);
+}
+
+TEST_F(UtilsFileTestFixture, POPULATECACHE_TEST)
+{
+    const char* profile = "FR2_US_TC2";
+    FILE* mockfp = (FILE *)NULL;
+    Vector* outReportlist = NULL;
+    Vector_Create(&outReportlist);
+    EXPECT_CALL(*g_fileIOMock, fopen(_,_))
             .Times(1)
             .WillOnce(Return(mockfp));
-     EXPECT_CALL(*g_fileIOMock, fclose(_))
-            .Times(1)
-            .WillOnce(Return(0));
-     saveCachedReportToPersistenceFolder(profile, reportlist);
-     Vector_Destroy(reportlist, free);
+    ASSERT_EQ(T2ERROR_FAILURE, populateCachedReportList(profile, outReportlist));
 }
 
 TEST_F(UtilsTestFixture, POPULATECACHE)
 {
-	const char* profile = "FR2_US_TC2";
-	Vector* outReportlist = NULL;
-	Vector_Create(&outReportlist);
-         EXPECT_CALL(*g_fileIOMock, getline(_,_,_))
+        const char* profile = "FR2_US_TC2";
+        FILE* mockfp = (FILE *)0xffffffff;
+        Vector* outReportlist = NULL;
+        Vector_Create(&outReportlist);
+        EXPECT_CALL(*g_fileIOMock, fopen(_,_))
+                .Times(1)
+                .WillOnce(Return(mockfp));
+        EXPECT_CALL(*g_fileIOMock, getline(_,_,_))
              .Times(1)
              .WillOnce(Return(-1));
-
-        populateCachedReportList(profile, outReportlist);
+        EXPECT_CALL(*g_fileIOMock, fclose(_))
+            .Times(1)
+            .WillOnce(Return(0));
+        EXPECT_CALL(*g_SystemMock, remove(_))
+                .Times(1)
+                .WillOnce(Return(-1));
+        ASSERT_EQ(T2ERROR_FAILURE, populateCachedReportList(profile, outReportlist));
 }
-#endif
 

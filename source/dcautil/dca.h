@@ -30,4 +30,6 @@ int getDCAResultsInVector(char* profileName, Vector* vectorMarkerList, Vector** 
 
 char *strSplit(char *str, char *delim);
 
+int getErrorCode(char *str, char *ec);
+
 #endif /* SRC_DCA_H_ */

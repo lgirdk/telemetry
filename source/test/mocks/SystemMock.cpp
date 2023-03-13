@@ -32,6 +32,14 @@ extern "C" int system(const char * cmd)
     return g_SystemMock->system(cmd);
 }
 
+extern "C" int unlink(const char * str)
+{
+    if (!g_SystemMock)
+    {
+        return 0;
+    }
+    return g_SystemMock->unlink(str);
+}
 
 extern "C" int access(const char * pathname, int mode)
 {

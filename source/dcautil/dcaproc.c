@@ -37,7 +37,6 @@
 #include <unistd.h>
 
 #define LEN 14
-#define BUF_LEN 16
 #define CMD_LEN 256
 #define MAXLEN 512
 #define PID_SIZE 10
@@ -63,29 +62,6 @@
  * @{
  */
 
-#define PREFIX_SIZE 5
-
-typedef struct proc_info {
-    int utime; /**< User mode jiffies */
-    int stime; /**< Kernel mode jiffies */
-    int cutime; /**< User mode jiffies with childs */
-    int cstime; /**< Kernel mode jiffies with childs */
-    unsigned int rss; /**< Resident Set Size */
-} procinfo;
-
-typedef struct _procMemCpuInfo {
-    pid_t *pid;
-    char processName[BUF_LEN];
-    char cpuUse[BUF_LEN];
-    char memUse[BUF_LEN];
-    int total_instance;
-} procMemCpuInfo;
-
-/* @} */ // End of group DCA_TYPES
-int getProcInfo(procMemCpuInfo *pInfo);
-int getMemInfo(procMemCpuInfo *pmInfo);
-int getCPUInfo(procMemCpuInfo *pInfo);
-
 /**
  * @addtogroup DCA_APIS
  * @{
@@ -102,8 +78,12 @@ int getCPUInfo(procMemCpuInfo *pInfo);
 
 int getProcUsage(char *processName, Vector* grepResultList) {
     T2Debug("%s ++in \n", __FUNCTION__);
+    if(grepResultList == NULL || processName == NULL){
+        T2Error("Invalid arguments for getProcUsage\n");
+        return -1;
+    }
     if(processName != NULL) {
-    	T2Debug("Process name is %s \n", processName);
+        T2Debug("Process name is %s \n", processName);
         procMemCpuInfo pInfo;
         char pidofCommand[PIDOF_SIZE];
 #if defined (ENABLE_PS_PROCESS_SEARCH)
@@ -381,7 +361,10 @@ int getMemInfo(procMemCpuInfo *pmInfo) {
     long pageSizeInKb = sysconf(_SC_PAGE_SIZE) / 1024; /* x86-64 is configured to use 2MB pages */
     unsigned int total_memory = 0;
     int index = 0;
-
+    if(pmInfo == NULL){
+        T2Error("Invalid arguments or NULL arguments\n");
+        return 0;
+    }
     for( index = 0; index < (pmInfo->total_instance); index++ ) {
         memset(&pinfo, 0, sizeof(procinfo));
         if(0 == getProcPidStat(pmInfo->pid[index], &pinfo))
@@ -603,7 +586,10 @@ int getCPUInfo(procMemCpuInfo *pmInfo) {
     float cpu = 0;
     float total_cpu = 0;
     int index = 0;
-
+    if(pmInfo == NULL){
+        T2Info("Invalid or NULL arguments\n");
+        return 0;
+    }
     for(index=0;index<(pmInfo->total_instance);index++)
     {
         if (0 == getProcessCpuUtilization(pmInfo->pid[index], &cpu))

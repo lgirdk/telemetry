@@ -67,7 +67,10 @@ void initSearchResultJson(cJSON **root, cJSON **sr) {
  */
 void addToSearchResult(char *key, char *value) {
     T2Debug("%s ++in \n", __FUNCTION__);
-
+    if(key == NULL || value == NULL){
+        T2Error("Key or Value is NULL\n");
+        return;
+    }
     if(NULL != SEARCH_RESULT_JSON) {
         cJSON *obj = cJSON_CreateObject();
         if(NULL != obj) {
@@ -85,6 +88,10 @@ void addToSearchResult(char *key, char *value) {
  */
 void clearSearchResultJson(cJSON **root) {
     T2Debug("%s ++in \n", __FUNCTION__);
+    if(root == NULL){
+        T2Error("root is NULL, can't be deleted\n");
+        return;
+    }
     cJSON_Delete(*root);
     T2Debug("%s --out \n", __FUNCTION__);
 }

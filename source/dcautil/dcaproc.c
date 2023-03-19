@@ -43,6 +43,7 @@
 #define PIDOF_SIZE 50
 #define MEM_STRING_SIZE 20
 #define PROC_PATH_SIZE 50
+#define TOPITERATION 3
 
 #include "vector.h"
 #include "dcautil.h"
@@ -384,7 +385,79 @@ int getMemInfo(procMemCpuInfo *pmInfo) {
     return 1;
 }
 
+
 #if !defined(ENABLE_RDKC_SUPPORT) && !defined(ENABLE_RDKB_SUPPORT)
+
+void saveTopOutput(){
+    T2Debug("%s ++in \n", __FUNCTION__);
+    if(access(TOPTEMP, F_OK)==0){
+      T2Debug("%s --out \n", __FUNCTION__);
+      return;
+    }
+    int ret = 0;
+    char command[CMD_LEN] = { '\0' };
+    int cmd_option = 0;
+    /* Check Whether -c option is supported */
+    sprintf(command, "top -b -n 1 -c > %s ", TOPTEMP);
+    #ifdef LIBSYSWRAPPER_BUILD  
+        ret = v_secure_system(command);
+    #else
+        ret = system(command);
+    #endif
+    // clear command
+    memset(command, '\0', sizeof(command));
+    if(0 == ret) {
+        cmd_option = 1;
+    }
+    T2Debug("top cmd -c arg status %d, ret value %d \n", cmd_option, ret);
+#ifdef INTEL
+    /* Format Use:  `top n 1 | grep Receiver` */
+    if ( 1 == cmd_option ) {
+        sprintf(command, "COLUMNS=512 top -n %d -c > %s ", TOPITERATION, TOPTEMP);
+    } else {
+        sprintf(command, "top -n %d > %s", TOPITERATION, TOPTEMP);
+    }
+#else
+    /* ps -C Receiver -o %cpu -o %mem */
+    //sprintf(command, "ps -C '%s' -o %%cpu -o %%mem | sed 1d", pInfo->processName);
+    snprintf(command, CMD_LEN, "%s top -b -n %d %s > %s", (cmd_option == 1) ? "COLUMNS=512" : "", TOPITERATION, (cmd_option == 1) ? "-c" : "", TOPTEMP);
+
+#endif
+
+    #ifdef LIBSYSWRAPPER_BUILD
+        ret = v_secure_system(command);
+    #else
+       ret = system(command);
+    #endif
+    if(ret != 0)
+        T2Debug("return value of system command to create %s is success with code %d\n", TOPTEMP, ret);
+    else{
+        T2Error("return value of system command to create %s is not successful with code \n", TOPTEMP);
+        return;
+    }
+    T2Debug("%s --out \n", __FUNCTION__);
+
+}
+
+void removeTopOutput()
+{
+    T2Debug("%s ++in \n", __FUNCTION__);
+    int ret=0;
+    char command[256] = {'\0'};
+    snprintf(command,sizeof(command),"rm -rf %s",TOPTEMP);
+    #ifdef LIBSYSWRAPPER_BUILD  
+        ret = v_secure_system(command);
+    #else
+        ret = system(command);
+    #endif
+    if(ret == 0)
+        T2Debug("return value of system command to remove %s is success with code %d \n", TOPTEMP, ret);
+    else
+        T2Error("return value of system command to remove %s is not successful with code %d \n", TOPTEMP, ret);
+    T2Debug("%s --out \n", __FUNCTION__);
+}
+
+//#if !defined(ENABLE_RDKC_SUPPORT) && !defined(ENABLE_RDKB_SUPPORT)
 /**
  * @brief To get CPU info.
  *
@@ -407,15 +480,17 @@ int getCPUInfo(procMemCpuInfo *pInfo) {
     char var8[512] = { '\0' };
     char var9[512] = { '\0' };
     char var10[512] = { '\0' };
-    int total_cpu_usage = 0;
+    float total_cpu_usage = 0;
     char top_op[2048] = { '\0' };
     int cmd_option = 0;
+    int normalize = 1;
 
     if(pInfo == NULL) {
 
         return 0;
     }
-
+    if(access(TOPTEMP, F_OK)!=0){
+    T2Debug("%s ++in the savad temp log %s is not available \n", __FUNCTION__,TOPTEMP);
     /* Check Whether -c option is supported */
     #ifdef LIBSYSWRAPPER_BUILD  
         ret = v_secure_system(" top -c -n 1 2> /dev/null 1> /dev/null");
@@ -425,6 +500,7 @@ int getCPUInfo(procMemCpuInfo *pInfo) {
     if(0 == ret) {
         cmd_option = 1;
     }
+    
 #ifdef INTEL
     /* Format Use:  `top n 1 | grep Receiver` */
     if ( 1 == cmd_option ) {
@@ -453,6 +529,18 @@ int getCPUInfo(procMemCpuInfo *pInfo) {
     #endif
 
 #endif
+    }
+    else{
+    T2Debug("%s ++in the savad temp log %s is available \n", __FUNCTION__,TOPTEMP);
+        #ifdef LIBSYSWRAPPER_BUILD
+            inFp = v_secure_popen("r","cat %s |grep -i '%s'", TOPTEMP, pInfo->processName);
+        #else
+            sprintf(command, "cat %s |grep -i '%s'", TOPTEMP, pInfo->processName);
+            inFp = popen(command, "r");
+        #endif
+	normalize = TOPITERATION;
+
+    }
 
     if(!(inFp)) {
         T2Debug("failed in open v_scure_popen pipe! ret %d\n",pclose_ret);
@@ -463,7 +551,7 @@ int getCPUInfo(procMemCpuInfo *pInfo) {
 #ifdef INTEL
     while(fgets(top_op,2048,inFp)!=NULL) {
         if(sscanf(top_op,"%s %s %s %s %s %s %s %s", var1, var2, var3, var4, var5, var6, var7, var8) == 8) {
-            total_cpu_usage += atoi(var7);
+            total_cpu_usage += atof(var7);
             ret=1;
         }
     }
@@ -471,13 +559,14 @@ int getCPUInfo(procMemCpuInfo *pInfo) {
 #else
     while(fgets(top_op, 2048, inFp) != NULL) {
         if(sscanf(top_op, "%16s %16s %16s %16s %16s %16s %16s %512s %512s %512s", var1, var2, var3, var4, var5, var6, var7, var8, var9, var10) == 10) {
-            total_cpu_usage += atoi(var9);
+            total_cpu_usage += atof(var9);
             ret = 1;
         }
     }
 #endif
 
-    snprintf(pInfo->cpuUse, sizeof(pInfo->cpuUse), "%d", total_cpu_usage);
+    snprintf(pInfo->cpuUse, sizeof(pInfo->cpuUse), "%.1lf", (float)(total_cpu_usage/normalize));
+    T2Debug("calculated CPU total value : %f Normalized value : %.1lf\n",total_cpu_usage, (float)(total_cpu_usage/normalize));
     #ifdef LIBSYSWRAPPER_BUILD
         pclose_ret = v_secure_pclose(inFp);
     #else
@@ -489,6 +578,7 @@ int getCPUInfo(procMemCpuInfo *pInfo) {
         T2Debug("failed in closing pipe! ret %d\n",pclose_ret);
     }
     return ret;
+    T2Debug("--out %s", __FUNCTION__);
 
 }
 

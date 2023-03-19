@@ -24,11 +24,18 @@
 #include "telemetry2_0.h"
 #include "vector.h"
 
+#define TOPTEMP "/tmp/.t2toplog"
+
 typedef struct _GrepResult
 {
     const char* markerName;
     const char* markerValue;
 }GrepResult;
+
+#if !defined(ENABLE_RDKC_SUPPORT) && !defined(ENABLE_RDKB_SUPPORT)
+void saveTopOutput();
+void removeTopOutput();
+#endif
 
 void removeGrepConfig(char* profileName);
 void freeGResult(void *data);

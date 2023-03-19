@@ -57,6 +57,9 @@ static char *logPath = NULL;
 static char *persistentPath = NULL;
 static pthread_mutex_t dcaMutex = PTHREAD_MUTEX_INITIALIZER;
 
+#if !defined(ENABLE_RDKC_SUPPORT) && !defined(ENABLE_RDKB_SUPPORT)
+static pthread_mutex_t topOutputMutex = PTHREAD_MUTEX_INITIALIZER;
+#endif
 /* @} */ // End of group DCA_TYPES
 /**
  * @addtogroup DCA_APIS
@@ -89,12 +92,22 @@ int processTopPattern(char *logfile, GList *pchead, int pcIndex, Vector* grepRes
                 }
             }else {
                 if(NULL != tmp->pattern) {
-                    getProcUsage(tmp->pattern, grepResultList);
+                     // save top output
+                     #if !defined(ENABLE_RDKC_SUPPORT) && !defined(ENABLE_RDKB_SUPPORT)
+                     pthread_mutex_lock(&topOutputMutex);
+                     saveTopOutput();
+                     getProcUsage(tmp->pattern, grepResultList);
+                     pthread_mutex_unlock(&topOutputMutex);
+                     #else
+                     getProcUsage(tmp->pattern, grepResultList);
+                     #endif
+                    
                 }
             }
         }
         tlist = g_list_next(tlist);
     }
+
     T2Debug("%s --out\n", __FUNCTION__);
     return 0;
 }
@@ -702,6 +715,13 @@ static int parseMarkerList(char* profileName, Vector* vMarkerList, Vector* grepR
         }
 
     }  // End of adding list to node
+    #if !defined(ENABLE_RDKC_SUPPORT) && !defined(ENABLE_RDKB_SUPPORT)
+    // remove the saved top information
+    pthread_mutex_lock(&topOutputMutex);
+    removeTopOutput();
+    pthread_mutex_unlock(&topOutputMutex);
+    #endif
+    
 
     if(filename) {
         updateLogSeek(gsProfile->logFileSeekMap, filename);

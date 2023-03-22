@@ -51,12 +51,9 @@ telemetry2_0_CPPFLAGS = -fPIC -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/dbus-1.0 
                                 -I${top_srcdir}/source/utils \
                                 -I${top_srcdir}/source/xconf-client \
                                 -I${top_srcdir}/source/interChipHelper
-telemetry2_0_LDFLAGS = -lrdkloggers -lcjson
-if ENABLE_DEVICE_EXTENDER
-telemetry2_0_LDFLAGS+= -lwebconfig_framework
-endif
+telemetry2_0_LDFLAGS = -lrdkloggers -lcjson -lwebconfig_framework
 if ENABLE_CCSP_SUPPORT
-telemetry2_0_LDFLAGS+=-lccsp_common -lwebconfig_framework
+telemetry2_0_LDFLAGS+=-lccsp_common 
 telemetry2_0_SOURCES += t2ssp/ssp_main.c t2ssp/ssp_action.c t2ssp/ssp_messagebus_interface.c t2ssp/dm_pack_datamodel.c
 telemetry2_0_CPPFLAGS += -I${top_srcdir}/source/t2ssp \
                                 -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/ccsp

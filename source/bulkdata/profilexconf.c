@@ -239,14 +239,21 @@ static void* CollectAndReportXconf(void* data)
         if(profile->isUpdated)
         {
            T2Info("Profile is udpated, report is cached to send with updated Profile TIMEOUT\n");
-           if(profile->cachedReportList != NULL && Vector_Size(profile->cachedReportList) == MAX_CACHED_REPORTS)
-           {
-              T2Debug("Max Cached Reports Limit Reached, Overwriting third recent report\n");
-              char *thirdCachedReport = (char *)Vector_At(profile->cachedReportList, MAX_CACHED_REPORTS-3);
-              Vector_RemoveItem(profile->cachedReportList, thirdCachedReport, NULL);
-              free(thirdCachedReport);
+           T2Debug("Vector list size = %lu\n",  (unsigned long) Vector_Size(profile->cachedReportList));
+           if(profile->cachedReportList != NULL && Vector_Size(profile->cachedReportList) >= MAX_CACHED_REPORTS) {
+               while(Vector_Size(profile->cachedReportList) > MAX_CACHED_REPORTS){
+                   int pos = Vector_Size(profile->cachedReportList);
+                   T2Info("Max Cached Reports Limit Exceeded, Removing the extra reports\n");
+                   char *extraCachedreport =  (char*) Vector_At(profile->cachedReportList, (pos - 1));
+                   Vector_RemoveItem(profile->cachedReportList,(void*) extraCachedreport, NULL);
+                   free(extraCachedreport);
+               }
+               T2Info("Max Cached Reports Limit Reached, Overwriting third recent report\n");
+               char *thirdCachedReport = (char*) Vector_At(profile->cachedReportList, MAX_CACHED_REPORTS - 3);
+               Vector_RemoveItem(profile->cachedReportList,(void*) thirdCachedReport, NULL);
+               free(thirdCachedReport);
            }
-           Vector_PushBack(profile->cachedReportList, strdup(jsonReport));
+	   Vector_PushBack(profile->cachedReportList, strdup(jsonReport));
            profile->reportInProgress = false;
            /* CID 187010: Dereference before null check */
            free(jsonReport);
@@ -273,12 +280,18 @@ static void* CollectAndReportXconf(void* data)
            xconfReportPid = -1 ;
            if(ret == T2ERROR_FAILURE)
            {
-              if(profile->cachedReportList != NULL && Vector_Size(profile->cachedReportList) == MAX_CACHED_REPORTS)
-              {
-                 T2Debug("Max Cached Reports Limit Reached, Overwriting third recent report\n");
-                 char *thirdCachedReport = (char *)Vector_At(profile->cachedReportList, MAX_CACHED_REPORTS-3);
-                 Vector_RemoveItem(profile->cachedReportList, thirdCachedReport, NULL);
-                 free(thirdCachedReport);
+              if(profile->cachedReportList != NULL && Vector_Size(profile->cachedReportList) >= MAX_CACHED_REPORTS) {
+                  while(Vector_Size(profile->cachedReportList) > MAX_CACHED_REPORTS){
+                      int pos = Vector_Size(profile->cachedReportList);
+                      T2Info("Max Cached Reports Limit Exceeded, Removing the extra reports\n");
+                      char *extraCachedreport =  (char*) Vector_At(profile->cachedReportList, (pos - 1));
+                      Vector_RemoveItem(profile->cachedReportList,(void*) extraCachedreport, NULL);
+                      free(extraCachedreport);
+                  }
+                  T2Info("Max Cached Reports Limit Reached, Overwriting third recent report\n");
+                  char *thirdCachedReport = (char*) Vector_At(profile->cachedReportList, MAX_CACHED_REPORTS - 3);
+                  Vector_RemoveItem(profile->cachedReportList,(void*) thirdCachedReport, NULL);
+                  free(thirdCachedReport);
               }
               Vector_PushBack(profile->cachedReportList, strdup(jsonReport));
 

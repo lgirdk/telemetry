@@ -47,21 +47,22 @@ T2ERROR fetchLocalConfigs(const char* path, Vector *configList)
 {
     struct dirent *entry;
     T2Debug("%s ++in\n", __FUNCTION__);
-    DIR *dir = opendir(path);
-    if (dir == NULL) {
-        T2Error("Failed to open persistence folder : %s, creating folder\n", path);
-        if (mkdir(path,S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH) != 0) {
-            T2Error("%s,%d: Failed to make directory : %s  \n", __FUNCTION__ , __LINE__, path);
-        }
-
-        return T2ERROR_FAILURE;
-    }
     if(strcmp(path , SHORTLIVED_PROFILES_PATH) == 0)
     {
         T2Debug("%s alreay created : \n", SHORTLIVED_PROFILES_PATH);
         T2Debug("clearing short lived profile from the disk \n");
         clearPersistenceFolder(SHORTLIVED_PROFILES_PATH);        
 	return T2ERROR_SUCCESS;
+    }
+
+    DIR *dir = opendir(path);
+    if (dir == NULL) {
+         T2Error("Failed to open persistence folder : %s, creating folder\n", path);
+         if (mkdir(path,S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH) != 0) {
+               T2Error("%s,%d: Failed to make directory : %s  \n", __FUNCTION__ , __LINE__, path);
+         }
+   
+         return T2ERROR_FAILURE;
     }
     #if defined(DROP_ROOT_PRIV)
       #ifdef LIBSYSWRAPPER_BUILD

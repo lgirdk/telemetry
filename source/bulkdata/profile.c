@@ -248,10 +248,11 @@ void getMarkerCompRbusSub(bool subscription){
                     T2Error("Error while retrieving Marker Name at index : %d \n",i);
                 }
             }
-            if(eventMarkerListForComponent != NULL){
-                 Vector_Destroy(eventMarkerListForComponent, free);
-            }
 	}
+        if(eventMarkerListForComponent != NULL){
+             Vector_Destroy(eventMarkerListForComponent, free);
+        }
+
     T2Debug("%s --out\n", __FUNCTION__);
 }
 

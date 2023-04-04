@@ -526,7 +526,6 @@ T2ERROR processConfiguration(char** configData, char *profileName, char* profile
     //REPORTPROFILE CJson PARSING
     T2ERROR ret = T2ERROR_SUCCESS;
     int ThisProfileParameter_count = 0;
-    int ReportAdjustments_index = 0;
     cJSON *json_root = cJSON_Parse(*configData);
 
     cJSON *jprofileHash = cJSON_GetObjectItem(json_root, "Hash");
@@ -549,16 +548,11 @@ T2ERROR processConfiguration(char** configData, char *profileName, char* profile
     cJSON *jprofileReportOnUpdate = NULL;
     cJSON *jprofilefirstReportingInterval =  NULL;
     cJSON *jprofilemaxUploadLatency = NULL;
+   
     if(jprofileReportingAdjustments){
-            int ReportAdjustments_count = cJSON_GetArraySize(jprofileReportingAdjustments);
-            for( ReportAdjustments_index = 0; ReportAdjustments_index < ReportAdjustments_count ; ReportAdjustments_index++ ) {
-              cJSON *Reportadjustment_subitem = cJSON_GetArrayItem(jprofileReportingAdjustments, ReportAdjustments_index);
-              if(Reportadjustment_subitem != NULL){
-                  jprofileReportOnUpdate = cJSON_GetObjectItem(Reportadjustment_subitem, "ReportOnUpdate");
-                  jprofilefirstReportingInterval = cJSON_GetObjectItem(Reportadjustment_subitem, "FirstReportingInterval");
-                  jprofilemaxUploadLatency = cJSON_GetObjectItem(Reportadjustment_subitem, "MaxUploadLatency");
-              }
-            }
+        jprofileReportOnUpdate = cJSON_GetObjectItem(jprofileReportingAdjustments, "ReportOnUpdate");
+        jprofilefirstReportingInterval = cJSON_GetObjectItem(jprofileReportingAdjustments, "FirstReportingInterval");
+        jprofilemaxUploadLatency = cJSON_GetObjectItem(jprofileReportingAdjustments, "MaxUploadLatency");
     }
     if(jprofileParameter) {
         ThisProfileParameter_count = cJSON_GetArraySize(jprofileParameter);
@@ -1324,7 +1318,7 @@ T2ERROR processMsgPackConfiguration(msgpack_object *profiles_array_map, Profile 
     msgpack_object *GenerateNow_boolean;
     msgpack_object *DeleteOnTimout_boolean;
     msgpack_object *TriggerConditionArray;
-    msgpack_object *ReportingAdjustments_array;
+    msgpack_object *ReportingAdjustments_map;
     msgpack_object *ReportOnUpdate_boolean = NULL;
     msgpack_object *FirstReportInterval_u64 = NULL;
     msgpack_object *MaxUploadLatency_u64 = NULL;
@@ -1336,7 +1330,6 @@ T2ERROR processMsgPackConfiguration(msgpack_object *profiles_array_map, Profile 
     uint32_t Parameter_array_size = 0;
     uint32_t RequestURIParameter_array_size = 0;
     uint32_t RbusMethodParameter_array_size = 0;
-    uint32_t ReportingAdjustments_array_size = 0;
 
     T2Debug("%s --in\n", __FUNCTION__);
     Profile *profile = (Profile *) malloc(sizeof(Profile));
@@ -1371,16 +1364,11 @@ T2ERROR processMsgPackConfiguration(msgpack_object *profiles_array_map, Profile 
           return T2ERROR_FAILURE;
        }  
     }
-    ReportingAdjustments_array = msgpack_get_map_value(value_map, "ReportingAdjustments");
-    if(ReportingAdjustments_array){
-        MSGPACK_GET_ARRAY_SIZE(ReportingAdjustments_array, ReportingAdjustments_array_size);
-        int i;
-        for(i = 0; i < ReportingAdjustments_array_size; i++){
-            msgpack_object *ReportingAdjustments_array_map = msgpack_get_array_element(ReportingAdjustments_array, i);
-            ReportOnUpdate_boolean = msgpack_get_map_value(ReportingAdjustments_array_map, "ReportOnUpdate");
-            FirstReportInterval_u64 = msgpack_get_map_value(ReportingAdjustments_array_map, "FirstReportingInterval");
-            MaxUploadLatency_u64 = msgpack_get_map_value(ReportingAdjustments_array_map, "MaxUploadLatency");
-        }
+    ReportingAdjustments_map = msgpack_get_map_value(value_map, "ReportingAdjustments");
+    if(ReportingAdjustments_map){
+            ReportOnUpdate_boolean = msgpack_get_map_value(ReportingAdjustments_map, "ReportOnUpdate");
+            FirstReportInterval_u64 = msgpack_get_map_value(ReportingAdjustments_map, "FirstReportingInterval");
+            MaxUploadLatency_u64 = msgpack_get_map_value(ReportingAdjustments_map, "MaxUploadLatency");
     }
 
     ReportingInterval_u64 = msgpack_get_map_value(value_map, "ReportingInterval");
@@ -1534,7 +1522,7 @@ T2ERROR processMsgPackConfiguration(msgpack_object *profiles_array_map, Profile 
         if(TimeReference_str != NULL && ReportingInterval_u64){
             profile->timeRef = msgpack_strdup(TimeReference_str);
         }
-        if(ReportingAdjustments_array){
+        if(ReportingAdjustments_map){
               if(ReportOnUpdate_boolean != NULL){
                   msgpack_print(ReportOnUpdate_boolean, msgpack_get_obj_name(ReportOnUpdate_boolean));
                   MSGPACK_GET_NUMBER(ReportOnUpdate_boolean, profile->reportOnUpdate);

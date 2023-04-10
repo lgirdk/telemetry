@@ -96,7 +96,6 @@ T2ERROR sendReportsOverRBUSMethod(char *methodName, Vector* inputParams, char* p
     pthread_mutex_lock(&rbusMethodMutex);
     isRbusMethod = false ;
     if ( T2ERROR_SUCCESS == rbusMethodCaller(methodName, &inParams, payload, &asyncMethodHandler)) {
-        pthread_mutex_lock(&rbusMethodMutex);
         if (isRbusMethod) {
              T2Info("Return status of send via rbusMethod is success \n " );
              ret = T2ERROR_SUCCESS ;
@@ -104,8 +103,8 @@ T2ERROR sendReportsOverRBUSMethod(char *methodName, Vector* inputParams, char* p
              T2Info("Return status of send via rbusMethod is failure \n " );
 	     ret = T2ERROR_NO_RBUS_METHOD_PROVIDER;
         }
-        pthread_mutex_unlock(&rbusMethodMutex);
     }
+    pthread_mutex_unlock(&rbusMethodMutex);
     rbusObject_Release(inParams);
 
     T2Debug("%s --out\n", __FUNCTION__);

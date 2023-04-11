@@ -521,6 +521,331 @@ T2ERROR verifyTriggerCondition(cJSON *jprofileTriggerCondition) {
     return ret;
 }
 
+void time_param_Reporting_Adjustments_valid_set(Profile *profile, cJSON *jprofileReportingInterval, cJSON *jprofileActivationTimeout, cJSON *jprofileTimeReference, cJSON *jprofileReportOnUpdate, cJSON *jprofilefirstReportingInterval, cJSON *jprofilemaxUploadLatency, cJSON* jprofileReportingAdjustments)
+{
+    if(profile->generateNow) { //If GenerateNow is true and ReportingAdjustments is present, ReportingAdjustments shall be ignored
+        profile->reportingInterval = 0;
+        profile->reportOnUpdate = false;
+        profile->firstReportingInterval = 0;
+        profile->maxUploadLatency = 0;
+    }else {
+        if(jprofileReportingInterval) {
+            int reportIntervalInSec = jprofileReportingInterval->valueint;
+            profile->reportingInterval = reportIntervalInSec;
+        }
+
+        if(jprofileActivationTimeout) {
+            profile->activationTimeoutPeriod = jprofileActivationTimeout->valueint;
+            T2Debug("[[ profile->activationTimeout:%d]]\n", profile->activationTimeoutPeriod);
+        }
+
+        if(jprofileTimeReference && jprofileReportingInterval) {
+                profile->timeRef = strdup(jprofileTimeReference->valuestring);
+        }
+
+        if(jprofileReportingAdjustments){
+            if(jprofileReportOnUpdate){
+                profile->reportOnUpdate = (cJSON_IsTrue(jprofileReportOnUpdate) == 1);
+                T2Debug("[[profile->reportOnUpdate:%u]]\n",  profile->reportOnUpdate);
+            }
+            if((profile->timeRef == NULL) || strcmp(profile->timeRef, DEFAULT_TIME_REFERENCE) == 0){ //Property 'FirstReportingInterval' if present along with Timereference,  FirstReportingInterval shall be ignored
+                 if(jprofilefirstReportingInterval){
+                     int firstReportIntervalInSec = jprofilefirstReportingInterval->valueint;
+                     profile->firstReportingInterval = firstReportIntervalInSec;
+                     T2Debug("[[profile->firstReportingInterval:%d]]\n",  profile->firstReportingInterval);
+                 }
+            }
+            if(profile->timeRef != NULL && strcmp(profile->timeRef, DEFAULT_TIME_REFERENCE) != 0){ //This value is only valid when TimeReference is different from the default.
+                if(jprofilemaxUploadLatency){ //randomize the upload time of a generated report.
+                    int maxUploadLatencyInMilliSec = jprofilemaxUploadLatency->valueint;
+                    profile->maxUploadLatency = maxUploadLatencyInMilliSec;
+                    T2Debug("[[profile->maxUploadLatency:%dms]]\n",  profile->maxUploadLatency);
+                }
+            }
+       }
+    }
+}
+
+T2ERROR addParameter_marker_config(Profile* profile, cJSON *jprofileParameter, int ThisProfileParameter_count)
+{
+    if(profile == NULL || jprofileParameter == NULL){
+        T2Error("Invalid Arguments\n");
+        return T2ERROR_INVALID_ARGS;
+    }
+    Vector_Create(&profile->paramList);
+    Vector_Create(&profile->staticParamList);
+    Vector_Create(&profile->eMarkerList);
+    Vector_Create(&profile->gMarkerList);
+    Vector_Create(&profile->cachedReportList);
+
+    char* paramtype = NULL;
+    char* use = NULL;
+    bool reportEmpty = false;
+    char* header = NULL;
+    char* content = NULL;
+    char* logfile = NULL;
+    int skipFrequency = 0;
+    size_t profileParamCount = 0;
+    int ProfileParameterIndex = 0;
+    char* method = NULL;
+    reportTimestampFormat rtformat;
+    T2ERROR ret = T2ERROR_SUCCESS;
+
+    for( ProfileParameterIndex = 0; ProfileParameterIndex < ThisProfileParameter_count; ProfileParameterIndex++ ) {
+        header = NULL;
+        content = NULL;
+        logfile = NULL;
+        skipFrequency = 0;
+        paramtype = NULL;
+        use = NULL;
+        reportEmpty = false;
+        rtformat = REPORTTIMESTAMP_NONE;
+
+        cJSON* pSubitem = cJSON_GetArrayItem(jprofileParameter, ProfileParameterIndex);
+        if(pSubitem != NULL) {
+            cJSON *jpSubitemtype = cJSON_GetObjectItem(pSubitem, "type");
+            if(jpSubitemtype) {
+                paramtype = jpSubitemtype->valuestring;
+            }else { /*TODO:Confirm if type is not configured. For now avoid corresponding marker*/
+                continue;
+            }
+
+            /* Confirm if "use" is considerable for datamodel type markers.*/
+            cJSON *jpSubitemuse = cJSON_GetObjectItem(pSubitem, "use");
+            if(jpSubitemuse) {
+                use = jpSubitemuse->valuestring;
+            }
+            cJSON *jpSubitemreportEmpty = cJSON_GetObjectItem(pSubitem, "reportEmpty");
+            if(jpSubitemreportEmpty) {
+                reportEmpty = cJSON_IsTrue(jpSubitemreportEmpty);
+            }
+            if(!(strcmp(paramtype, "dataModel"))) { /*Marker is TR181 param*/
+                cJSON *jpSubitemname = cJSON_GetObjectItem(pSubitem, "name");
+                if(jpSubitemname) {
+                    header = jpSubitemname->valuestring;
+                }
+                cJSON *jpSubitemreference = cJSON_GetObjectItem(pSubitem, "reference");
+                if(jpSubitemreference) {
+                    content = jpSubitemreference->valuestring;
+                    if(!jpSubitemname) {
+                        header = jpSubitemreference->valuestring; /*Default Name can be reference*/
+                    }
+                }
+                cJSON *jpMethod = cJSON_GetObjectItem(pSubitem, "method");
+                cJSON *jpSubitemreportTimestamp = cJSON_GetObjectItem(pSubitem, "reportTimestamp");
+                if(jpMethod) {
+                    method = jpMethod->valuestring;
+                    T2Debug("Method property is present and the value is %s\n", method);
+                    if(!(strcmp(method, "subscribe"))) {
+                        T2Info("Method is subscribe converting the parmeter to event type\n");
+                        paramtype = "event";
+                        header = jpSubitemreference->valuestring;
+                        content = T2REPORTCOMPONENT;
+                        if(jpSubitemname) {
+                            logfile = jpSubitemname->valuestring;
+                        }
+
+                        if(jpSubitemreportTimestamp) {
+                            T2Info("reportTimestamp is present and value is %s \n", jpSubitemreportTimestamp->valuestring);
+                            if(!(strcmp(jpSubitemreportTimestamp->valuestring, "Unix-Epoch"))) {
+                                rtformat = REPORTTIMESTAMP_UNIXEPOCH;
+                            }
+                        }
+                    }
+                }
+            }else if(!(strcmp(paramtype, "event"))) {
+
+                cJSON *jpSubitemname = cJSON_GetObjectItem(pSubitem, "name"); // Optional repalcement name in report
+                cJSON *jpSubitemeventName = cJSON_GetObjectItem(pSubitem, "eventName");
+                cJSON *jpSubitemcomponent = cJSON_GetObjectItem(pSubitem, "component");
+
+                if(jpSubitemname) {
+                    logfile = jpSubitemname->valuestring;
+                }
+                if(jpSubitemeventName) {
+                    header = jpSubitemeventName->valuestring; /*Default Name can be eventName*/
+                }
+
+                if(jpSubitemcomponent) {
+                    content = jpSubitemcomponent->valuestring;
+                }
+                cJSON *jpSubitemreportTimestamp = cJSON_GetObjectItem(pSubitem, "reportTimestamp");
+                if(jpSubitemreportTimestamp) {
+                    if(!(strcmp(jpSubitemreportTimestamp->valuestring, "Unix-Epoch"))){
+                        rtformat = REPORTTIMESTAMP_UNIXEPOCH;
+                    }
+                }
+            }else if(!(strcmp(paramtype, "grep"))) { //grep Marker
+
+                cJSON *jpSubitemname = cJSON_GetObjectItem(pSubitem, "marker");
+                cJSON *jpSubitSearchString = cJSON_GetObjectItem(pSubitem, "search");
+                cJSON *jpSubitemLogFile = cJSON_GetObjectItem(pSubitem, "logFile");
+                if(jpSubitemname) {
+                    header = jpSubitemname->valuestring;
+                }
+                if(jpSubitSearchString) {
+                    content = jpSubitSearchString->valuestring;
+                }
+                if(jpSubitemLogFile) {
+                    logfile = jpSubitemLogFile->valuestring;
+                }
+            }else {
+                T2Error("%s Unknown parameter type %s \n", __FUNCTION__, paramtype);
+                continue;
+            }
+            T2Debug("%s : reportTimestamp = %d\n", __FUNCTION__, rtformat);
+            ret = addParameter(profile, header, content, logfile, skipFrequency, paramtype, use, reportEmpty, rtformat); //add Multiple Report Profile Parameter
+            if(ret != T2ERROR_SUCCESS) {
+                T2Error("%s Error in adding parameter to profile %s \n", __FUNCTION__, profile->name);
+                continue;
+            }else {
+                T2Debug("[[Added parameter:%s]]\n", header);
+            }
+            profileParamCount++;
+        }
+    }
+    T2Info("Number of tr181params/markers successfully added in profile = %lu \n", (unsigned long)profileParamCount);
+    return T2ERROR_SUCCESS;
+}
+
+T2ERROR encodingSet(Profile* profile, cJSON *jprofileEncodingType, cJSON *jprofileJSONReportFormat, cJSON *jprofileJSONReportTimestamp){
+    if(profile == NULL){
+        T2Error("Profile is NULL\n");
+        return T2ERROR_INVALID_ARGS;
+    }
+    if((profile->jsonEncoding) && (strcmp(jprofileEncodingType->valuestring, "JSON") == 0)) {
+
+        if(!(strcmp(jprofileJSONReportFormat->valuestring, "NameValuePair"))) {
+            profile->jsonEncoding->reportFormat = JSONRF_KEYVALUEPAIR;
+        }else if(!(strcmp(jprofileJSONReportFormat->valuestring, "ObjectHierarchy"))) {
+            profile->jsonEncoding->reportFormat = JSONRF_OBJHIERARCHY;
+        }else { /* defaulting it to NameValuePair */
+            profile->jsonEncoding->reportFormat = JSONRF_KEYVALUEPAIR;
+        }
+
+        T2Debug("[[profile->jsonEncoding->reportFormat:%d]]\n", profile->jsonEncoding->reportFormat);
+        if(jprofileJSONReportTimestamp) {
+            if(!(strcmp(jprofileJSONReportTimestamp->valuestring, "None"))) {
+                profile->jsonEncoding->tsFormat = TIMESTAMP_NONE;
+            }else if(!(strcmp(jprofileJSONReportTimestamp->valuestring, "Unix-Epoch"))) {
+                profile->jsonEncoding->tsFormat = TIMESTAMP_UNIXEPOCH;
+            }else if(!(strcmp(jprofileJSONReportTimestamp->valuestring, "ISO-8601"))) {
+                profile->jsonEncoding->tsFormat = TIMESTAMP_ISO_8601;
+            }else {/*default value for profile->jsonEncoding->tsFormat is None */
+                profile->jsonEncoding->tsFormat = TIMESTAMP_NONE;
+            }
+            T2Debug("[[profile->jsonEncoding->tsFormat:%d]]\n", profile->jsonEncoding->tsFormat);
+
+        }
+    }
+    return T2ERROR_SUCCESS;
+}
+
+T2ERROR protocolSet (Profile *profile, cJSON *jprofileProtocol, cJSON *jprofileHTTPURL, cJSON *jprofileHTTPRequestURIParameter, int ThisprofileHTTPRequestURIParameter_count, cJSON *jprofileRBUSMethodName, cJSON *jprofileRBUSMethodParamArr, int rbusMethodParamArrCount)
+{
+    if(profile == NULL){
+        T2Info("Profile is NULL\n");
+        return T2ERROR_INVALID_ARGS;
+    }
+
+    if((profile->t2HTTPDest) && (strcmp(jprofileProtocol->valuestring, "HTTP") == 0)) {
+        profile->t2HTTPDest->URL = strdup(jprofileHTTPURL->valuestring);
+        profile->t2HTTPDest->Compression = COMP_NONE; /*in 1911_sprint default none*/
+        profile->t2HTTPDest->Method = HTTP_POST; /*1911_sprint default to POST */
+
+        T2Debug("[[profile->t2HTTPDest->URL:%s]]\n", profile->t2HTTPDest->URL);
+        T2Debug("[[profile->t2HTTPDest->Compression:%d]]\n", profile->t2HTTPDest->Compression);
+        T2Debug("[[profile->t2HTTPDest->Method:%d]]\n", profile->t2HTTPDest->Method);
+
+        if(jprofileHTTPRequestURIParameter) {
+
+            Vector_Create(&(profile->t2HTTPDest->RequestURIparamList));
+            char* href = NULL;
+            char* hname = NULL;
+            int httpret = 0;
+            int httpParamCount = 0;
+            int profileHTTPRequestURIParameterIndex = 0;
+
+            for( profileHTTPRequestURIParameterIndex = 0; profileHTTPRequestURIParameterIndex < ThisprofileHTTPRequestURIParameter_count;
+                    profileHTTPRequestURIParameterIndex++ ) {
+                href = NULL;
+                hname = NULL;
+                cJSON* pHTTPRPsubitem = cJSON_GetArrayItem(jprofileHTTPRequestURIParameter, profileHTTPRequestURIParameterIndex);
+                if(pHTTPRPsubitem != NULL) {
+                    cJSON *pHTTPRPsubitemReference = cJSON_GetObjectItem(pHTTPRPsubitem, "Reference");
+                    if(pHTTPRPsubitemReference) {
+                        href = pHTTPRPsubitemReference->valuestring;
+                        hname = pHTTPRPsubitemReference->valuestring; // default value for Name
+                        if(!(strcmp(href, ""))) { /*if reference is empty avoid adding this object*/
+                            continue;
+                        }
+                    }else {
+                        continue;
+                    }
+
+                    cJSON *pHTTPRPsubitemName = cJSON_GetObjectItem(pHTTPRPsubitem, "Name");
+                    if(pHTTPRPsubitemName) {
+                        hname = pHTTPRPsubitemName->valuestring;
+                    }
+                    httpret = addhttpURIreqParameter(profile, hname, href);
+                    if(httpret != T2ERROR_SUCCESS) {
+                        T2Error("%s Error in adding request URIparameterReference: %s for the profile: %s \n", __FUNCTION__, href, profile->name);
+                        continue;
+                    }else {
+                        T2Debug("[[Added  request URIparameterReference: %s]]\n", href);
+                    }
+                    httpParamCount++;
+                }
+
+            }
+            T2Info("Profile Name: %s\nConfigured httpURIReqParam count = %d \n", profile->name, ThisprofileHTTPRequestURIParameter_count);
+            T2Info("Number of httpURIReqParam added  = %d \n", httpParamCount);
+        }
+    }
+
+    if((profile->t2RBUSDest) && (strcmp(jprofileProtocol->valuestring, "RBUS_METHOD") == 0)) {
+        profile->t2RBUSDest->rbusMethodName = strdup(jprofileRBUSMethodName->valuestring);
+        T2Debug("[[profile->t2RBUSDest->rbusMethodName:%s]]\n", profile->t2RBUSDest->rbusMethodName);
+
+        if(jprofileRBUSMethodParamArr) {
+            char* name = NULL;
+            char* value = NULL;
+            int rbusMethodParamIndex = 0;
+            int rbusParamAdded = 0 ;
+            T2ERROR rbusParamRet = T2ERROR_FAILURE;
+
+            Vector_Create(&(profile->t2RBUSDest->rbusMethodParamList));
+            for( rbusMethodParamIndex = 0; rbusMethodParamIndex < rbusMethodParamArrCount; rbusMethodParamIndex++ ) {
+                name = NULL;
+                value = NULL;
+                cJSON* jRbusParamElement = cJSON_GetArrayItem(jprofileRBUSMethodParamArr, rbusMethodParamIndex);
+                if(jRbusParamElement != NULL) {
+                    cJSON *jName = cJSON_GetObjectItem(jRbusParamElement, "name");
+                    cJSON *jValue = cJSON_GetObjectItem(jRbusParamElement, "value");
+                    if(jName && jValue) {
+                        name = jName->valuestring;
+                        value = jValue->valuestring; // default value for Name
+                    }else {
+                        continue;
+                    }
+                    rbusParamRet = addRbusMethodParameter(profile, name, value);
+                    if(rbusParamRet != T2ERROR_SUCCESS) {
+                        T2Error("%s Error in adding request URIparameterReference: %s for the profile: %s \n", __FUNCTION__, name, profile->name);
+                        continue;
+                    }else {
+                        T2Debug("[[Added  request URIparameterReference: %s]]\n", name);
+                    }
+                    rbusParamAdded++;
+                }
+            }
+            T2Info("Profile Name: %s\nConfigured rbus method param count = %d \n", profile->name, rbusMethodParamArrCount);
+            T2Info("Number of rbus method param added  = %d \n", rbusParamAdded);
+        }
+    }
+    return T2ERROR_SUCCESS;
+
+}
+
 T2ERROR processConfiguration(char** configData, char *profileName, char* profileHash, Profile **localProfile) {
     T2Debug("%s ++in\n", __FUNCTION__);
     //REPORTPROFILE CJson PARSING
@@ -548,12 +873,12 @@ T2ERROR processConfiguration(char** configData, char *profileName, char* profile
     cJSON *jprofileReportOnUpdate = NULL;
     cJSON *jprofilefirstReportingInterval =  NULL;
     cJSON *jprofilemaxUploadLatency = NULL;
-   
     if(jprofileReportingAdjustments){
         jprofileReportOnUpdate = cJSON_GetObjectItem(jprofileReportingAdjustments, "ReportOnUpdate");
         jprofilefirstReportingInterval = cJSON_GetObjectItem(jprofileReportingAdjustments, "FirstReportingInterval");
         jprofilemaxUploadLatency = cJSON_GetObjectItem(jprofileReportingAdjustments, "MaxUploadLatency");
     }
+
     if(jprofileParameter) {
         ThisProfileParameter_count = cJSON_GetArraySize(jprofileParameter);
     }
@@ -737,49 +1062,9 @@ T2ERROR processConfiguration(char** configData, char *profileName, char* profile
     if(jprofileGenerateNow)
         profile->generateNow = (cJSON_IsTrue(jprofileGenerateNow) == 1);
 
-    if(profile->generateNow) { //If GenerateNow is true and ReportingAdjustments is present, ReportingAdjustments shall be ignored 
-        profile->reportingInterval = 0;
-        profile->reportOnUpdate = false;
-        profile->firstReportingInterval = 0;
-        profile->maxUploadLatency = 0;
-    }else {
-        if(jprofileReportingInterval) {
-            int reportIntervalInSec = jprofileReportingInterval->valueint;
-            profile->reportingInterval = reportIntervalInSec;
-        }
+    time_param_Reporting_Adjustments_valid_set(profile, jprofileReportingInterval, jprofileActivationTimeout, jprofileTimeReference, jprofileReportOnUpdate, jprofilefirstReportingInterval, jprofilemaxUploadLatency, jprofileReportingAdjustments);
+    T2Info("Reporting Adjustments parameters check done successfully\n");
 
-        if(jprofileActivationTimeout) {
-            profile->activationTimeoutPeriod = jprofileActivationTimeout->valueint;
-            T2Debug("[[ profile->activationTimeout:%d]]\n", profile->activationTimeoutPeriod);
-        }
-
-        if(jprofileTimeReference && jprofileReportingInterval) {
-        // profile->timeRef = strdup(jprofileTimeReference->valuestring);
-        /*  MUST TODO: Seems timeref is an unsigned int in profile structure . Handle the scenario accordingly */
-                profile->timeRef = strdup(jprofileTimeReference->valuestring);
-        }
-
-	if(jprofileReportingAdjustments){
-            if(jprofileReportOnUpdate){
-                profile->reportOnUpdate = (cJSON_IsTrue(jprofileReportOnUpdate) == 1);
-                T2Debug("[[profile->reportOnUpdate:%u]]\n",  profile->reportOnUpdate);
-            }
-            if((profile->timeRef == NULL) || strcmp(profile->timeRef, DEFAULT_TIME_REFERENCE) == 0){ //Property 'FirstReportingInterval' if present along with Timereference,  FirstReportingInterval shall be ignored
-                 if(jprofilefirstReportingInterval){
-                     int firstReportIntervalInSec = jprofilefirstReportingInterval->valueint;
-                     profile->firstReportingInterval = firstReportIntervalInSec;
-                     T2Debug("[[profile->firstReportingInterval:%d]]\n",  profile->firstReportingInterval);
-                 }
-            }
-            if(profile->timeRef != NULL && strcmp(profile->timeRef, DEFAULT_TIME_REFERENCE) != 0){ //This value is only valid when TimeReference is different from the default.
-                if(jprofilemaxUploadLatency){ //randomize the upload time of a generated report.
-                    int maxUploadLatencyInMilliSec = jprofilemaxUploadLatency->valueint;
-                    profile->maxUploadLatency = maxUploadLatencyInMilliSec;
-                    T2Debug("[[profile->maxUploadLatency:%dms]]\n",  profile->maxUploadLatency);
-                }
-            }
-       }
-    }
     if(jprofileTriggerCondition && (!jprofileReportingInterval) && (!profile->generateNow)) {
         profile->reportingInterval = UINT_MAX;
      }
@@ -795,278 +1080,39 @@ T2ERROR processConfiguration(char** configData, char *profileName, char* profile
     if(profile->reportingInterval)
         T2Debug("[[ profile->reportingInterval:%d]]\n", profile->reportingInterval);
 
-    if((profile->jsonEncoding) && (strcmp(jprofileEncodingType->valuestring, "JSON") == 0)) {
-
-        if(!(strcmp(jprofileJSONReportFormat->valuestring, "NameValuePair"))) {
-            profile->jsonEncoding->reportFormat = JSONRF_KEYVALUEPAIR;
-        }else if(!(strcmp(jprofileJSONReportFormat->valuestring, "ObjectHierarchy"))) {
-            profile->jsonEncoding->reportFormat = JSONRF_OBJHIERARCHY;
-        }else { /* defaulting it to NameValuePair */
-            profile->jsonEncoding->reportFormat = JSONRF_KEYVALUEPAIR;
-        }
-
-        T2Debug("[[profile->jsonEncoding->reportFormat:%d]]\n", profile->jsonEncoding->reportFormat);
-        if(jprofileJSONReportTimestamp) {
-            if(!(strcmp(jprofileJSONReportTimestamp->valuestring, "None"))) {
-                profile->jsonEncoding->tsFormat = TIMESTAMP_NONE;
-            }else if(!(strcmp(jprofileJSONReportTimestamp->valuestring, "Unix-Epoch"))) {
-                profile->jsonEncoding->tsFormat = TIMESTAMP_UNIXEPOCH;
-            }else if(!(strcmp(jprofileJSONReportTimestamp->valuestring, "ISO-8601"))) {
-                profile->jsonEncoding->tsFormat = TIMESTAMP_ISO_8601;
-            }else {/*default value for profile->jsonEncoding->tsFormat is None */
-                profile->jsonEncoding->tsFormat = TIMESTAMP_NONE;
-            }
-            T2Debug("[[profile->jsonEncoding->tsFormat:%d]]\n", profile->jsonEncoding->tsFormat);
-
-        }
+    //Encoding Configuration
+    ret = encodingSet(profile, jprofileEncodingType, jprofileJSONReportFormat, jprofileJSONReportTimestamp);
+    if(ret != T2ERROR_SUCCESS){
+        T2Error("Encoding parameters are not configured.Profile is invalid\n");
+        return T2ERROR_FAILURE;
     }
 
-    if((profile->t2HTTPDest) && (strcmp(jprofileProtocol->valuestring, "HTTP") == 0)) {
-        profile->t2HTTPDest->URL = strdup(jprofileHTTPURL->valuestring);
-        profile->t2HTTPDest->Compression = COMP_NONE; /*in 1911_sprint default none*/
-        profile->t2HTTPDest->Method = HTTP_POST; /*1911_sprint default to POST */
-
-        T2Debug("[[profile->t2HTTPDest->URL:%s]]\n", profile->t2HTTPDest->URL);
-        T2Debug("[[profile->t2HTTPDest->Compression:%d]]\n", profile->t2HTTPDest->Compression);
-        T2Debug("[[profile->t2HTTPDest->Method:%d]]\n", profile->t2HTTPDest->Method);
-
-        if(jprofileHTTPRequestURIParameter) {
-
-            Vector_Create(&(profile->t2HTTPDest->RequestURIparamList));
-            char* href = NULL;
-            char* hname = NULL;
-            int httpret = 0;
-            int httpParamCount = 0;
-            int profileHTTPRequestURIParameterIndex = 0;
-
-            for( profileHTTPRequestURIParameterIndex = 0; profileHTTPRequestURIParameterIndex < ThisprofileHTTPRequestURIParameter_count;
-                    profileHTTPRequestURIParameterIndex++ ) {
-                href = NULL;
-                hname = NULL;
-                cJSON* pHTTPRPsubitem = cJSON_GetArrayItem(jprofileHTTPRequestURIParameter, profileHTTPRequestURIParameterIndex);
-                if(pHTTPRPsubitem != NULL) {
-                    cJSON *pHTTPRPsubitemReference = cJSON_GetObjectItem(pHTTPRPsubitem, "Reference");
-                    if(pHTTPRPsubitemReference) {
-                        href = pHTTPRPsubitemReference->valuestring;
-                        hname = pHTTPRPsubitemReference->valuestring; // default value for Name
-                        if(!(strcmp(href, ""))) { /*if reference is empty avoid adding this object*/
-                            continue;
-                        }
-                    }else {
-                        continue;
-                    }
-
-                    cJSON *pHTTPRPsubitemName = cJSON_GetObjectItem(pHTTPRPsubitem, "Name");
-                    if(pHTTPRPsubitemName) {
-                        hname = pHTTPRPsubitemName->valuestring;
-                    }
-                    httpret = addhttpURIreqParameter(profile, hname, href);
-                    if(httpret != T2ERROR_SUCCESS) {
-                        T2Error("%s Error in adding request URIparameterReference: %s for the profile: %s \n", __FUNCTION__, href, profile->name);
-                        continue;
-                    }else {
-                        T2Debug("[[Added  request URIparameterReference: %s]]\n", href);
-                    }
-                    httpParamCount++;
-                }
-
-            }
-            T2Info("Profile Name: %s\nConfigured httpURIReqParam count = %d \n", profile->name, ThisprofileHTTPRequestURIParameter_count);
-            T2Info("Number of httpURIReqParam added  = %d \n", httpParamCount);
-        }
+    //Protocol Configuration
+    ret = protocolSet (profile, jprofileProtocol, jprofileHTTPURL, jprofileHTTPRequestURIParameter, ThisprofileHTTPRequestURIParameter_count, jprofileRBUSMethodName, jprofileRBUSMethodParamArr, rbusMethodParamArrCount);
+    if(ret != T2ERROR_SUCCESS){
+       T2Error("Protocol Configuration is invalid\n");
+       return T2ERROR_FAILURE;
+    }
+    //Parameter Marker Configuration
+    if(T2ERROR_SUCCESS != addParameter_marker_config(profile, jprofileParameter, ThisProfileParameter_count)){
+        T2Error("Parameter marker configuration is invalid\n");
+        return T2ERROR_FAILURE;
     }
 
-    if((profile->t2RBUSDest) && (strcmp(jprofileProtocol->valuestring, "RBUS_METHOD") == 0)) {
-        profile->t2RBUSDest->rbusMethodName = strdup(jprofileRBUSMethodName->valuestring);
-        T2Debug("[[profile->t2RBUSDest->rbusMethodName:%s]]\n", profile->t2RBUSDest->rbusMethodName);
-
-        if(jprofileRBUSMethodParamArr) {
-            char* name = NULL;
-            char* value = NULL;
-            int rbusMethodParamIndex = 0;
-            int rbusParamAdded = 0 ;
-            T2ERROR rbusParamRet = T2ERROR_FAILURE;
-
-            Vector_Create(&(profile->t2RBUSDest->rbusMethodParamList));
-            for( rbusMethodParamIndex = 0; rbusMethodParamIndex < rbusMethodParamArrCount; rbusMethodParamIndex++ ) {
-                name = NULL;
-                value = NULL;
-                cJSON* jRbusParamElement = cJSON_GetArrayItem(jprofileRBUSMethodParamArr, rbusMethodParamIndex);
-                if(jRbusParamElement != NULL) {
-                    cJSON *jName = cJSON_GetObjectItem(jRbusParamElement, "name");
-                    cJSON *jValue = cJSON_GetObjectItem(jRbusParamElement, "value");
-                    if(jName && jValue) {
-                        name = jName->valuestring;
-                        value = jValue->valuestring; // default value for Name
-                    }else {
-                        continue;
-                    }
-                    rbusParamRet = addRbusMethodParameter(profile, name, value);
-                    if(rbusParamRet != T2ERROR_SUCCESS) {
-                        T2Error("%s Error in adding request URIparameterReference: %s for the profile: %s \n", __FUNCTION__, name, profile->name);
-                        continue;
-                    }else {
-                        T2Debug("[[Added  request URIparameterReference: %s]]\n", name);
-                    }
-                    rbusParamAdded++;
-                }
-            }
-            T2Info("Profile Name: %s\nConfigured rbus method param count = %d \n", profile->name, rbusMethodParamArrCount);
-            T2Info("Number of rbus method param added  = %d \n", rbusParamAdded);
-        }
+    int triggerCondition_count = 0;
+    if(jprofileTriggerCondition) {
+        triggerCondition_count = cJSON_GetArraySize(jprofileTriggerCondition);
+        T2Debug("TC found in profile\n");
     }
-
-    //Parameter Markers configuration
-    Vector_Create(&profile->paramList);
-    Vector_Create(&profile->staticParamList);
-    Vector_Create(&profile->eMarkerList);
-    Vector_Create(&profile->gMarkerList);
-    Vector_Create(&profile->cachedReportList);
-
-    char* paramtype = NULL;
-    char* use = NULL;
-    bool reportEmpty = false;
-    char* header = NULL;
-    char* content = NULL;
-    char* logfile = NULL;
-    int skipFrequency = 0;
-    size_t profileParamCount = 0;
-    int ProfileParameterIndex = 0;
-    char* method = NULL;
-    reportTimestampFormat rtformat;
-
-    for( ProfileParameterIndex = 0; ProfileParameterIndex < ThisProfileParameter_count; ProfileParameterIndex++ ) {
-        header = NULL;
-        content = NULL;
-        logfile = NULL;
-        skipFrequency = 0;
-        paramtype = NULL;
-        use = NULL;
-        reportEmpty = false;
-        rtformat = REPORTTIMESTAMP_NONE;
-
-        cJSON* pSubitem = cJSON_GetArrayItem(jprofileParameter, ProfileParameterIndex);
-        if(pSubitem != NULL) {
-            cJSON *jpSubitemtype = cJSON_GetObjectItem(pSubitem, "type");
-            if(jpSubitemtype) {
-                paramtype = jpSubitemtype->valuestring;
-            }else { /*TODO:Confirm if type is not configured. For now avoid corresponding marker*/
-                continue;
-            }
-
-            /* Confirm if "use" is considerable for datamodel type markers.*/
-            cJSON *jpSubitemuse = cJSON_GetObjectItem(pSubitem, "use");
-            if(jpSubitemuse) {
-                use = jpSubitemuse->valuestring;
-            }
-            cJSON *jpSubitemreportEmpty = cJSON_GetObjectItem(pSubitem, "reportEmpty");
-            if(jpSubitemreportEmpty) {
-                reportEmpty = cJSON_IsTrue(jpSubitemreportEmpty);
-            }
-            if(!(strcmp(paramtype, "dataModel"))) { /*Marker is TR181 param*/
-                cJSON *jpSubitemname = cJSON_GetObjectItem(pSubitem, "name");
-                if(jpSubitemname) {
-                    header = jpSubitemname->valuestring;
-                }
-                cJSON *jpSubitemreference = cJSON_GetObjectItem(pSubitem, "reference");
-                if(jpSubitemreference) {
-                    content = jpSubitemreference->valuestring;
-                    if(!jpSubitemname) {
-                        header = jpSubitemreference->valuestring; /*Default Name can be reference*/
-                    }
-                }
-                cJSON *jpMethod = cJSON_GetObjectItem(pSubitem, "method");
-                cJSON *jpSubitemreportTimestamp = cJSON_GetObjectItem(pSubitem, "reportTimestamp");
-                if(jpMethod) {
-                    method = jpMethod->valuestring;
-                    T2Debug("Method property is present and the value is %s\n", method);
-                    if(!(strcmp(method, "subscribe"))) {
-                        T2Info("Method is subscribe converting the parmeter to event type\n");
-                        paramtype = "event";
-                        header = jpSubitemreference->valuestring;
-                        content = T2REPORTCOMPONENT;
-                        if(jpSubitemname) {
-                            logfile = jpSubitemname->valuestring;
-                        }
-
-                        if(jpSubitemreportTimestamp) {
-                            T2Info("reportTimestamp is present and value is %s \n", jpSubitemreportTimestamp->valuestring);
-                            if(!(strcmp(jpSubitemreportTimestamp->valuestring, "Unix-Epoch"))) {
-                                rtformat = REPORTTIMESTAMP_UNIXEPOCH;
-                            }
-                        }
-                    }
-                }
-            }else if(!(strcmp(paramtype, "event"))) {
-
-                cJSON *jpSubitemname = cJSON_GetObjectItem(pSubitem, "name"); // Optional repalcement name in report
-                cJSON *jpSubitemeventName = cJSON_GetObjectItem(pSubitem, "eventName");
-                cJSON *jpSubitemcomponent = cJSON_GetObjectItem(pSubitem, "component");
-
-                if(jpSubitemname) {
-                    logfile = jpSubitemname->valuestring;
-                }
-                if(jpSubitemeventName) {
-                    header = jpSubitemeventName->valuestring; /*Default Name can be eventName*/
-                }
-
-                if(jpSubitemcomponent) {
-                    content = jpSubitemcomponent->valuestring;
-                }
-		cJSON *jpSubitemreportTimestamp = cJSON_GetObjectItem(pSubitem, "reportTimestamp");
-                if(jpSubitemreportTimestamp) {
-                    if(!(strcmp(jpSubitemreportTimestamp->valuestring, "Unix-Epoch"))){
-                        rtformat = REPORTTIMESTAMP_UNIXEPOCH;
-                    }
-                }
-            }else if(!(strcmp(paramtype, "grep"))) { //grep Marker
-
-                cJSON *jpSubitemname = cJSON_GetObjectItem(pSubitem, "marker");
-                cJSON *jpSubitSearchString = cJSON_GetObjectItem(pSubitem, "search");
-                cJSON *jpSubitemLogFile = cJSON_GetObjectItem(pSubitem, "logFile");
-                if(jpSubitemname) {
-                    header = jpSubitemname->valuestring;
-                }
-                if(jpSubitSearchString) {
-                    content = jpSubitSearchString->valuestring;
-                }
-                if(jpSubitemLogFile) {
-                    logfile = jpSubitemLogFile->valuestring;
-                }
-            }else {
-                T2Error("%s Unknown parameter type %s \n", __FUNCTION__, paramtype);
-                continue;
-            }
-            T2Debug("%s : reportTimestamp = %d\n", __FUNCTION__, rtformat);
-            ret = addParameter(profile, header, content, logfile, skipFrequency, paramtype, use, reportEmpty, rtformat); //add Multiple Report Profile Parameter
-            if(ret != T2ERROR_SUCCESS) {
-                T2Error("%s Error in adding parameter to profile %s \n", __FUNCTION__, profile->name);
-                continue;
-            }else {
-                T2Debug("[[Added parameter:%s]]\n", header);
-            }
-            profileParamCount++;
-        }
-    }
-
-    {
-        int triggerCondition_count = 0;
-        if(jprofileTriggerCondition) {
-            triggerCondition_count = cJSON_GetArraySize(jprofileTriggerCondition);
-            T2Debug("TC found in profile\n");
-        }
-        T2Debug("triggerCondition_count %d\n", triggerCondition_count);
-        if(triggerCondition_count) {
-            ret = addTriggerCondition(profile, jprofileTriggerCondition); //add
-            if(ret != T2ERROR_SUCCESS) {
-                T2Error("%s Error adding Trigger Condition to profile %s \n", __FUNCTION__, profile->name);
-            }
-        }
+    T2Debug("triggerCondition_count %d\n", triggerCondition_count);
+    if(triggerCondition_count) {
+         ret = addTriggerCondition(profile, jprofileTriggerCondition); //add
+         if(ret != T2ERROR_SUCCESS) {
+             T2Error("%s Error adding Trigger Condition to profile %s \n", __FUNCTION__, profile->name);
+         }
     }
 
     // Not included for RDKB-25008 . DCA utils expects the list to be sorted based on logfile names
-    T2Info("Number of tr181params/markers successfully added in profile = %lu \n", (unsigned long)profileParamCount);
-
     cJSON_Delete(json_root);
     json_root = NULL;
     *localProfile = profile;
@@ -1272,19 +1318,60 @@ error:
     return ret;
 }
 
+T2ERROR time_param_MsgPackReporting_Adjustments_valid_set(Profile *profile, msgpack_object* ReportingInterval_u64, msgpack_object* ActivationTimeout_u64, msgpack_object* TimeReference_str, msgpack_object* ReportOnUpdate_boolean, msgpack_object* FirstReportInterval_u64, msgpack_object* MaxUploadLatency_u64){
+    if(profile->generateNow) { ////If GenerateNow is true and ReportingAdjustments is present, ReportingAdjustments shall be ignored
+        profile->reportingInterval = 0;
+        profile->reportOnUpdate = false;
+        profile->firstReportingInterval = 0;
+        profile->maxUploadLatency = 0;
+    }else {
+        if (ReportingInterval_u64 && ActivationTimeout_u64 &&
+                profile->activationTimeoutPeriod < profile->reportingInterval) {
 
-T2ERROR processMsgPackConfiguration(msgpack_object *profiles_array_map, Profile **profile_dp) {
-    msgpack_object *name_str;
-    msgpack_object *hash_str;
-    msgpack_object *value_map;
-    msgpack_object *Description_str;
-    msgpack_object *Version_str;
-    msgpack_object *Protocol_str;
-    msgpack_object *EncodingType_str;
-    msgpack_object *ReportingInterval_u64;
-    msgpack_object *TimeReference_str;
-    msgpack_object *ActivationTimeout_u64;
-    msgpack_object *RootName_str;
+            T2Error("activationTimeoutPeriod is less than reporting interval. invalid profile: %s \n", profile->name);
+            free(profile->name);
+            free(profile->hash);
+            if (profile->t2HTTPDest)
+                free(profile->t2HTTPDest);
+            if (profile->t2RBUSDest)
+                free(profile->t2RBUSDest);
+            free(profile->Description);
+            free(profile->version);
+            free(profile);
+            return T2ERROR_FAILURE;
+        }
+       //TimeReference is only valid for profiles that specify a ReportingInterval
+        if(TimeReference_str != NULL && ReportingInterval_u64){
+            profile->timeRef = msgpack_strdup(TimeReference_str);
+        }
+        if(ReportOnUpdate_boolean != NULL){
+            msgpack_print(ReportOnUpdate_boolean, msgpack_get_obj_name(ReportOnUpdate_boolean));
+            MSGPACK_GET_NUMBER(ReportOnUpdate_boolean, profile->reportOnUpdate);
+            T2Debug("profile->reportingAdjust->reportOnUpdate: %u\n", profile->reportOnUpdate);
+        }
+        if(profile->timeRef == NULL || strcmp(profile->timeRef, DEFAULT_TIME_REFERENCE) == 0){ //Property 'FirstReportingInterval' if present along with Timereference,  FirstReportingInterval shall be ignored
+            if(FirstReportInterval_u64 != NULL){
+                 msgpack_print(FirstReportInterval_u64, msgpack_get_obj_name(FirstReportInterval_u64));
+                 MSGPACK_GET_NUMBER(FirstReportInterval_u64, profile->firstReportingInterval);
+                 T2Debug("profile->reportingAdjust->firstReportingInterval: %d\n", profile->firstReportingInterval);
+            }
+        }
+        if(profile->timeRef != NULL && strcmp(profile->timeRef, DEFAULT_TIME_REFERENCE) != 0){ //This value is only valid when TimeReference is different from the default.
+             if(MaxUploadLatency_u64 != NULL){
+                 msgpack_print(MaxUploadLatency_u64, msgpack_get_obj_name(MaxUploadLatency_u64));
+                 MSGPACK_GET_NUMBER(MaxUploadLatency_u64, profile->maxUploadLatency);
+                 T2Debug("profile->reportingAdjust->maxUploadLatency: %dms\n", profile->maxUploadLatency);
+             }
+        }
+    }
+    return T2ERROR_SUCCESS;
+}
+
+T2ERROR addParameterMsgpack_marker_config(Profile* profile, msgpack_object* value_map){
+    if(profile == NULL || value_map == NULL){
+       T2Error("Profile or value_map is NULL\n");
+       return T2ERROR_INVALID_ARGS;
+    }
     msgpack_object *Parameter_array;
     msgpack_object *Parameter_array_map;
     msgpack_object *Parameter_type_str;
@@ -1298,12 +1385,213 @@ T2ERROR processMsgPackConfiguration(msgpack_object *profiles_array_map, Profile 
     msgpack_object *Parameter_name_str;
     msgpack_object *Parameter_method_str;
     msgpack_object *Parameter_reportEmpty_boolean;
+    msgpack_object *Parameter_reportTimestamp_str;
+    uint32_t Parameter_array_size = 0;
+    int i = 0;
+    int ret = 0;
+
+    Vector_Create(&profile->paramList);
+    Vector_Create(&profile->staticParamList);
+    Vector_Create(&profile->eMarkerList);
+    Vector_Create(&profile->gMarkerList);
+    Vector_Create(&profile->cachedReportList);
+
+    Parameter_array = msgpack_get_map_value(value_map, "Parameter");
+    if(Parameter_array == NULL){
+        T2Error("Parameter is NULL. Invalid Profile\n");
+        return T2ERROR_FAILURE;
+    }
+    int profileParamCount = 0;
+    MSGPACK_GET_ARRAY_SIZE(Parameter_array, Parameter_array_size);
+
+    // Iterate through Map of multi profile configuration
+    for( i = 0; i < Parameter_array_size; i++ ) {
+
+        char* paramtype;
+        char* use;
+        char* header;
+        char* content;
+        char* logfile;
+        char* method;
+        bool reportEmpty;
+        int skipFrequency;
+        reportTimestampFormat rtformat;
+
+        header = NULL;
+        content = NULL;
+        logfile = NULL;
+        skipFrequency = 0;
+        paramtype = NULL;
+        use = NULL;
+        method = NULL;
+        reportEmpty = false;
+        rtformat =  REPORTTIMESTAMP_NONE;
+
+        Parameter_array_map = msgpack_get_array_element(Parameter_array, i);
+
+        Parameter_type_str = msgpack_get_map_value(Parameter_array_map, "type");
+        if(NULL == Parameter_type_str)
+            continue;
+        msgpack_print(Parameter_type_str, msgpack_get_obj_name(Parameter_type_str));
+		 paramtype = msgpack_strdup(Parameter_type_str);
+
+        Parameter_use_str = msgpack_get_map_value(Parameter_array_map, "use");
+        msgpack_print(Parameter_use_str, msgpack_get_obj_name(Parameter_use_str));
+        use = msgpack_strdup(Parameter_use_str);
+
+        Parameter_reportEmpty_boolean = msgpack_get_map_value(Parameter_array_map, "reportEmpty");
+        msgpack_print(Parameter_reportEmpty_boolean, msgpack_get_obj_name(Parameter_reportEmpty_boolean));
+        MSGPACK_GET_NUMBER(Parameter_reportEmpty_boolean, reportEmpty);
+        T2Debug("reportEmpty: %u\n", reportEmpty);
+
+        if(0 == msgpack_strcmp(Parameter_type_str, "dataModel")) {
+            Parameter_name_str = msgpack_get_map_value(Parameter_array_map, "name");
+            msgpack_print(Parameter_name_str, msgpack_get_obj_name(Parameter_name_str));
+            header = msgpack_strdup(Parameter_name_str);
+
+            Parameter_reference_str = msgpack_get_map_value(Parameter_array_map, "reference");
+            msgpack_print(Parameter_reference_str, msgpack_get_obj_name(Parameter_reference_str));
+            content = msgpack_strdup(Parameter_reference_str);
+
+            if(NULL == header)
+                header = msgpack_strdup(Parameter_reference_str);
+
+            Parameter_method_str = msgpack_get_map_value(Parameter_array_map, "method");
+            msgpack_print(Parameter_method_str, msgpack_get_obj_name(Parameter_method_str));
+            method = msgpack_strdup(Parameter_method_str);
+            Parameter_reportTimestamp_str = msgpack_get_map_value(Parameter_array_map, "reportTimestamp");
+            if(method){
+                   T2Debug("Method property is present and the value is %s\n", method);
+                   if(!(strcmp(method, "subscribe")))
+                   {
+                       T2Info("Method is subscribe converting the parameter to event type\n");
+                       // free now as we will change the values in the below code which will be freed later
+                       free(header);
+                       free(paramtype);
+                       free(content);
+                       //reportTimestamp parameter is applicable only when method is subscribe
+                       if(Parameter_reportTimestamp_str != NULL){
+                           msgpack_print(Parameter_reportTimestamp_str, msgpack_get_obj_name(Parameter_reportTimestamp_str));
+                           if(0 == msgpack_strcmp(Parameter_reportTimestamp_str, "Unix-Epoch")) {
+                                   rtformat =  REPORTTIMESTAMP_UNIXEPOCH;
+                           }
+                       }
+                       header = msgpack_strdup(Parameter_reference_str);
+                       paramtype = strdup("event");
+                       content = strdup(T2REPORTCOMPONENT);
+                       if(Parameter_name_str)
+                           logfile = msgpack_strdup(Parameter_name_str);
+                  }
+             }
+        }else if(0 == msgpack_strcmp(Parameter_type_str, "event")) {
+
+            Parameter_name_str = msgpack_get_map_value(Parameter_array_map, "name");
+            msgpack_print(Parameter_name_str, msgpack_get_obj_name(Parameter_name_str));
+            logfile = msgpack_strdup(Parameter_name_str);
+
+            Parameter_eventName_str = msgpack_get_map_value(Parameter_array_map, "eventName");
+            msgpack_print(Parameter_eventName_str, msgpack_get_obj_name(Parameter_eventName_str));
+            header = msgpack_strdup(Parameter_eventName_str);
+
+            Parameter_component_str = msgpack_get_map_value(Parameter_array_map, "component");
+            msgpack_print(Parameter_component_str, msgpack_get_obj_name(Parameter_component_str));
+            content = msgpack_strdup(Parameter_component_str);
+
+            Parameter_reportTimestamp_str = msgpack_get_map_value(Parameter_array_map, "reportTimestamp");
+            if(Parameter_reportTimestamp_str != NULL){
+                msgpack_print(Parameter_reportTimestamp_str, msgpack_get_obj_name(Parameter_reportTimestamp_str));
+                if(0 == msgpack_strcmp(Parameter_reportTimestamp_str, "Unix-Epoch")) {
+                     rtformat =  REPORTTIMESTAMP_UNIXEPOCH;
+                }
+            }
+
+        }else if(0 == msgpack_strcmp(Parameter_type_str, "grep")) {
+
+            Parameter_marker_str = msgpack_get_map_value(Parameter_array_map, "marker");
+            msgpack_print(Parameter_marker_str, msgpack_get_obj_name(Parameter_marker_str));
+            header = msgpack_strdup(Parameter_marker_str);
+
+            Parameter_search_str = msgpack_get_map_value(Parameter_array_map, "search");
+            msgpack_print(Parameter_search_str, msgpack_get_obj_name(Parameter_search_str));
+            content = msgpack_strdup(Parameter_search_str);
+
+            Parameter_logFile_str = msgpack_get_map_value(Parameter_array_map, "logFile");
+            msgpack_print(Parameter_logFile_str, msgpack_get_obj_name(Parameter_logFile_str));
+            logfile = msgpack_strdup(Parameter_logFile_str);
+
+        }else {
+            T2Error("%s Unknown parameter type %s \n", __FUNCTION__, paramtype);
+            free(paramtype);
+            free(use);
+            continue;
+        }
+        T2Debug("%s : reportTimestamp = %d\n", __FUNCTION__, rtformat);
+        ret = addParameter(profile, header, content, logfile, skipFrequency, paramtype, use, reportEmpty, rtformat);
+        /* Add Multiple Report Profile Parameter */
+        if(T2ERROR_SUCCESS != ret) {
+            T2Error("%s Error in adding parameter to profile %s \n", __FUNCTION__, profile->name);
+        }else {
+            T2Debug("Added parameter:%s \n", header);
+            profileParamCount++;
+        }
+        free(header);
+        free(content);
+        free(logfile);
+        free(use);
+        free(paramtype);
+        free(method);
+    }
+    T2Debug("Added parameter count:%d \n", profileParamCount);
+    return T2ERROR_SUCCESS;
+}
+
+T2ERROR encodingSetMsgpack (Profile *profile, msgpack_object* value_map){
+   if(profile == NULL || value_map == NULL){
+       T2Error("Profile or value is NULL\n");
+       return T2ERROR_INVALID_ARGS;
+   }
+   msgpack_object *JSONEncoding_map;
+    msgpack_object *ReportFormat_str;
+    msgpack_object *ReportTimestamp_str;
+  JSONEncoding_map = msgpack_get_map_value(value_map, "JSONEncoding");
+
+    ReportFormat_str = msgpack_get_map_value(JSONEncoding_map, "ReportFormat");
+    msgpack_print(ReportFormat_str, msgpack_get_obj_name(ReportFormat_str));
+    if(0 == msgpack_strcmp(ReportFormat_str, "NameValuePair")) {
+        profile->jsonEncoding->reportFormat = JSONRF_KEYVALUEPAIR;
+    }else if(0 == msgpack_strcmp(ReportFormat_str, "ObjectHierarchy")) {
+        profile->jsonEncoding->reportFormat = JSONRF_OBJHIERARCHY;
+    }else { /* defaulting it to NameValuePair */
+        profile->jsonEncoding->reportFormat = JSONRF_KEYVALUEPAIR;
+    }
+
+    ReportTimestamp_str = msgpack_get_map_value(JSONEncoding_map, "ReportTimestamp");
+    msgpack_print(ReportTimestamp_str, msgpack_get_obj_name(ReportTimestamp_str));
+    if(0 == msgpack_strcmp(ReportTimestamp_str, "None")) {
+        profile->jsonEncoding->tsFormat = TIMESTAMP_NONE;
+    }else if(0 == msgpack_strcmp(ReportTimestamp_str, "Unix-Epoch")) {
+        profile->jsonEncoding->tsFormat = TIMESTAMP_UNIXEPOCH;
+    }else if(0 == msgpack_strcmp(ReportTimestamp_str, "ISO-8601")) {
+        profile->jsonEncoding->tsFormat = TIMESTAMP_ISO_8601;
+    }else {/*default value for profile->jsonEncoding->tsFormat is None */
+        profile->jsonEncoding->tsFormat = TIMESTAMP_NONE;
+    }
+    return T2ERROR_SUCCESS;
+}
+
+T2ERROR protocolSetMsgpack(Profile *profile, msgpack_object* value_map, msgpack_object* Protocol_str){
+    if(profile == NULL || value_map == NULL){
+       T2Error("Profile or value_map is  NULL\n");
+       return T2ERROR_INVALID_ARGS;
+    }
+    uint32_t RequestURIParameter_array_size = 0;
+    uint32_t RbusMethodParameter_array_size = 0;
+    int i = 0;
     msgpack_object *HTTP_map;
     msgpack_object *URL_str;
     msgpack_object *Compression_str;
     msgpack_object *Method_str;
     msgpack_object *RbusMethod_map;
-    msgpack_object *RbusMethod_str;
     msgpack_object *RequestURIParameter_array;
     msgpack_object *RbusMethodParameter_array;
     msgpack_object *RequestURIParameter_array_map;
@@ -1312,24 +1600,123 @@ T2ERROR processMsgPackConfiguration(msgpack_object *profiles_array_map, Profile 
     msgpack_object *RequestURIParameter_Reference_str;
     msgpack_object *RequestRbusParameter_Name_str;
     msgpack_object *RequestRbusParameter_Value_str;
-    msgpack_object *JSONEncoding_map;
-    msgpack_object *ReportFormat_str;
-    msgpack_object *ReportTimestamp_str;
+
+     if(0 == msgpack_strcmp(Protocol_str, "HTTP")) {
+        HTTP_map = msgpack_get_map_value(value_map, "HTTP");
+
+        URL_str = msgpack_get_map_value(HTTP_map, "URL");
+        msgpack_print(URL_str, msgpack_get_obj_name(URL_str));
+        profile->t2HTTPDest->URL = msgpack_strdup(URL_str);
+
+        Compression_str = msgpack_get_map_value(HTTP_map, "Compression");
+        msgpack_print(Compression_str, msgpack_get_obj_name(Compression_str));
+        profile->t2HTTPDest->Compression = COMP_NONE; /*in 1911_sprint default none*/
+
+        Method_str = msgpack_get_map_value(HTTP_map, "Method");
+        msgpack_print(Method_str, msgpack_get_obj_name(Method_str));
+        profile->t2HTTPDest->Method = HTTP_POST; /*1911_sprint default to POST */
+
+        Vector_Create(&(profile->t2HTTPDest->RequestURIparamList));
+        RequestURIParameter_array = msgpack_get_map_value(HTTP_map, "RequestURIParameter");
+        int httpParamCount = 0;
+        MSGPACK_GET_ARRAY_SIZE(RequestURIParameter_array, RequestURIParameter_array_size);
+        for( i = 0; i < RequestURIParameter_array_size; i++ ) {
+            char* href;
+            char* hname;
+            int httpret = 0;
+
+            href = NULL;
+            hname = NULL;
+            RequestURIParameter_array_map = msgpack_get_array_element(RequestURIParameter_array, i);
+
+            RequestURIParameter_Reference_str = msgpack_get_map_value(RequestURIParameter_array_map, "Reference");
+            msgpack_print(RequestURIParameter_Reference_str, msgpack_get_obj_name(RequestURIParameter_Reference_str));
+            href = msgpack_strdup(RequestURIParameter_Reference_str);
+            if(NULL == href) {
+
+                RequestURIParameter_Name_str = msgpack_get_map_value(RequestURIParameter_array_map, "Name");
+                msgpack_print(RequestURIParameter_Name_str, msgpack_get_obj_name(RequestURIParameter_Name_str));
+                hname = msgpack_strdup(RequestURIParameter_Name_str);
+                if(NULL == hname)
+                    hname = msgpack_strdup(RequestURIParameter_Reference_str);
+
+                httpret = addhttpURIreqParameter(profile, hname, href);
+                if(T2ERROR_SUCCESS != httpret) {
+                    T2Error("%s Error in adding request URIparameterReference: %s for the profile: %s \n", __FUNCTION__, (href)? href : "", profile->name);
+                }else {
+                    T2Debug("Added  request URIparameterReference: %s \n", (href)? href : "");
+                    httpParamCount++;
+                }
+            }
+            free(href);
+            free(hname);
+        }
+        T2Debug("Added URI parameter count:%d \n", httpParamCount);
+    } else if ( 0 == msgpack_strcmp(Protocol_str, "RBUS_METHOD") ) {
+
+        RbusMethod_map = msgpack_get_map_value(value_map, "RBUS_METHOD");
+        Vector_Create(&(profile->t2RBUSDest->rbusMethodParamList));
+        RbusMethodParameter_array = msgpack_get_map_value(RbusMethod_map, "Parameters");
+        int rbusMethodParamCount = 0;
+        MSGPACK_GET_ARRAY_SIZE(RbusMethodParameter_array, RbusMethodParameter_array_size);
+
+        for( i = 0; i < RbusMethodParameter_array_size; i++ ) {
+            char* name = NULL;
+            char* value = NULL;
+            int httpret = 0;
+
+            RbusMethodIParameter_array_map = msgpack_get_array_element(RbusMethodParameter_array, i);
+
+            RequestRbusParameter_Name_str = msgpack_get_map_value(RbusMethodIParameter_array_map, "name");
+            msgpack_print(RequestRbusParameter_Name_str, msgpack_get_obj_name(RequestRbusParameter_Name_str));
+            name = msgpack_strdup(RequestRbusParameter_Name_str);
+
+            RequestRbusParameter_Value_str = msgpack_get_map_value(RbusMethodIParameter_array_map, "value");
+            msgpack_print(RequestRbusParameter_Value_str, msgpack_get_obj_name(RequestRbusParameter_Value_str));
+            value = msgpack_strdup(RequestRbusParameter_Value_str);
+
+            if( name && value ) {
+                httpret = addRbusMethodParameter(profile, name, value);
+                if(T2ERROR_SUCCESS != httpret) {
+                    T2Error("%s Error in adding request URIparameterReference: %s for the profile: %s \n", __FUNCTION__, name, profile->name);
+                }else {
+                    T2Debug("Added  request URIparameterReference: %s \n", name);
+                    rbusMethodParamCount++;
+                }
+            }
+            free(name);
+            free(value);
+        }
+        T2Debug("Added Rbus_method parameter count:%d \n", rbusMethodParamCount);
+
+    }else {
+        T2Error("Unsupported report sending protocol \n" );
+    }
+    return T2ERROR_SUCCESS;
+}
+
+T2ERROR processMsgPackConfiguration(msgpack_object *profiles_array_map, Profile **profile_dp) {
+    msgpack_object *name_str;
+    msgpack_object *hash_str;
+    msgpack_object *value_map;
+    msgpack_object *Description_str;
+    msgpack_object *Version_str;
+    msgpack_object *Protocol_str;
+    msgpack_object *EncodingType_str;
+    msgpack_object *ReportingInterval_u64;
+    msgpack_object *TimeReference_str;
+    msgpack_object *ActivationTimeout_u64;
+    msgpack_object *RootName_str;
     msgpack_object *GenerateNow_boolean;
     msgpack_object *DeleteOnTimout_boolean;
     msgpack_object *TriggerConditionArray;
+    msgpack_object *RbusMethod_str;
     msgpack_object *ReportingAdjustments_map;
     msgpack_object *ReportOnUpdate_boolean = NULL;
     msgpack_object *FirstReportInterval_u64 = NULL;
     msgpack_object *MaxUploadLatency_u64 = NULL;
-    msgpack_object *Parameter_reportTimestamp_str;
-
-    int i;
-    int ret;
-
-    uint32_t Parameter_array_size = 0;
-    uint32_t RequestURIParameter_array_size = 0;
-    uint32_t RbusMethodParameter_array_size = 0;
+    msgpack_object *RbusMethod_map;
+    int ret = 0;
 
     T2Debug("%s --in\n", __FUNCTION__);
     Profile *profile = (Profile *) malloc(sizeof(Profile));
@@ -1350,11 +1737,11 @@ T2ERROR processMsgPackConfiguration(msgpack_object *profiles_array_map, Profile 
     profile->hash = msgpack_strdup(hash_str);
 
     value_map = msgpack_get_map_value(profiles_array_map, "value");
-    
+
     if(value_map){
        ret = verifyMsgPckTriggerCondition(value_map);
        if(ret == T2ERROR_FAILURE){
-          if(profile->name)	    
+          if(profile->name)
              free(profile->name);
           if(profile->hash)
              free(profile->hash);
@@ -1362,7 +1749,7 @@ T2ERROR processMsgPackConfiguration(msgpack_object *profiles_array_map, Profile 
              free(profile);
           T2Error("TriggerCondition is invalid, unable to create profile\n");
           return T2ERROR_FAILURE;
-       }  
+       }
     }
     ReportingAdjustments_map = msgpack_get_map_value(value_map, "ReportingAdjustments");
     if(ReportingAdjustments_map){
@@ -1481,6 +1868,7 @@ T2ERROR processMsgPackConfiguration(msgpack_object *profiles_array_map, Profile 
     T2Debug("profile->deleteonTimeout: %u\n", profile->deleteonTimeout);
 
     profile->reportOnUpdate = false;
+    profile->firstReportingInterval = 0;
     profile->maxUploadLatency = 0;
     profile->timeRef = NULL;
 
@@ -1489,60 +1877,18 @@ T2ERROR processMsgPackConfiguration(msgpack_object *profiles_array_map, Profile 
     MSGPACK_GET_NUMBER(GenerateNow_boolean, profile->generateNow);
     T2Debug("profile->generateNow: %u\n", profile->generateNow);
 
-    if(profile->generateNow) { ////If GenerateNow is true and ReportingAdjustments is present, ReportingAdjustments shall be ignored
-        profile->reportingInterval = 0;
-        profile->reportOnUpdate = false;
-        profile->firstReportingInterval = 0;
-	profile->maxUploadLatency = 0;
-    }else {
-        ActivationTimeout_u64 = msgpack_get_map_value(value_map, "ActivationTimeOut");
-        msgpack_print(ActivationTimeout_u64, msgpack_get_obj_name(ActivationTimeout_u64));
-        MSGPACK_GET_NUMBER(ActivationTimeout_u64, profile->activationTimeoutPeriod);
-        T2Debug("profile->activationTimeoutPeriod: %u\n", profile->activationTimeoutPeriod);
+    ActivationTimeout_u64 = msgpack_get_map_value(value_map, "ActivationTimeOut");
+    msgpack_print(ActivationTimeout_u64, msgpack_get_obj_name(ActivationTimeout_u64));
+    MSGPACK_GET_NUMBER(ActivationTimeout_u64, profile->activationTimeoutPeriod);
 
-        if (ReportingInterval_u64 && ActivationTimeout_u64 &&
-                profile->activationTimeoutPeriod < profile->reportingInterval) {
+    TimeReference_str = msgpack_get_map_value(value_map, "TimeReference");
+    msgpack_print(TimeReference_str, msgpack_get_obj_name(TimeReference_str));
 
-            T2Error("activationTimeoutPeriod is less than reporting interval. invalid profile: %s \n", profile->name);
-            free(profile->name);
-            free(profile->hash);
-            if (profile->t2HTTPDest)
-                free(profile->t2HTTPDest);
-            if (profile->t2RBUSDest)
-                free(profile->t2RBUSDest);
-            free(profile->Description);
-            free(profile->version);
-            free(profile);
-            return T2ERROR_FAILURE;
-        }
-
-        TimeReference_str = msgpack_get_map_value(value_map, "TimeReference");
-        msgpack_print(TimeReference_str, msgpack_get_obj_name(TimeReference_str));
-       //TimeReference is only valid for profiles that specify a ReportingInterval
-        if(TimeReference_str != NULL && ReportingInterval_u64){
-            profile->timeRef = msgpack_strdup(TimeReference_str);
-        }
-        if(ReportingAdjustments_map){
-              if(ReportOnUpdate_boolean != NULL){
-                  msgpack_print(ReportOnUpdate_boolean, msgpack_get_obj_name(ReportOnUpdate_boolean));
-                  MSGPACK_GET_NUMBER(ReportOnUpdate_boolean, profile->reportOnUpdate);
-                  T2Debug("profile->reportingAdjust->reportOnUpdate: %u\n", profile->reportOnUpdate);
-              }
-              if(profile->timeRef == NULL || strcmp(profile->timeRef, DEFAULT_TIME_REFERENCE) == 0){ //Property 'FirstReportingInterval' if present along with Timereference,  FirstReportingInterval shall be ignored
-                  if(FirstReportInterval_u64 != NULL){
-                      msgpack_print(FirstReportInterval_u64, msgpack_get_obj_name(FirstReportInterval_u64));
-                      MSGPACK_GET_NUMBER(FirstReportInterval_u64, profile->firstReportingInterval);
-                      T2Debug("profile->reportingAdjust->firstReportingInterval: %d\n", profile->firstReportingInterval);
-                  }
-              }
-              if(profile->timeRef != NULL && strcmp(profile->timeRef, DEFAULT_TIME_REFERENCE) != 0){ //This value is only valid when TimeReference is different from the default.
-                  if(MaxUploadLatency_u64 != NULL){
-                      msgpack_print(MaxUploadLatency_u64, msgpack_get_obj_name(MaxUploadLatency_u64));
-                      MSGPACK_GET_NUMBER(MaxUploadLatency_u64, profile->maxUploadLatency);
-                      T2Debug("profile->reportingAdjust->maxUploadLatency: %dms\n", profile->maxUploadLatency);
-                  }
-              }
-        }
+    T2ERROR retval = time_param_MsgPackReporting_Adjustments_valid_set(profile, ReportingInterval_u64, ActivationTimeout_u64, TimeReference_str, ReportOnUpdate_boolean,  FirstReportInterval_u64, MaxUploadLatency_u64 );
+    if(retval != T2ERROR_SUCCESS)
+    {
+        T2Error("Time parameters are not valid\n");
+	return T2ERROR_FAILURE;
     }
     if(TriggerConditionArray && (!profile->generateNow) && (!profile->reportingInterval)){
          profile->reportingInterval = UINT_MAX;
@@ -1558,276 +1904,23 @@ T2ERROR processMsgPackConfiguration(msgpack_object *profiles_array_map, Profile 
     }
     T2Debug("profile->RootName: %s\n", profile->RootName);
 
-    /* MUST TODO: Seems timeref is an unsigned int in profile structure. */
-    /* Handle the scenario accordingly */
-
     /* Parameter Markers configuration */
-    Vector_Create(&profile->paramList);
-    Vector_Create(&profile->staticParamList);
-    Vector_Create(&profile->eMarkerList);
-    Vector_Create(&profile->gMarkerList);
-    Vector_Create(&profile->cachedReportList);
-
-    Parameter_array = msgpack_get_map_value(value_map, "Parameter");
-    int profileParamCount = 0;
-    MSGPACK_GET_ARRAY_SIZE(Parameter_array, Parameter_array_size);
-
-    // Iterate through Map of multi profile configuration
-    for( i = 0; i < Parameter_array_size; i++ ) {
-
-        char* paramtype;
-        char* use;
-        char* header;
-        char* content;
-        char* logfile;
-        char* method;
-        bool reportEmpty;
-        int skipFrequency;
-        reportTimestampFormat rtformat;
-
-        header = NULL;
-        content = NULL;
-        logfile = NULL;
-        skipFrequency = 0;
-        paramtype = NULL;
-        use = NULL;
-        method = NULL;
-        reportEmpty = false;
-        rtformat =  REPORTTIMESTAMP_NONE;
-
-        Parameter_array_map = msgpack_get_array_element(Parameter_array, i);
-
-        Parameter_type_str = msgpack_get_map_value(Parameter_array_map, "type");
-        if(NULL == Parameter_type_str)
-            continue;
-        msgpack_print(Parameter_type_str, msgpack_get_obj_name(Parameter_type_str));
-        paramtype = msgpack_strdup(Parameter_type_str);
-
-        Parameter_use_str = msgpack_get_map_value(Parameter_array_map, "use");
-        msgpack_print(Parameter_use_str, msgpack_get_obj_name(Parameter_use_str));
-        use = msgpack_strdup(Parameter_use_str);
-
-        Parameter_reportEmpty_boolean = msgpack_get_map_value(Parameter_array_map, "reportEmpty");
-        msgpack_print(Parameter_reportEmpty_boolean, msgpack_get_obj_name(Parameter_reportEmpty_boolean));
-        MSGPACK_GET_NUMBER(Parameter_reportEmpty_boolean, reportEmpty);
-        T2Debug("reportEmpty: %u\n", reportEmpty);
-
-        if(0 == msgpack_strcmp(Parameter_type_str, "dataModel")) {
-            Parameter_name_str = msgpack_get_map_value(Parameter_array_map, "name");
-            msgpack_print(Parameter_name_str, msgpack_get_obj_name(Parameter_name_str));
-            header = msgpack_strdup(Parameter_name_str);
-
-            Parameter_reference_str = msgpack_get_map_value(Parameter_array_map, "reference");
-            msgpack_print(Parameter_reference_str, msgpack_get_obj_name(Parameter_reference_str));
-            content = msgpack_strdup(Parameter_reference_str);
-
-            if(NULL == header)
-                header = msgpack_strdup(Parameter_reference_str);
-
-            Parameter_method_str = msgpack_get_map_value(Parameter_array_map, "method");
-            msgpack_print(Parameter_method_str, msgpack_get_obj_name(Parameter_method_str));
-            method = msgpack_strdup(Parameter_method_str);
-            Parameter_reportTimestamp_str = msgpack_get_map_value(Parameter_array_map, "reportTimestamp");
-            if(method){
-                   T2Debug("Method property is present and the value is %s\n", method);
-                   if(!(strcmp(method, "subscribe")))
-                   {
-                       T2Info("Method is subscribe converting the parameter to event type\n");
-                       // free now as we will change the values in the below code which will be freed later
-                       free(header);
-                       free(paramtype);
-                       free(content);
-                       //reportTimestamp parameter is applicable only when method is subscribe
-                       if(Parameter_reportTimestamp_str != NULL){
-                           msgpack_print(Parameter_reportTimestamp_str, msgpack_get_obj_name(Parameter_reportTimestamp_str));
-                           if(0 == msgpack_strcmp(Parameter_reportTimestamp_str, "Unix-Epoch")) {
-                                   rtformat =  REPORTTIMESTAMP_UNIXEPOCH;
-                           }
-                       }
-                       header = msgpack_strdup(Parameter_reference_str);
-                       paramtype = strdup("event");
-                       content = strdup(T2REPORTCOMPONENT);
-                       if(Parameter_name_str)
-                           logfile = msgpack_strdup(Parameter_name_str);
-                  }
-            }
-        }else if(0 == msgpack_strcmp(Parameter_type_str, "event")) {
-
-            Parameter_name_str = msgpack_get_map_value(Parameter_array_map, "name");
-            msgpack_print(Parameter_name_str, msgpack_get_obj_name(Parameter_name_str));
-            logfile = msgpack_strdup(Parameter_name_str);
-
-            Parameter_eventName_str = msgpack_get_map_value(Parameter_array_map, "eventName");
-            msgpack_print(Parameter_eventName_str, msgpack_get_obj_name(Parameter_eventName_str));
-            header = msgpack_strdup(Parameter_eventName_str);
-
-            Parameter_component_str = msgpack_get_map_value(Parameter_array_map, "component");
-            msgpack_print(Parameter_component_str, msgpack_get_obj_name(Parameter_component_str));
-            content = msgpack_strdup(Parameter_component_str);
-
-            Parameter_reportTimestamp_str = msgpack_get_map_value(Parameter_array_map, "reportTimestamp");
-            if(Parameter_reportTimestamp_str != NULL){
-                msgpack_print(Parameter_reportTimestamp_str, msgpack_get_obj_name(Parameter_reportTimestamp_str));
-                if(0 == msgpack_strcmp(Parameter_reportTimestamp_str, "Unix-Epoch")) {
-                     rtformat =  REPORTTIMESTAMP_UNIXEPOCH;
-                }
-            }
-
-        }else if(0 == msgpack_strcmp(Parameter_type_str, "grep")) {
-
-            Parameter_marker_str = msgpack_get_map_value(Parameter_array_map, "marker");
-            msgpack_print(Parameter_marker_str, msgpack_get_obj_name(Parameter_marker_str));
-            header = msgpack_strdup(Parameter_marker_str);
-
-            Parameter_search_str = msgpack_get_map_value(Parameter_array_map, "search");
-            msgpack_print(Parameter_search_str, msgpack_get_obj_name(Parameter_search_str));
-            content = msgpack_strdup(Parameter_search_str);
-
-            Parameter_logFile_str = msgpack_get_map_value(Parameter_array_map, "logFile");
-            msgpack_print(Parameter_logFile_str, msgpack_get_obj_name(Parameter_logFile_str));
-            logfile = msgpack_strdup(Parameter_logFile_str);
-
-        }else {
-            T2Error("%s Unknown parameter type %s \n", __FUNCTION__, paramtype);
-            free(paramtype);
-            free(use);
-            continue;
-        }
-        T2Debug("%s : reportTimestamp = %d\n", __FUNCTION__, rtformat);
-        ret = addParameter(profile, header, content, logfile, skipFrequency, paramtype, use, reportEmpty, rtformat);
-        /* Add Multiple Report Profile Parameter */
-        if(T2ERROR_SUCCESS != ret) {
-            T2Error("%s Error in adding parameter to profile %s \n", __FUNCTION__, profile->name);
-        }else {
-            T2Debug("Added parameter:%s \n", header);
-            profileParamCount++;
-        }
-        free(header);
-        free(content);
-        free(logfile);
-        free(use);
-        free(paramtype);
-        free(method);
+    retval = addParameterMsgpack_marker_config(profile, value_map);
+    if(retval != T2ERROR_SUCCESS){
+        T2Error("Invalid parameter in the profile\n");
+        return T2ERROR_FAILURE;
     }
-    T2Debug("Added parameter count:%d \n", profileParamCount);
     addMsgPckTriggerCondition(profile, value_map);
-
-    if(0 == msgpack_strcmp(Protocol_str, "HTTP")) {
-        HTTP_map = msgpack_get_map_value(value_map, "HTTP");
-
-        URL_str = msgpack_get_map_value(HTTP_map, "URL");
-        msgpack_print(URL_str, msgpack_get_obj_name(URL_str));
-        profile->t2HTTPDest->URL = msgpack_strdup(URL_str);
-
-        Compression_str = msgpack_get_map_value(HTTP_map, "Compression");
-        msgpack_print(Compression_str, msgpack_get_obj_name(Compression_str));
-        profile->t2HTTPDest->Compression = COMP_NONE; /*in 1911_sprint default none*/
-
-        Method_str = msgpack_get_map_value(HTTP_map, "Method");
-        msgpack_print(Method_str, msgpack_get_obj_name(Method_str));
-        profile->t2HTTPDest->Method = HTTP_POST; /*1911_sprint default to POST */
-
-        Vector_Create(&(profile->t2HTTPDest->RequestURIparamList));
-        RequestURIParameter_array = msgpack_get_map_value(HTTP_map, "RequestURIParameter");
-        int httpParamCount = 0;
-        MSGPACK_GET_ARRAY_SIZE(RequestURIParameter_array, RequestURIParameter_array_size);
-        for( i = 0; i < RequestURIParameter_array_size; i++ ) {
-            char* href;
-            char* hname;
-            int httpret = 0;
-
-            href = NULL;
-            hname = NULL;
-            RequestURIParameter_array_map = msgpack_get_array_element(RequestURIParameter_array, i);
-
-            RequestURIParameter_Reference_str = msgpack_get_map_value(RequestURIParameter_array_map, "Reference");
-            msgpack_print(RequestURIParameter_Reference_str, msgpack_get_obj_name(RequestURIParameter_Reference_str));
-            href = msgpack_strdup(RequestURIParameter_Reference_str);
-            if(NULL == href) {
-
-                RequestURIParameter_Name_str = msgpack_get_map_value(RequestURIParameter_array_map, "Name");
-                msgpack_print(RequestURIParameter_Name_str, msgpack_get_obj_name(RequestURIParameter_Name_str));
-                hname = msgpack_strdup(RequestURIParameter_Name_str);
-                if(NULL == hname)
-                    hname = msgpack_strdup(RequestURIParameter_Reference_str);
-
-                httpret = addhttpURIreqParameter(profile, hname, href);
-                if(T2ERROR_SUCCESS != httpret) {
-                    T2Error("%s Error in adding request URIparameterReference: %s for the profile: %s \n", __FUNCTION__, (href)? href : "", profile->name);
-                }else {
-                    T2Debug("Added  request URIparameterReference: %s \n", (href)? href : "");
-                    httpParamCount++;
-                }
-            }
-            free(href);
-            free(hname);
-        }
-        T2Debug("Added URI parameter count:%d \n", httpParamCount);
-    } else if ( 0 == msgpack_strcmp(Protocol_str, "RBUS_METHOD") ) {
-
-        RbusMethod_map = msgpack_get_map_value(value_map, "RBUS_METHOD");
-        Vector_Create(&(profile->t2RBUSDest->rbusMethodParamList));
-        RbusMethodParameter_array = msgpack_get_map_value(RbusMethod_map, "Parameters");
-        int rbusMethodParamCount = 0;
-        MSGPACK_GET_ARRAY_SIZE(RbusMethodParameter_array, RbusMethodParameter_array_size);
-
-        for( i = 0; i < RbusMethodParameter_array_size; i++ ) {
-            char* name = NULL;
-            char* value = NULL;
-            int httpret = 0;
-
-            RbusMethodIParameter_array_map = msgpack_get_array_element(RbusMethodParameter_array, i);
-
-            RequestRbusParameter_Name_str = msgpack_get_map_value(RbusMethodIParameter_array_map, "name");
-            msgpack_print(RequestRbusParameter_Name_str, msgpack_get_obj_name(RequestRbusParameter_Name_str));
-            name = msgpack_strdup(RequestRbusParameter_Name_str);
-
-            RequestRbusParameter_Value_str = msgpack_get_map_value(RbusMethodIParameter_array_map, "value");
-            msgpack_print(RequestRbusParameter_Value_str, msgpack_get_obj_name(RequestRbusParameter_Value_str));
-            value = msgpack_strdup(RequestRbusParameter_Value_str);
-
-            if( name && value ) {
-                httpret = addRbusMethodParameter(profile, name, value);
-                if(T2ERROR_SUCCESS != httpret) {
-                    T2Error("%s Error in adding request URIparameterReference: %s for the profile: %s \n", __FUNCTION__, name, profile->name);
-                }else {
-                    T2Debug("Added  request URIparameterReference: %s \n", name);
-                    rbusMethodParamCount++;
-                }
-            }
-            free(name);
-            free(value);
-        }
-        T2Debug("Added Rbus_method parameter count:%d \n", rbusMethodParamCount);
-
-    }else {
-        T2Error("Unsupported report sending protocol \n" );
+    retval = protocolSetMsgpack(profile, value_map, Protocol_str); //Protocol Parameter
+    if(retval != T2ERROR_SUCCESS){
+        T2Error("Protocol Parameter is invalid\n");
+        return T2ERROR_FAILURE;
     }
-
-    JSONEncoding_map = msgpack_get_map_value(value_map, "JSONEncoding");
-
-    ReportFormat_str = msgpack_get_map_value(JSONEncoding_map, "ReportFormat");
-    msgpack_print(ReportFormat_str, msgpack_get_obj_name(ReportFormat_str));
-    if(0 == msgpack_strcmp(ReportFormat_str, "NameValuePair")) {
-        profile->jsonEncoding->reportFormat = JSONRF_KEYVALUEPAIR;
-    }else if(0 == msgpack_strcmp(ReportFormat_str, "ObjectHierarchy")) {
-        profile->jsonEncoding->reportFormat = JSONRF_OBJHIERARCHY;
-    }else { /* defaulting it to NameValuePair */
-        profile->jsonEncoding->reportFormat = JSONRF_KEYVALUEPAIR;
+    retval = encodingSetMsgpack(profile, value_map); //Encoding parameter
+    if(retval != T2ERROR_SUCCESS){
+        T2Error("Encoding parameter is invalid\n");
+        return T2ERROR_FAILURE;
     }
-
-    ReportTimestamp_str = msgpack_get_map_value(JSONEncoding_map, "ReportTimestamp");
-    msgpack_print(ReportTimestamp_str, msgpack_get_obj_name(ReportTimestamp_str));
-    if(0 == msgpack_strcmp(ReportTimestamp_str, "None")) {
-        profile->jsonEncoding->tsFormat = TIMESTAMP_NONE;
-    }else if(0 == msgpack_strcmp(ReportTimestamp_str, "Unix-Epoch")) {
-        profile->jsonEncoding->tsFormat = TIMESTAMP_UNIXEPOCH;
-    }else if(0 == msgpack_strcmp(ReportTimestamp_str, "ISO-8601")) {
-        profile->jsonEncoding->tsFormat = TIMESTAMP_ISO_8601;
-    }else {/*default value for profile->jsonEncoding->tsFormat is None */
-        profile->jsonEncoding->tsFormat = TIMESTAMP_NONE;
-    }
-
     *profile_dp = profile;
     T2Debug("%s --out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;

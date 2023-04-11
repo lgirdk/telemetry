@@ -229,11 +229,18 @@ static T2ERROR appendRequestParams(char *buf, const int maxArgLen) {
     T2ERROR ret = T2ERROR_FAILURE;
     T2Debug("%s ++in\n", __FUNCTION__);
 
-    int avaBufSize = maxArgLen, write_size = 0;
+    int avaBufSize = maxArgLen, write_size = 0, slen = 0;
     char *paramVal = NULL;
     char *tempBuf = (char*) malloc(MAX_URL_ARG_LEN);
     char build_type[BUILD_TYPE_MAX_LENGTH] = { 0 };
-
+    #if !defined(ENABLE_RDKB_SUPPORT) && !defined(ENABLE_RDKC_SUPPORT)
+    char *timezone = NULL;
+   #endif
+    if(buf == NULL)
+    {
+        T2Error("Buffer is NULL for appendRequestParams\n");
+        return T2ERROR_FAILURE;
+    }
     if(tempBuf == NULL)
     {
         T2Error("Failed to allocate memory for RequestParams\n");
@@ -329,10 +336,9 @@ static T2ERROR appendRequestParams(char *buf, const int maxArgLen) {
      strncat(buf,
             "controllerId=2504&channelMapId=2345&vodId=15660&",
             avaBufSize);
-     int slen = strlen("controllerId=2504&channelMapId=2345&vodId=15660&");
+     slen = strlen("controllerId=2504&channelMapId=2345&vodId=15660&");
     avaBufSize = avaBufSize - slen;
 #if !defined(ENABLE_RDKB_SUPPORT) && !defined(ENABLE_RDKC_SUPPORT)
-    char *timezone = NULL;
     timezone = getTimezone();
     if(timezone != NULL){
             memset(tempBuf, 0, MAX_URL_ARG_LEN);
@@ -386,7 +392,7 @@ static T2ERROR doHttpGet(char* httpsUrl, char **data) {
     CURL *curl;
     CURLcode code = CURLE_OK;
     long http_code = 0;
-    long curl_code = 0;
+    CURLcode curl_code = CURLE_OK;
 
     char *pCertFile = NULL;
     char *pPasswd = NULL;
@@ -452,7 +458,7 @@ static T2ERROR doHttpGet(char* httpsUrl, char **data) {
 
         T2ERROR ret = T2ERROR_FAILURE;
         curlResponseData* httpResponse = (curlResponseData *) malloc(sizeof(curlResponseData));
-        httpResponse->data = malloc(1);
+        httpResponse->data = (char*)malloc(1);
         httpResponse->size = 0;
 
         curl = curl_easy_init();
@@ -579,7 +585,7 @@ static T2ERROR doHttpGet(char* httpsUrl, char **data) {
                     free(pPasswd);
                 curl_easy_cleanup(curl);
             }else {
-                T2Error("%s:%d, T2:Telemetry XCONF communication Failed with http code : %ld Curl code : %ld \n", __func__, __LINE__, http_code,
+                T2Error("%s:%d, T2:Telemetry XCONF communication Failed with http code : %ld Curl code : %d \n", __func__, __LINE__, http_code,
                         curl_code);
                 T2Error("%s : curl_easy_perform failed with error message %s from curl \n", __FUNCTION__, curl_easy_strerror(curl_code));
                 free(httpResponse->data);
@@ -628,7 +634,7 @@ static T2ERROR doHttpGet(char* httpsUrl, char **data) {
             read(sharedPipeFdDataLen[0], &len, sizeof(size_t));
             close(sharedPipeFdDataLen[0]);
 
-            *data = malloc(len + 1);
+            *data = (char*)malloc(len + 1);
             if(*data == NULL) {
                 T2Error("Unable to allocate memory for XCONF config data \n");
                 ret = T2ERROR_FAILURE;
@@ -654,7 +660,10 @@ static T2ERROR fetchRemoteConfiguration(char *configURL, char **configData) {
     // Handles the https communications with the xconf server
     T2ERROR ret = T2ERROR_FAILURE;
     T2Debug("%s ++in\n", __FUNCTION__);
-
+    if(configURL == NULL){
+        T2Error("configURL is NULL\n");
+        return T2ERROR_INVALID_ARGS;
+    }
     int write_size = 0, availableBufSize = MAX_URL_LEN;
     char* urlWithParams = (char*) malloc(MAX_URL_LEN * sizeof(char));
     if (NULL != urlWithParams)

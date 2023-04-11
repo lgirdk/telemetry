@@ -16,6 +16,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 ##########################################################################
+AUTOMAKE_OPTIONS = subdir-objects
+
+SUBDIRS = xconf-client
+
 AM_CFLAGS =
 
 AM_CXXFLAGS = -std=c++11

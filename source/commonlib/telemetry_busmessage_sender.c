@@ -473,15 +473,16 @@ static T2ERROR doPopulateEventMarkerList( ) {
 
     pthread_mutex_lock(&markerListMutex);
     EVENT_DEBUG("Lock markerListMutex & Clean up eventMarkerMap \n");
-    if(eventMarkerMap != NULL)
+    if(eventMarkerMap != NULL){
         hash_map_destroy(eventMarkerMap, free);
-
+        eventMarkerMap = NULL;
+    }
 
     ret = rbus_get(bus_handle, deNameSpace[0], &paramValue_t);
     if(ret != RBUS_ERROR_SUCCESS) {
-        EVENT_ERROR("rbus mode : No event list configured in profiles %s\n", deNameSpace[0]);
+        EVENT_ERROR("rbus mode : No event list configured in profiles %s and return value %d\n", deNameSpace[0], ret);
         pthread_mutex_unlock(&markerListMutex);
-        EVENT_DEBUG("rbus mode : No event list configured in profiles %s . Unlock markerListMutex\n", deNameSpace[0]);
+        EVENT_DEBUG("rbus mode : No event list configured in profiles %s and return value %d. Unlock markerListMutex\n", deNameSpace[0], ret);
         EVENT_DEBUG("%s --out\n", __FUNCTION__);
         return T2ERROR_SUCCESS;
     }

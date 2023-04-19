@@ -51,6 +51,7 @@ static dataModelSavedMsgPackCallBack dmSavedMsgPackProcessingCallBack;
 static hash_map_t *compTr181ParamMap = NULL;
 static profilememCallBack profilememUsedCallBack;
 static dataModelReportOnDemandCallBack reportOnDemandCallBack;
+static triggerReportOnCondtionCallBack reportOnConditionCallBack;
 
 static char* reportProfileVal = NULL ;
 static char* tmpReportProfileVal = NULL ;
@@ -991,6 +992,11 @@ T2ERROR publishEventsProfileUpdates() {
     
 }
 
+void registerConditionalReportCallBack(triggerReportOnCondtionCallBack triggerConditionCallback){
+    if(!reportOnConditionCallBack)
+     reportOnConditionCallBack = triggerConditionCallback ;
+}
+
 void reportEventHandler(
     rbusHandle_t handle,
     rbusEvent_t const* event,
@@ -1053,15 +1059,17 @@ void triggerCondtionReceiveHandler(
         }
     }
 
-    if(filter) {
-      T2Debug("Filter event\n");
-      if(rbusValue_GetBoolean(filter) == 1) {
-        triggerReportOnCondtion(eventName, eventValue);
-      }
-    }
-    else {
-      T2Debug("ValueChange event\n");
-      triggerReportOnCondtion(eventName, eventValue);
+    if(reportOnConditionCallBack) {
+        if(filter) {
+          T2Debug("Filter event\n");
+          if(rbusValue_GetBoolean(filter) == 1) {
+            reportOnConditionCallBack(eventName, eventValue);
+          }
+        }
+        else {
+          T2Debug("ValueChange event\n");
+          reportOnConditionCallBack(eventName, eventValue);
+        }
     }
 
     free(eventValue);

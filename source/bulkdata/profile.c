@@ -1113,6 +1113,8 @@ T2ERROR initProfileList()
 
     Vector_Create(&profileList);
 
+    registerConditionalReportCallBack(&triggerReportOnCondtion);
+
     loadReportProfilesFromDisk();
 
     T2Debug("%s --out\n", __FUNCTION__);

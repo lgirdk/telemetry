@@ -62,6 +62,8 @@ typedef void (*profilememCallBack) (unsigned int *value);
 
 typedef void* (*dataModelReportOnDemandCallBack) (void* input);
 
+typedef T2ERROR (*triggerReportOnCondtionCallBack)(const char *referenceName, const char *referenceValue);
+
 typedef struct _callbackhandler {
     unsigned short numberOfHandlers;
     dataModelCallBack dmCallBack;
@@ -97,5 +99,7 @@ T2ERROR busUninit() ;
 void freeComponentEventList(void* data);
 
 void publishReportUploadStatus(char* status);
+
+void registerConditionalReportCallBack(triggerReportOnCondtionCallBack triggerConditionCallback);
 
 #endif /* SOURCE_CCSPINTERFACE_BUSINTERFACE_H_ */

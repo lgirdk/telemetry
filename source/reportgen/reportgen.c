@@ -62,8 +62,13 @@ void freeProfileValues(void *data)
 // convert vector to json array it is responsbility of
 // caller function to free the vector 
 void convertVectorToJson(cJSON *output, Vector *input) {
-    if(!output)
+    if(!output){
         output = cJSON_CreateArray();
+        if(output == NULL){
+            T2Error("cJSON_CreateArray failed.\n");
+            return;
+        }
+    }
     int i,vectorSize = (int) Vector_Size(input);
     for(i = 0; i < vectorSize; i++){
         char* eventValue = Vector_At(input, i);
@@ -73,12 +78,20 @@ void convertVectorToJson(cJSON *output, Vector *input) {
 
 T2ERROR destroyJSONReport(cJSON *jsonObj)
 {
+    if(jsonObj == NULL){
+        T2Error("jsonObj Argument is NULL\n");
+	return T2ERROR_INVALID_ARGS;
+    }
     cJSON_Delete(jsonObj);
     return T2ERROR_SUCCESS;
 }
 
 T2ERROR encodeParamResultInJSON(cJSON *valArray, Vector *paramNameList, Vector *paramValueList)
 {
+    if(valArray == NULL || paramNameList == NULL || paramValueList == NULL){
+         T2Error("Invalid or NULL arguments\n");
+         return T2ERROR_INVALID_ARGS;
+    }
     int index = 0;
     T2Debug("%s ++in \n", __FUNCTION__);
 
@@ -96,8 +109,16 @@ T2ERROR encodeParamResultInJSON(cJSON *valArray, Vector *paramNameList, Vector *
         {
             if(param->reportEmptyParam){
                 cJSON *arrayItem = cJSON_CreateObject();
+                if(arrayItem == NULL){
+                    T2Error("cJSON_CreateObject failed.. arrayItem is NULL \n");
+                    return T2ERROR_FAILURE;
+                }
                 T2Info("Paramter was not successfully retrieved... \n");
-                cJSON_AddStringToObject(arrayItem, param->name, "NULL");
+                if(cJSON_AddStringToObject(arrayItem, param->name, "NULL")  == NULL){
+                    T2Error("cJSON_AddStringToObject failed.\n");
+                    cJSON_Delete(arrayItem);
+                    return T2ERROR_FAILURE;
+		}
                 cJSON_AddItemToArray(valArray, arrayItem);
             }else{
                 continue ;
@@ -108,7 +129,15 @@ T2ERROR encodeParamResultInJSON(cJSON *valArray, Vector *paramNameList, Vector *
             if(paramValues[0]) {
                 if(param->reportEmptyParam || !checkForEmptyString(paramValues[0]->parameterValue)) {
                     cJSON *arrayItem = cJSON_CreateObject();
-                    cJSON_AddStringToObject(arrayItem, param->name, paramValues[0]->parameterValue);
+                    if(arrayItem == NULL){
+                        T2Error("cJSON_CreateObject failed.. arrayItem is NULL \n");
+                        return T2ERROR_FAILURE;
+                    }
+                    if(cJSON_AddStringToObject(arrayItem, param->name, paramValues[0]->parameterValue)  == NULL){
+                        T2Error("cJSON_AddStringToObject failed.\n");
+                        cJSON_Delete(arrayItem);
+                        return T2ERROR_FAILURE;
+                    }
                     cJSON_AddItemToArray(valArray, arrayItem);
                 }
             }
@@ -120,13 +149,27 @@ T2ERROR encodeParamResultInJSON(cJSON *valArray, Vector *paramNameList, Vector *
             int valIndex = 0;
             bool isTableEmpty = true ;
             cJSON *arrayItem = cJSON_CreateObject();
+            if(arrayItem == NULL){
+               T2Error("cJSON_CreateObject failed.. arrayItem is NULL \n");
+	       return T2ERROR_FAILURE;
+	    }
             cJSON_AddItemToObject(arrayItem, param->name, valList = cJSON_CreateArray());
             for (; valIndex < paramValCount; valIndex++)
             {
                 if(paramValues[valIndex]){
                     if(param->reportEmptyParam || !checkForEmptyString(paramValues[0]->parameterValue)) {
                         valItem = cJSON_CreateObject();
-                        cJSON_AddStringToObject(valItem, paramValues[valIndex]->parameterName, paramValues[valIndex]->parameterValue);
+			if(valItem  == NULL){
+                            T2Error("cJSON_CreateObject failed.. valItem is NULL \n");
+                            cJSON_Delete(arrayItem);
+                            return T2ERROR_FAILURE;
+                        }
+                        if(cJSON_AddStringToObject(valItem, paramValues[valIndex]->parameterName, paramValues[valIndex]->parameterValue) == NULL){
+                            T2Error("cJSON_AddStringToObject failed\n");
+                            cJSON_Delete(arrayItem);
+                            cJSON_Delete(valItem);
+                            return T2ERROR_FAILURE;
+                        }
                         cJSON_AddItemToArray(valList, valItem);
                         isTableEmpty = false ;
                     }
@@ -147,6 +190,10 @@ T2ERROR encodeParamResultInJSON(cJSON *valArray, Vector *paramNameList, Vector *
 T2ERROR encodeStaticParamsInJSON(cJSON *valArray, Vector *staticParamList)
 {
     T2Debug("%s ++in \n", __FUNCTION__);
+    if(valArray == NULL || staticParamList == NULL){
+        T2Error("Invalid or NULL Arguments\n");
+	return T2ERROR_INVALID_ARGS;
+    }
 
     int index = 0;
     cJSON *arrayItem = NULL;
@@ -157,7 +204,15 @@ T2ERROR encodeStaticParamsInJSON(cJSON *valArray, Vector *staticParamList)
             if(sparam->name == NULL || sparam->value == NULL )
                 continue ;
             arrayItem = cJSON_CreateObject();
-            cJSON_AddStringToObject(arrayItem, sparam->name, sparam->value);
+            if(arrayItem == NULL){
+                T2Error("cJSON_CreateObject failed.. arrayItem is NULL \n");
+		return T2ERROR_FAILURE;
+	    }
+            if(cJSON_AddStringToObject(arrayItem, sparam->name, sparam->value) == NULL){
+                T2Error("cJSON_AddStringToObject failed.\n");
+                cJSON_Delete(arrayItem);
+                return T2ERROR_FAILURE;
+	    }
             cJSON_AddItemToArray(valArray, arrayItem);
         }
     }
@@ -169,6 +224,10 @@ T2ERROR encodeStaticParamsInJSON(cJSON *valArray, Vector *staticParamList)
 T2ERROR encodeGrepResultInJSON(cJSON *valArray, Vector *grepResult)
 {
     T2Debug("%s ++in \n", __FUNCTION__);
+    if(valArray == NULL || grepResult == NULL){
+        T2Error("Invalid or NULL Arguments\n");
+        return T2ERROR_INVALID_ARGS;
+    }
     int index = 0;
     cJSON *arrayItem = NULL;
     for(; index < Vector_Size(grepResult); index++)
@@ -178,7 +237,15 @@ T2ERROR encodeGrepResultInJSON(cJSON *valArray, Vector *grepResult)
             if(grep->markerName == NULL || grep->markerValue == NULL ) // Ignore null values
                 continue ;
             arrayItem = cJSON_CreateObject();
-            cJSON_AddStringToObject(arrayItem, grep->markerName, grep->markerValue);
+	    if(arrayItem == NULL){
+                T2Error("cJSON_CreateObject failed.. arrayItem is NULL \n");
+                return T2ERROR_FAILURE;
+            }
+            if(cJSON_AddStringToObject(arrayItem, grep->markerName, grep->markerValue)  == NULL){
+                T2Error("cJSON_AddStringToObject failed.\n");
+                cJSON_Delete(arrayItem);	
+                return T2ERROR_FAILURE;
+            }
             cJSON_AddItemToArray(valArray, arrayItem);
         }
     }
@@ -189,6 +256,10 @@ T2ERROR encodeGrepResultInJSON(cJSON *valArray, Vector *grepResult)
 T2ERROR encodeEventMarkersInJSON(cJSON *valArray, Vector *eventMarkerList)
 {
     T2Debug("%s ++in \n", __FUNCTION__);
+    if(valArray == NULL || eventMarkerList == NULL){
+        T2Error("Invalid or NULL Arguments\n");
+        return T2ERROR_INVALID_ARGS;
+    }
     int index = 0;
     cJSON *arrayItem = NULL;
     for(; index < Vector_Size(eventMarkerList); index++)
@@ -202,16 +273,32 @@ T2ERROR encodeEventMarkersInJSON(cJSON *valArray, Vector *eventMarkerList)
                     char stringValue[10] = {'\0'};
                     sprintf(stringValue, "%d", eventMarker->u.count);
                     arrayItem = cJSON_CreateObject();
+                    if(arrayItem == NULL){
+                        T2Error("cJSON_CreateObject failed .. arrayItem is NULL\n");
+                        return T2ERROR_FAILURE;
+                    }
                     if (eventMarker->alias) {
-                        cJSON_AddStringToObject(arrayItem, eventMarker->alias, stringValue);
+                        if(cJSON_AddStringToObject(arrayItem, eventMarker->alias, stringValue) == NULL){
+                             T2Error("cJSON_AddStringToObject failed\n");
+                             cJSON_Delete(arrayItem);
+                             return T2ERROR_FAILURE;
+			}
+
                     } else {
-                        cJSON_AddStringToObject(arrayItem, eventMarker->markerName, stringValue);
+                        if(cJSON_AddStringToObject(arrayItem, eventMarker->markerName, stringValue) == NULL){
+                             T2Error("cJSON_AddStringToObject failed\n");
+                             cJSON_Delete(arrayItem);
+                             return T2ERROR_FAILURE;
+                        }
                     }
                     if(eventMarker->reportTimestampParam == REPORTTIMESTAMP_UNIXEPOCH){
-                        cJSON_AddStringToObject(arrayItem, eventMarker->markerName_CT, eventMarker->timestamp);
+                        if(cJSON_AddStringToObject(arrayItem, eventMarker->markerName_CT, eventMarker->timestamp) == NULL){
+                             T2Error("cJSON_AddStringToObject failed\n");
+                             cJSON_Delete(arrayItem);
+                             return T2ERROR_FAILURE;
+                        }
                     }
                     cJSON_AddItemToArray(valArray, arrayItem);
-
                     T2Debug("Marker value for : %s is %d\n", eventMarker->markerName, eventMarker->u.count);
                     eventMarker->u.count = 0;
                 }
@@ -221,7 +308,16 @@ T2ERROR encodeEventMarkersInJSON(cJSON *valArray, Vector *eventMarkerList)
                 if( eventMarker->u.accumulatedValues != NULL && Vector_Size(eventMarker->u.accumulatedValues))
                 {
                     arrayItem = cJSON_CreateObject();
+		    if(arrayItem == NULL){
+                        T2Error("cJSON_CreateObject failed .. arrayItem is NULL\n");
+                        return T2ERROR_FAILURE;
+                    }
                     cJSON *vectorToarray = cJSON_CreateArray();
+                    if(vectorToarray == NULL){
+                        T2Error("cJSON_CreateArray failed .. vectorToarray is NULL\n");
+                        cJSON_Delete(arrayItem);
+                        return T2ERROR_FAILURE;
+                    }
                     convertVectorToJson(vectorToarray, eventMarker->u.accumulatedValues);
                     Vector_Clear(eventMarker->u.accumulatedValues, freeAccumulatedParam);
                     T2Debug("eventMarker->reportTimestampParam type is %d \n", eventMarker->reportTimestampParam);
@@ -233,6 +329,11 @@ T2ERROR encodeEventMarkersInJSON(cJSON *valArray, Vector *eventMarkerList)
                     }
                     if(eventMarker->reportTimestampParam == REPORTTIMESTAMP_UNIXEPOCH) {
                         cJSON *TimevectorToarray = cJSON_CreateArray();
+			if(TimevectorToarray == NULL){
+			    T2Error("cJSON_CreateArray failed .. TimevectorToarray is NULL\n");
+                            cJSON_Delete(arrayItem);
+                            return T2ERROR_FAILURE;
+			}
                         convertVectorToJson(TimevectorToarray, eventMarker->accumulatedTimestamp);
                         T2Debug("convertVectorToJson is successful\n");
                         Vector_Clear(eventMarker->accumulatedTimestamp, freeAccumulatedParam);
@@ -248,13 +349,29 @@ T2ERROR encodeEventMarkersInJSON(cJSON *valArray, Vector *eventMarkerList)
                 if(eventMarker->u.markerValue != NULL)
                 {
                     arrayItem = cJSON_CreateObject();
+		    if(arrayItem == NULL){
+                         T2Error("cJSON_CreateObject failed.. arrayItem is NULL\n");
+			 return T2ERROR_FAILURE;
+		    }
                     if (eventMarker->alias) {
-                        cJSON_AddStringToObject(arrayItem, eventMarker->alias, eventMarker->u.markerValue);
+                        if(cJSON_AddStringToObject(arrayItem, eventMarker->alias, eventMarker->u.markerValue) == NULL){
+                            T2Error("cJSON_AddStringToObject failed\n");
+			    cJSON_Delete(arrayItem);
+			    return T2ERROR_FAILURE;
+			}
                     } else {
-                        cJSON_AddStringToObject(arrayItem, eventMarker->markerName, eventMarker->u.markerValue);
+                        if(cJSON_AddStringToObject(arrayItem, eventMarker->markerName, eventMarker->u.markerValue) == NULL){
+			     T2Error("cJSON_AddStringToObject failed\n");
+			     cJSON_Delete(arrayItem);
+                            return T2ERROR_FAILURE;
+                        }
                     }
                     if(eventMarker->reportTimestampParam == REPORTTIMESTAMP_UNIXEPOCH){
-                        cJSON_AddStringToObject(arrayItem, eventMarker->markerName_CT, eventMarker->timestamp);
+                        if(cJSON_AddStringToObject(arrayItem, eventMarker->markerName_CT, eventMarker->timestamp) == NULL){
+                            T2Error("cJSON_AddStringToObject failed\n");
+			    cJSON_Delete(arrayItem);
+                            return T2ERROR_FAILURE;
+                        }
                     }
                     cJSON_AddItemToArray(valArray, arrayItem);
                     T2Debug("Marker value for : %s is %s\n", eventMarker->markerName, eventMarker->u.markerValue);
@@ -270,6 +387,10 @@ T2ERROR encodeEventMarkersInJSON(cJSON *valArray, Vector *eventMarkerList)
 
 T2ERROR prepareJSONReport(cJSON* jsonObj, char** reportBuff)
 {
+    if(jsonObj == NULL){
+        T2Error("jsonObj is NULL\n");
+        return T2ERROR_INVALID_ARGS;
+    }
     T2Debug("%s ++in\n", __FUNCTION__);
     *reportBuff = cJSON_PrintUnformatted(jsonObj);
     if(*reportBuff == NULL)
@@ -283,7 +404,15 @@ T2ERROR prepareJSONReport(cJSON* jsonObj, char** reportBuff)
 
 char *prepareHttpUrl(T2HTTP *http)
 {
+    if(http == NULL){
+       T2Error("Http parameters are NULL\n");
+       return NULL;
+    }
     CURL *curl = curl_easy_init();
+    if(curl == NULL){
+        T2Error("Curl init failed Response is NULL\n");
+	return NULL;
+    }
     char *httpUrl = strdup(http->URL);
     T2Debug("%s: Default URL: %s \n", __FUNCTION__, httpUrl);
 

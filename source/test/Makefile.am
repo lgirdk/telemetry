@@ -18,9 +18,7 @@
 ##########################################################################
 AUTOMAKE_OPTIONS = subdir-objects
 
-SUBDIRS = xconf-client
-
-AM_CFLAGS =
+SUBDIRS = xconf-client t2parser reportgen scheduler
 
 AM_CXXFLAGS = -std=c++11
 

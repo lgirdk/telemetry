@@ -70,6 +70,9 @@ typedef struct _BulkData
     unsigned int maxReportSize;
 }BulkData;
 
+void ReportProfiles_ActivationTimeoutCb(char* profileName);
+
+void ReportProfiles_TimeoutCb(char* profileName, bool isClearSeekMap);
 
 typedef struct _ReportProfile
 {

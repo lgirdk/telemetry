@@ -47,8 +47,9 @@ static void persistReportMethodInit( ) {
 
 T2ERROR fetchLocalConfigs(const char* path, Vector *configList)
 {
-    if(path == NULL || configList == NULL)
+    if(path == NULL || ((strcmp(path , SHORTLIVED_PROFILES_PATH) != 0) && configList == NULL))
     {
+         T2Error("Path is NULL or Configlist is NULL.. Invalid argument\n");
          return T2ERROR_INVALID_ARGS;
     }
     struct dirent *entry;
@@ -69,9 +70,9 @@ T2ERROR fetchLocalConfigs(const char* path, Vector *configList)
         clearPersistenceFolder(SHORTLIVED_PROFILES_PATH);
         if(closedir(dir) != 0){
              T2Error("%s,%d: Failed to close persistent folder\n", __FUNCTION__ , __LINE__);
-	     return T2ERROR_FAILURE;
-	}
-	return T2ERROR_SUCCESS;
+             return T2ERROR_FAILURE;
+        }
+        return T2ERROR_SUCCESS;
     }
     #if defined(DROP_ROOT_PRIV)
       #ifdef LIBSYSWRAPPER_BUILD

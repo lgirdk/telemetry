@@ -282,7 +282,7 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid) {
                 }
                 res = curl_easy_perform(curl);
                 curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
-                if(res != CURLE_OK) {
+                if(res != CURLE_OK || http_code != 200) {
                     fprintf(stderr, "curl failed: %s\n", curl_easy_strerror(res));
                     T2Error("Failed to send report over HTTP, HTTP Response Code : %ld\n", http_code);
                 }else {

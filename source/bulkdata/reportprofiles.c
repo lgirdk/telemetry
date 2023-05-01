@@ -688,10 +688,13 @@ void ReportProfiles_ProcessReportProfilesBlob(cJSON *profiles_root , bool rprofi
 
     T2Info("Number of report profiles in current configuration is %d \n", profiles_count);
     if(profiles_count == 0) {
-        T2Debug("Empty report profiles in configuration. Delete all active profiles. \n");
-        if (T2ERROR_SUCCESS != deleteAllReportProfiles())
-            T2Error("Failed to delete all profiles \n");
-
+	if(rprofiletypes == T2_TEMP_RP) {
+            T2Info("Empty report profiles are not valid configuration for temporary report profiles. \n");
+	}else {
+            T2Debug("Empty report profiles in configuration. Delete all active profiles. \n");
+            if (T2ERROR_SUCCESS != deleteAllReportProfiles())
+                T2Error("Failed to delete all profiles \n");
+        }
         T2Debug("%s --out\n", __FUNCTION__);
         return;
     }

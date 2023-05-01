@@ -180,7 +180,7 @@ T2ERROR addT2EventMarker(const char* markerName, const char* compName, const cha
             bool isPresent = false;
             for( i = 0; i < length; ++i ) {
                 char* profNameInlist = (char *) Vector_At(t2Marker->profileList, i);
-                if(!strncmp(profileName, profNameInlist, length)) {
+                if(!strncmp(profileName, profNameInlist, MAX_EVENT_MARKER_NAME_LEN)) {
                     isPresent = true;
                     break;
                 }

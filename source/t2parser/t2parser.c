@@ -849,7 +849,7 @@ T2ERROR protocolSet (Profile *profile, cJSON *jprofileProtocol, cJSON *jprofileH
 T2ERROR processConfiguration(char** configData, char *profileName, char* profileHash, Profile **localProfile) {
     T2Debug("%s ++in\n", __FUNCTION__);
     //REPORTPROFILE CJson PARSING
-    T2ERROR ret = T2ERROR_SUCCESS;
+    T2ERROR ret = T2ERROR_SUCCESS, retvalue = T2ERROR_SUCCESS;
     int ThisProfileParameter_count = 0;
     cJSON *json_root = cJSON_Parse(*configData);
 
@@ -995,6 +995,38 @@ T2ERROR processConfiguration(char** configData, char *profileName, char* profile
     }
 
     memset(profile, 0, sizeof(Profile));
+    
+    //Default values 
+    profile->generateNow = false;
+    profile->deleteonTimeout = false;
+    profile->activationTimeoutPeriod = INFINITE_TIMEOUT;
+    // Default values for Reporting Adjustments and timeRef
+    profile->reportOnUpdate = false;
+    profile->firstReportingInterval = 0;
+    profile->maxUploadLatency = 0;
+    profile->timeRef = NULL;
+    if(jprofileDeleteOnTimeout) {
+        profile->deleteonTimeout = (cJSON_IsTrue(jprofileDeleteOnTimeout) == 1);
+        T2Info("profile->deleteonTimeout: %i\n", profile->deleteonTimeout);
+    }
+    if(jprofileGenerateNow)
+        profile->generateNow = (cJSON_IsTrue(jprofileGenerateNow) == 1);
+
+    time_param_Reporting_Adjustments_valid_set(profile, jprofileReportingInterval, jprofileActivationTimeout, jprofileTimeReference, jprofileReportOnUpdate, jprofilefirstReportingInterval, jprofilemaxUploadLatency, jprofileReportingAdjustments);
+    T2Info("Reporting Adjustments parameters check done successfully\n");
+
+    if(jprofileTriggerCondition && (!jprofileReportingInterval) && (!profile->generateNow)) {
+        profile->reportingInterval = UINT_MAX;
+     }
+ 
+    if(profile->reportingInterval > profile->activationTimeoutPeriod){ //When Reporting interval and activation time is not given in the profile it takes the max value INFINITE TIMEOUT or UINT_MAX
+        T2Error("activationTimeoutPeriod is less than reporting interval. Max values assigned is inappropriate .. Invalid profile: %s \n", profileName);
+        cJSON_Delete(json_root);
+        if(profile != NULL){
+            free(profile);
+	}
+        return T2ERROR_FAILURE;
+    }
 
     if((strcmp(jprofileEncodingType->valuestring, "JSON") == 0)) {
         profile->jsonEncoding = (JSONEncoding *) malloc(sizeof(JSONEncoding));
@@ -1047,27 +1079,7 @@ T2ERROR processConfiguration(char** configData, char *profileName, char* profile
 
     profile->protocol = strdup(jprofileProtocol->valuestring);
     profile->encodingType = strdup(jprofileEncodingType->valuestring);
-    profile->generateNow = false;
-    profile->deleteonTimeout = false;
-    profile->activationTimeoutPeriod = INFINITE_TIMEOUT;
-    // Default values for Reporting Adjustments and timeRef
-    profile->reportOnUpdate = false;
-    profile->firstReportingInterval = 0;
-    profile->maxUploadLatency = 0;
-    profile->timeRef = NULL;
-    if(jprofileDeleteOnTimeout) {
-        profile->deleteonTimeout = (cJSON_IsTrue(jprofileDeleteOnTimeout) == 1);
-        T2Info("profile->deleteonTimeout: %i\n", profile->deleteonTimeout);
-    }
-    if(jprofileGenerateNow)
-        profile->generateNow = (cJSON_IsTrue(jprofileGenerateNow) == 1);
 
-    time_param_Reporting_Adjustments_valid_set(profile, jprofileReportingInterval, jprofileActivationTimeout, jprofileTimeReference, jprofileReportOnUpdate, jprofilefirstReportingInterval, jprofilemaxUploadLatency, jprofileReportingAdjustments);
-    T2Info("Reporting Adjustments parameters check done successfully\n");
-
-    if(jprofileTriggerCondition && (!jprofileReportingInterval) && (!profile->generateNow)) {
-        profile->reportingInterval = UINT_MAX;
-     }
 
     T2Debug("[[profile->name:%s]]\n", profile->name);
     T2Debug("[[ profile->Description:%s]]\n", profile->Description);
@@ -1076,27 +1088,26 @@ T2ERROR processConfiguration(char** configData, char *profileName, char* profile
     T2Debug("[[profile->encodingType:%s]]\n", profile->encodingType);
     T2Debug("[[profile->RootName:%s]]\n", profile->RootName);
     T2Debug("[[profile->timeRef:%s]]\n", profile->timeRef);
+    T2Debug("[[ profile->activationTimeout:%d]]\n", profile->activationTimeoutPeriod);
 
     if(profile->reportingInterval)
         T2Debug("[[ profile->reportingInterval:%d]]\n", profile->reportingInterval);
 
     //Encoding Configuration
-    ret = encodingSet(profile, jprofileEncodingType, jprofileJSONReportFormat, jprofileJSONReportTimestamp);
-    if(ret != T2ERROR_SUCCESS){
+    retvalue = encodingSet(profile, jprofileEncodingType, jprofileJSONReportFormat, jprofileJSONReportTimestamp);
+    if(retvalue != T2ERROR_SUCCESS){
         T2Error("Encoding parameters are not configured.Profile is invalid\n");
-        return T2ERROR_FAILURE;
     }
 
     //Protocol Configuration
-    ret = protocolSet (profile, jprofileProtocol, jprofileHTTPURL, jprofileHTTPRequestURIParameter, ThisprofileHTTPRequestURIParameter_count, jprofileRBUSMethodName, jprofileRBUSMethodParamArr, rbusMethodParamArrCount);
-    if(ret != T2ERROR_SUCCESS){
+    retvalue = protocolSet (profile, jprofileProtocol, jprofileHTTPURL, jprofileHTTPRequestURIParameter, ThisprofileHTTPRequestURIParameter_count, jprofileRBUSMethodName, jprofileRBUSMethodParamArr, rbusMethodParamArrCount);
+    if(retvalue != T2ERROR_SUCCESS){
        T2Error("Protocol Configuration is invalid\n");
-       return T2ERROR_FAILURE;
     }
     //Parameter Marker Configuration
-    if(T2ERROR_SUCCESS != addParameter_marker_config(profile, jprofileParameter, ThisProfileParameter_count)){
+    retvalue = addParameter_marker_config(profile, jprofileParameter, ThisProfileParameter_count);
+    if(retvalue != T2ERROR_SUCCESS){
         T2Error("Parameter marker configuration is invalid\n");
-        return T2ERROR_FAILURE;
     }
 
     int triggerCondition_count = 0;
@@ -1117,7 +1128,7 @@ T2ERROR processConfiguration(char** configData, char *profileName, char* profile
     json_root = NULL;
     *localProfile = profile;
     T2Debug("%s --out\n", __FUNCTION__);
-    return T2ERROR_SUCCESS;
+    return retvalue;
 
 }
 
@@ -1726,6 +1737,7 @@ T2ERROR processMsgPackConfiguration(msgpack_object *profiles_array_map, Profile 
     }
     memset(profile, 0, sizeof(Profile));
 
+
     name_str = msgpack_get_map_value(profiles_array_map, "name");
     msgpack_print(name_str, msgpack_get_obj_name(name_str));
     profile->name = msgpack_strdup(name_str);
@@ -1794,6 +1806,57 @@ T2ERROR processMsgPackConfiguration(msgpack_object *profiles_array_map, Profile 
 	 return T2ERROR_FAILURE;
     }
 
+    //Default values
+    profile->activationTimeoutPeriod = INFINITE_TIMEOUT;
+    profile->generateNow = false;
+    profile->deleteonTimeout = false;
+    profile->reportOnUpdate = false;
+    profile->firstReportingInterval = 0;
+    profile->maxUploadLatency = 0;
+    profile->timeRef = NULL;
+
+    DeleteOnTimout_boolean = msgpack_get_map_value(value_map, "DeleteOnTimeout");
+    msgpack_print(DeleteOnTimout_boolean, msgpack_get_obj_name(DeleteOnTimeout_boolean));
+    MSGPACK_GET_NUMBER(DeleteOnTimout_boolean, profile->deleteonTimeout);
+    T2Debug("profile->deleteonTimeout: %u\n", profile->deleteonTimeout);
+
+    GenerateNow_boolean = msgpack_get_map_value(value_map, "GenerateNow");
+    msgpack_print(GenerateNow_boolean, msgpack_get_obj_name(GenerateNow_boolean));
+    MSGPACK_GET_NUMBER(GenerateNow_boolean, profile->generateNow);
+    T2Debug("profile->generateNow: %u\n", profile->generateNow);
+
+    ActivationTimeout_u64 = msgpack_get_map_value(value_map, "ActivationTimeOut");
+    msgpack_print(ActivationTimeout_u64, msgpack_get_obj_name(ActivationTimeout_u64));
+    MSGPACK_GET_NUMBER(ActivationTimeout_u64, profile->activationTimeoutPeriod);
+
+    TimeReference_str = msgpack_get_map_value(value_map, "TimeReference");
+    msgpack_print(TimeReference_str, msgpack_get_obj_name(TimeReference_str));
+
+    T2ERROR retval = time_param_MsgPackReporting_Adjustments_valid_set(profile, ReportingInterval_u64, ActivationTimeout_u64, TimeReference_str, ReportOnUpdate_boolean,  FirstReportInterval_u64, MaxUploadLatency_u64 );
+    if(retval != T2ERROR_SUCCESS)
+    {
+        T2Error("Time parameters are not valid\n");
+    }
+    if(TriggerConditionArray && (!profile->generateNow) && (!profile->reportingInterval)){
+         profile->reportingInterval = UINT_MAX;
+    }
+    if(profile->reportingInterval){
+      T2Debug("profile->reportingInterval: %u\n", profile->reportingInterval);
+    }
+    if(profile->reportingInterval > profile->activationTimeoutPeriod){ //When Reporting interval and activation time is not given in the profile it takes the max value INFINITE TIMEOUT or UINT_MAX
+        T2Error("activationTimeoutPeriod is less than reporting interval. Max values assigned is inappropriate .. Invalid profile: %s \n", profile->name);
+	if(profile->name != NULL){
+             free(profile->name);
+         }
+         if(profile->hash != NULL){
+             free(profile->hash);
+         }
+        if(profile != NULL){
+            free(profile);
+        }
+        return T2ERROR_FAILURE;
+    }
+
     Protocol_str = msgpack_get_map_value(value_map, "Protocol");
     msgpack_print(Protocol_str, msgpack_get_obj_name(Protocol_str));
     profile->protocol = msgpack_strdup(Protocol_str);
@@ -1859,43 +1922,6 @@ T2ERROR processMsgPackConfiguration(msgpack_object *profiles_array_map, Profile 
     msgpack_print(Version_str, msgpack_get_obj_name(Version_str));
     profile->version = msgpack_strdup(Version_str);
 
-    profile->activationTimeoutPeriod = INFINITE_TIMEOUT;
-    profile->generateNow = false;
-    profile->deleteonTimeout = false;
-    DeleteOnTimout_boolean = msgpack_get_map_value(value_map, "DeleteOnTimeout");
-    msgpack_print(DeleteOnTimout_boolean, msgpack_get_obj_name(DeleteOnTimeout_boolean));
-    MSGPACK_GET_NUMBER(DeleteOnTimout_boolean, profile->deleteonTimeout);
-    T2Debug("profile->deleteonTimeout: %u\n", profile->deleteonTimeout);
-
-    profile->reportOnUpdate = false;
-    profile->firstReportingInterval = 0;
-    profile->maxUploadLatency = 0;
-    profile->timeRef = NULL;
-
-    GenerateNow_boolean = msgpack_get_map_value(value_map, "GenerateNow");
-    msgpack_print(GenerateNow_boolean, msgpack_get_obj_name(GenerateNow_boolean));
-    MSGPACK_GET_NUMBER(GenerateNow_boolean, profile->generateNow);
-    T2Debug("profile->generateNow: %u\n", profile->generateNow);
-
-    ActivationTimeout_u64 = msgpack_get_map_value(value_map, "ActivationTimeOut");
-    msgpack_print(ActivationTimeout_u64, msgpack_get_obj_name(ActivationTimeout_u64));
-    MSGPACK_GET_NUMBER(ActivationTimeout_u64, profile->activationTimeoutPeriod);
-
-    TimeReference_str = msgpack_get_map_value(value_map, "TimeReference");
-    msgpack_print(TimeReference_str, msgpack_get_obj_name(TimeReference_str));
-
-    T2ERROR retval = time_param_MsgPackReporting_Adjustments_valid_set(profile, ReportingInterval_u64, ActivationTimeout_u64, TimeReference_str, ReportOnUpdate_boolean,  FirstReportInterval_u64, MaxUploadLatency_u64 );
-    if(retval != T2ERROR_SUCCESS)
-    {
-        T2Error("Time parameters are not valid\n");
-	return T2ERROR_FAILURE;
-    }
-    if(TriggerConditionArray && (!profile->generateNow) && (!profile->reportingInterval)){
-         profile->reportingInterval = UINT_MAX;
-    }
-    if(profile->reportingInterval){
-      T2Debug("profile->reportingInterval: %u\n", profile->reportingInterval);
-    }
     RootName_str = msgpack_get_map_value(value_map, "RootName");
     msgpack_print(RootName_str, msgpack_get_obj_name(RootName_str));
     profile->RootName = msgpack_strdup(RootName_str);
@@ -1908,20 +1934,17 @@ T2ERROR processMsgPackConfiguration(msgpack_object *profiles_array_map, Profile 
     retval = addParameterMsgpack_marker_config(profile, value_map);
     if(retval != T2ERROR_SUCCESS){
         T2Error("Invalid parameter in the profile\n");
-        return T2ERROR_FAILURE;
     }
     addMsgPckTriggerCondition(profile, value_map);
     retval = protocolSetMsgpack(profile, value_map, Protocol_str); //Protocol Parameter
     if(retval != T2ERROR_SUCCESS){
         T2Error("Protocol Parameter is invalid\n");
-        return T2ERROR_FAILURE;
     }
     retval = encodingSetMsgpack(profile, value_map); //Encoding parameter
     if(retval != T2ERROR_SUCCESS){
         T2Error("Encoding parameter is invalid\n");
-        return T2ERROR_FAILURE;
     }
     *profile_dp = profile;
     T2Debug("%s --out\n", __FUNCTION__);
-    return T2ERROR_SUCCESS;
+    return retval;
 }

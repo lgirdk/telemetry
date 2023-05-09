@@ -319,12 +319,6 @@ TEST(GETERRORCODE, STR_NULL)
     EXPECT_EQ(0, getErrorCode(str, NULL));
 }
 
-TEST(STRSPLIT, STR_DLI_NULL)
-{
-    EXPECT_EQ(NULL, strSplit(NULL, "##"));
-    EXPECT_EQ(NULL, strSplit("this## is ## a ## test string", NULL));
-}
-
 #if 0
 TEST_F(dcaFileTestFixture, getProcPidStat)
 {

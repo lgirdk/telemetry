@@ -582,11 +582,9 @@ static int processPattern(char **prev_file, char *logfile, GList **rdkec_head, G
 char *strSplit(char *str, char *delim) {
     static char *next_str;
     char *last = NULL;
-    if(delim == NULL || str == NULL){
-       return NULL;
+    if(str != NULL){
+       next_str = str;
     }
-    next_str = str;
-    
 
     if(NULL == next_str) {
         return next_str;

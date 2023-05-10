@@ -353,21 +353,31 @@ void uninitScheduler()
     }
     sc_initialized = false;
 
-    pthread_mutex_lock(&scMutex);
+    if(pthread_mutex_lock(&scMutex) != 0){
+        T2Error("scMutex lock failed\n");
+    }
     for (; index < profileList->count; ++index)
     {
         tProfile = (SchedulerProfile *)Vector_At(profileList, index);
-        pthread_mutex_lock(&tProfile->tMutex);
+        if(pthread_mutex_lock(&tProfile->tMutex) != 0){
+            T2Error("tProfile Mutex locked failed\n");
+        }
         tProfile->terminated = true;
         pthread_cond_signal(&tProfile->tCond);
-        pthread_mutex_unlock(&tProfile->tMutex);
+        if(pthread_mutex_unlock(&tProfile->tMutex) != 0){
+            T2Error("tProfile Mutex unlocked failed\n");
+	}
         pthread_join(tProfile->tId, NULL);
         T2Info("Profile %s successfully removed from Scheduler\n", tProfile->name);
     }
     Vector_Destroy(profileList, freeSchedulerProfile);
     profileList = NULL;
-    pthread_mutex_unlock(&scMutex);
-    pthread_mutex_destroy(&scMutex);
+    if(pthread_mutex_unlock(&scMutex) != 0){
+        T2Error("scMutex unlock failed\n");
+    }
+    if(pthread_mutex_destroy(&scMutex) != 0){
+        T2Error("scMutex destroy failed\n");
+    }
     timeoutNotificationCb = NULL;
 
     T2Debug("%s --out\n", __FUNCTION__);

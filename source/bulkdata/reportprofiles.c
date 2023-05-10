@@ -979,6 +979,10 @@ void ReportProfiles_ProcessReportProfilesMsgPackBlob(char *msgpack_blob , int ms
     PushBlobRequest(execDataPf);
     T2Debug("PushBlobRequest complete\n");
     msgpack_unpacked_destroy(&result);
+    if(execDataPf != NULL){
+         free(execDataPf);
+         execDataPf = NULL;
+    }
 #endif
     T2Debug("%s --out\n", __FUNCTION__);
     return;

@@ -228,7 +228,11 @@ static T2ERROR appendRequestParams(char *buf, const int maxArgLen) {
 
     T2ERROR ret = T2ERROR_FAILURE;
     T2Debug("%s ++in\n", __FUNCTION__);
-
+    if(buf == NULL)
+    {
+        T2Error("Buffer is NULL for appendRequestParams\n");
+        return T2ERROR_FAILURE;
+    }
     int avaBufSize = maxArgLen, write_size = 0, slen = 0;
     char *paramVal = NULL;
     char *tempBuf = (char*) malloc(MAX_URL_ARG_LEN);
@@ -236,11 +240,6 @@ static T2ERROR appendRequestParams(char *buf, const int maxArgLen) {
     #if !defined(ENABLE_RDKB_SUPPORT) && !defined(ENABLE_RDKC_SUPPORT)
     char *timezone = NULL;
    #endif
-    if(buf == NULL)
-    {
-        T2Error("Buffer is NULL for appendRequestParams\n");
-        return T2ERROR_FAILURE;
-    }
     if(tempBuf == NULL)
     {
         T2Error("Failed to allocate memory for RequestParams\n");

@@ -1003,6 +1003,10 @@ void reportEventHandler(
     rbusValue_t newValue = rbusObject_GetValue(event->data, "value");
     const char* eventValue = rbusValue_ToString(newValue,NULL,0);
     eventCallBack((char*) strdup(eventName),(char*) strdup(eventValue) );
+    if(eventValue != NULL){
+       free((char*)eventValue);
+       eventValue = NULL;
+    }
 }
 
 void triggerCondtionReceiveHandler(
@@ -1019,6 +1023,10 @@ void triggerCondtionReceiveHandler(
     char* eventValue = rbusValue_ToString(newValue,NULL,0);
 
     if( NULL == eventName) {
+        if(eventValue != NULL){
+            free(eventValue);
+            eventValue = NULL;
+        }
         T2Warning("%s : eventName is published as null, ignoring trigger condition \n ", __FUNCTION__);
         return ;
     }

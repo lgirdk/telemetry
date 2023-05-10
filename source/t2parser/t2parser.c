@@ -85,6 +85,8 @@ static T2ERROR addhttpURIreqParameter(Profile *profile, const char* Hname, const
     if(NULL == Hname || NULL == Href )
         return T2ERROR_SUCCESS ;
 
+    char* value = NULL;
+
     HTTPReqParam *httpreqparam = (HTTPReqParam *) malloc(sizeof(HTTPReqParam));
     if(!httpreqparam) {
         T2Error("failed to allocate memory \n");
@@ -93,11 +95,17 @@ static T2ERROR addhttpURIreqParameter(Profile *profile, const char* Hname, const
     }
     httpreqparam->HttpRef = strdup(Href);
     httpreqparam->HttpName = strdup(Hname);
-    if (strstr(Href, "Profile.") == Href)
-        httpreqparam->HttpValue = getProfileParameter(profile, Href);
-    else
+    if (strstr(Href, "Profile.") == Href){	
+        value = getProfileParameter(profile, Href);
+        httpreqparam->HttpValue = strdup(value);
+    }else{
         httpreqparam->HttpValue = NULL;
+    }
 
+    if(value != NULL){
+        free(value);
+        value = NULL;
+    }
     Vector_PushBack(profile->t2HTTPDest->RequestURIparamList, httpreqparam);
     T2Debug("%s --out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;
@@ -109,6 +117,7 @@ static T2ERROR addRbusMethodParameter(Profile *profile, const char* name, const 
         return T2ERROR_SUCCESS ;
 
     RBUSMethodParam *rbusMethodParam = (RBUSMethodParam *) malloc(sizeof(RBUSMethodParam));
+    char* val = NULL;
 
     if(!rbusMethodParam) {
         T2Error("failed to allocate memory \n");
@@ -116,11 +125,16 @@ static T2ERROR addRbusMethodParameter(Profile *profile, const char* name, const 
 
     }
     rbusMethodParam->name = strdup(name);
-    if (strstr(value, "Profile.") == value)
-        rbusMethodParam->value = getProfileParameter(profile, value);
-    else
+    if (strstr(value, "Profile.") == value){
+        val = getProfileParameter(profile, value);
+        rbusMethodParam->value = strdup(val);
+    }else{
         rbusMethodParam->value = strdup(value);
-
+    }
+    if(val != NULL){
+       free(val);
+       val = NULL;
+    }
     Vector_PushBack(profile->t2RBUSDest->rbusMethodParamList, rbusMethodParam);
     T2Debug("%s --out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;
@@ -130,6 +144,7 @@ static T2ERROR addParameter(Profile *profile, const char* name, const char* ref,
         const char* use, bool ReportEmpty, reportTimestampFormat reportTimestamp) {
 
     T2Debug("%s ++in\n", __FUNCTION__);
+    char* value = NULL;
 
     if(!(strcmp(ptype, "dataModel"))) {
         // T2Debug("Adding TR-181 Parameter : %s\n", ref);
@@ -142,7 +157,12 @@ static T2ERROR addParameter(Profile *profile, const char* name, const char* ref,
             }
             sparam->paramType = strdup(ptype);
             sparam->name = strdup(name);
-            sparam->value = getProfileParameter(profile, ref);
+            value = getProfileParameter(profile, ref);
+            sparam->value = strdup(value);
+            if(value != NULL){	
+                free(value);
+                value = NULL;
+            }
 
             Vector_PushBack(profile->staticParamList, sparam);
         } else {
@@ -1027,6 +1047,9 @@ T2ERROR processConfiguration(char** configData, char *profileName, char* profile
     if(profile->reportingInterval > profile->activationTimeoutPeriod){ //When Reporting interval and activation time is not given in the profile it takes the max value INFINITE TIMEOUT or UINT_MAX
         T2Error("activationTimeoutPeriod is less than reporting interval. Max values assigned is inappropriate .. Invalid profile: %s \n", profileName);
         cJSON_Delete(json_root);
+        if(profile->timeRef != NULL){
+	    free(profile->timeRef);
+        }
         if(profile != NULL){
             free(profile);
 	}
@@ -1037,6 +1060,9 @@ T2ERROR processConfiguration(char** configData, char *profileName, char* profile
         profile->jsonEncoding = (JSONEncoding *) malloc(sizeof(JSONEncoding));
         if(profile->jsonEncoding == NULL) {
             T2Error("jsonEncoding malloc error\n");
+	    if(profile->timeRef != NULL){
+                free(profile->timeRef);
+            }
             if(profile) {
                 free(profile);
             }
@@ -1055,6 +1081,9 @@ T2ERROR processConfiguration(char** configData, char *profileName, char* profile
         T2Error("t2 protocol destination object malloc error\n");
         if(profile->jsonEncoding) {
             free(profile->jsonEncoding);
+        }
+        if(profile->timeRef != NULL){
+            free(profile->timeRef);
         }
         if(profile) {
             free(profile);
@@ -1765,6 +1794,9 @@ T2ERROR processMsgPackConfiguration(msgpack_object *profiles_array_map, Profile 
              free(profile->name);
           if(profile->hash)
              free(profile->hash);
+          if(profile->timeRef != NULL){
+            free(profile->timeRef);
+          }
           if(profile)
              free(profile);
           T2Error("TriggerCondition is invalid, unable to create profile\n");
@@ -1793,6 +1825,9 @@ T2ERROR processMsgPackConfiguration(msgpack_object *profiles_array_map, Profile 
          if(profile->hash){
              free(profile->hash);
          }
+         if(profile->timeRef != NULL){
+            free(profile->timeRef);
+         }
          if(profile){
              free(profile);
          }
@@ -1807,6 +1842,9 @@ T2ERROR processMsgPackConfiguration(msgpack_object *profiles_array_map, Profile 
          }
          if(profile->hash){
              free(profile->hash);
+         }
+         if(profile->timeRef != NULL){
+            free(profile->timeRef);
          }
          if(profile){
              free(profile);
@@ -1859,6 +1897,9 @@ T2ERROR processMsgPackConfiguration(msgpack_object *profiles_array_map, Profile 
          if(profile->hash != NULL){
              free(profile->hash);
          }
+	 if(profile->timeRef != NULL){
+            free(profile->timeRef);
+        }
         if(profile != NULL){
             free(profile);
         }
@@ -1873,6 +1914,9 @@ T2ERROR processMsgPackConfiguration(msgpack_object *profiles_array_map, Profile 
         if(NULL == profile->t2HTTPDest) {
             free(profile->name);
             free(profile->hash);
+            if(profile->timeRef != NULL){
+                free(profile->timeRef);
+            }
             free(profile);
             T2Error("Malloc error exiting: can not allocate memory to create profile->t2HTTPDest \n");
             return T2ERROR_MEMALLOC_FAILED;
@@ -1884,6 +1928,9 @@ T2ERROR processMsgPackConfiguration(msgpack_object *profiles_array_map, Profile 
         if(NULL == profile->t2RBUSDest) {
             free(profile->name);
             free(profile->hash);
+            if(profile->timeRef != NULL){
+                free(profile->timeRef);
+            }
             free(profile);
             T2Error("Malloc error exiting: can not allocate memory to create profile->t2RBUSDest \n");
             return T2ERROR_MEMALLOC_FAILED;
@@ -1896,6 +1943,9 @@ T2ERROR processMsgPackConfiguration(msgpack_object *profiles_array_map, Profile 
             T2Error("RBUS Method not configured. Ignoring profile %s \n", profile->name);
             free(profile->t2RBUSDest->rbusMethodName );
             free(profile->t2RBUSDest);
+            if(profile->timeRef != NULL){
+                free(profile->timeRef);
+            }
             free(profile->name);
             free(profile->hash);
             free(profile);
@@ -1916,6 +1966,9 @@ T2ERROR processMsgPackConfiguration(msgpack_object *profiles_array_map, Profile 
             free(profile->name);
             free(profile->hash);
             free(profile->t2HTTPDest);
+            if(profile->timeRef != NULL){
+                free(profile->timeRef);
+            }
             free(profile);
             T2Error("Malloc error exiting: can not allocate memory to create profile->jsonEncoding \n");
             return T2ERROR_MEMALLOC_FAILED;

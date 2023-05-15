@@ -546,12 +546,13 @@ T2ERROR ProfileXConf_delete(ProfileXConf *profile)
         }
         // Copy the event's recived till now and pass it on to the new profile
         if((Vector_Size(singleProfile->eMarkerList) > 0) && (Vector_Size(profile->eMarkerList) > 0)){
+            int i, j;
             T2Info("check the events from the old profile and forward to the new profile \n");
-            for (int j=0; j < Vector_Size(profile->eMarkerList);j++){
+            for (j = 0; j < Vector_Size(profile->eMarkerList);j++){
                 EventMarker *eMarkerNew = NULL;
                 eMarkerNew = (EventMarker *)Vector_At(profile->eMarkerList,j);
                 T2Debug("Check the New Event : %s index : %d \n",eMarkerNew->markerName,j);
-                for (int i=0; i < Vector_Size(singleProfile->eMarkerList);i++){
+                for (i = 0; i < Vector_Size(singleProfile->eMarkerList);i++){
                     EventMarker *eMarkerCurrent = NULL;
                     eMarkerCurrent = (EventMarker *)Vector_At(singleProfile->eMarkerList,i);
                     T2Debug("Check the Old Event : %s index : %d \n",eMarkerCurrent->markerName,i);

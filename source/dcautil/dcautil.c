@@ -237,15 +237,17 @@ getGrepResults (char *profileName, Vector *markerList, Vector **grepResultList, 
     return T2ERROR_SUCCESS;
 }
 
-void removeGrepConfig(char* profileName) {
+void removeGrepConfig(char* profileName, bool clearSeekMap, bool clearExecMap) {
     T2Debug("%s ++in\n", __FUNCTION__);
 
 #ifdef  _COSA_INTEL_XB3_ARM_
     sendDeleteProfileEvent(profileName);
 #else
-    removeProfileFromSeekMap(profileName);
+    if(clearSeekMap)
+        removeProfileFromSeekMap(profileName);
 #endif
-
+    if (clearExecMap)
+        removeProfileFromExecMap(profileName);
     T2Debug("%s ++out\n", __FUNCTION__);
 }
 

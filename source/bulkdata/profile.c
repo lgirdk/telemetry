@@ -899,7 +899,7 @@ T2ERROR deleteAllProfiles(bool delFromDisk) {
             pthread_join(tempProfile->reportThread, NULL);
 
         if (Vector_Size(tempProfile->gMarkerList) > 0)
-            removeGrepConfig(tempProfile->name);
+            removeGrepConfig(tempProfile->name, true, true);
         pthread_mutex_unlock(&plMutex);
         if(delFromDisk == true){
            removeProfileFromDisk(REPORTPROFILES_PERSISTENCE_PATH, tempProfile->name);
@@ -978,7 +978,7 @@ T2ERROR deleteProfile(const char *profileName)
     }
 
     if (Vector_Size(profile->gMarkerList) > 0)
-        removeGrepConfig((char*)profileName);
+        removeGrepConfig((char*)profileName, true, true);
 
     T2Info("removing profile : %s from profile list\n", profile->name);
     Vector_RemoveItem(profileList, profile, freeProfile);

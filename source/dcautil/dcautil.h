@@ -37,7 +37,7 @@ void saveTopOutput();
 void removeTopOutput();
 #endif
 
-void removeGrepConfig(char* profileName);
+void removeGrepConfig(char* profileName, bool clearSeek, bool clearExec);
 void freeGResult(void *data);
 T2ERROR saveGrepConfig(char *name, Vector* grepMarkerList);
 T2ERROR getGrepResults(char* profileName, Vector *markerList, Vector **grepResultList, bool isClearSeekMap);

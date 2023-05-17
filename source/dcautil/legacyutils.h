@@ -73,6 +73,8 @@ int getLoadAvg(Vector* grepResultList);
 
 void removeProfileFromSeekMap(char *profileName);
 
+void removeProfileFromExecMap(char *profileName);
+
 GrepSeekProfile *addToProfileSeekMap(char* profileName);
 
 GrepSeekProfile *getLogSeekMapForProfile(char* profileName);

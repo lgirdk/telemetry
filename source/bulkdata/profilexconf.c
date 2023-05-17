@@ -593,12 +593,16 @@ T2ERROR ProfileXConf_delete(ProfileXConf *profile)
     }
 
 
-#ifdef _COSA_INTEL_XB3_ARM_
     if (Vector_Size(singleProfile->gMarkerList) > 0 )
     {
-        removeGrepConfig(singleProfile->name);
+        bool clearSeekMap = false;
+        // need to change this if any modfication to profile logic
+        if(profile == NULL)
+            clearSeekMap = true;
+        removeGrepConfig(singleProfile->name, clearSeekMap, true);
     }
-#endif
+
+
     T2Info("removing profile : %s\n", singleProfile->name);
     freeProfileXConf();
 

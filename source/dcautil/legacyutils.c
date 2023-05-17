@@ -35,11 +35,14 @@ static char* LOG_PATH        = NULL;
 static char* DEVICE_TYPE     = NULL;
 static bool  isPropsIntialized = false ;
 static long  LAST_SEEK_VALUE = 0;
-static bool isinitialized = false;
+
 // Map holding profile name to Map ( logfile -> seek value) ]
 static hash_map_t *profileSeekMap = NULL;
 static pthread_mutex_t pSeekLock = PTHREAD_MUTEX_INITIALIZER;
 
+// Map holding profile name to Exec Count
+static hash_map_t *profileExecCountMap = NULL;
+static pthread_mutex_t pExecCountLock = PTHREAD_MUTEX_INITIALIZER;
 
 /**
  * Start of functions dealing with log seek values
@@ -50,25 +53,28 @@ GrepSeekProfile *addToProfileSeekMap(char* profileName){
         return NULL;
     }
     T2Debug("%s ++in for profileName = %s \n", __FUNCTION__, profileName);
-    const char *path = "/tmp/telemetry_logupload";
-    struct stat st;
-    int fd;
+    
     pthread_mutex_lock(&pSeekLock);
     GrepSeekProfile *gsProfile = NULL;
     if (profileSeekMap) {
         T2Debug("Adding GrepSeekProfile for profile %s in profileSeekMap\n", profileName);
         gsProfile = malloc(sizeof(GrepSeekProfile));
         gsProfile->logFileSeekMap = hash_map_create();
-        fd = stat(path, &st);
-        if(isinitialized == false){
-            isinitialized = true;
+
+	pthread_mutex_lock(&pExecCountLock);
+	if(profileExecCountMap == NULL){
+            T2Debug("ExecCount map doesnot exist, creatinag a new hash map\n");
+	    profileExecCountMap = hash_map_create();
             gsProfile->execCounter = 0;
-        }
-        if(fd != -1){
-            gsProfile->execCounter = 0;
-            T2Debug("Execution count = %d\n",gsProfile->execCounter);
-            remove("/tmp/telemetry_logupload");
-        }
+	}else{
+	    int *execCount = (int *) hash_map_get(profileExecCountMap, profileName);
+	    if(execCount){
+	        gsProfile->execCounter = *execCount;
+                T2Info("Update the Exec Count value to %d\n", gsProfile->execCounter);
+	    }
+	}
+        pthread_mutex_unlock(&pExecCountLock);
+
         hash_map_put(profileSeekMap, strdup(profileName), (void*)gsProfile);
     } else {
         T2Debug("profileSeekMap exists .. \n");
@@ -129,12 +135,25 @@ static void freeProfileSeekHashMap(void *data) {
 
 void removeProfileFromSeekMap(char *profileName) {
     T2Debug("%s ++in\n", __FUNCTION__);
-
     pthread_mutex_lock(&pSeekLock);
     if (profileSeekMap) {
         GrepSeekProfile* gsProfile = (GrepSeekProfile *)hash_map_remove(profileSeekMap, profileName);
         if (NULL != gsProfile) {
+            
+            if(gsProfile->execCounter != 0){
+                int *temp = (int *) malloc(sizeof(int));
+                T2Debug("Saving the ExecCount : %d for thr profile : %s\n", gsProfile->execCounter, profileName);
+                pthread_mutex_lock(&pExecCountLock);
+                if (profileExecCountMap == NULL) {
+                    T2Debug("ExecCount map doesnot exist, creatinag a new hash map\n");
+                    profileExecCountMap = hash_map_create();
+                }
+                *temp = gsProfile->execCounter;
+                hash_map_put(profileExecCountMap, strdup(profileName),(void *) temp);
+                pthread_mutex_unlock(&pExecCountLock);
+            }
             freeGrepSeekProfile(gsProfile);
+          
         } else {
             T2Debug("%s: Matching grep profile not found for %s\n", __FUNCTION__, profileName);
         }
@@ -142,7 +161,33 @@ void removeProfileFromSeekMap(char *profileName) {
         T2Debug("%s: profileSeekMap is empty \n", __FUNCTION__);
     }
     pthread_mutex_unlock(&pSeekLock);
+    T2Debug("%s --out\n", __FUNCTION__);
+}
 
+void removeProfileFromExecMap(char *profileName) {
+    T2Debug("%s ++in\n", __FUNCTION__);
+    pthread_mutex_lock(&pExecCountLock);
+    if (profileExecCountMap){
+        int* value = (int *)hash_map_remove(profileExecCountMap, profileName);
+        if (NULL != value) {
+            free(value);
+            T2Debug("%s : Released the exec count for profile %s \n",__FUNCTION__,profileName);
+        } else {
+            T2Debug("%s: Matching grep profile not found for %s\n", __FUNCTION__, profileName);
+        }
+    }
+    
+    pthread_mutex_unlock(&pExecCountLock);
+    // Adding this logic if profile name is same then we will not remove the seekMap in this case 
+    // we need to check if the seek map exists, and assign the execCounter to 0
+    pthread_mutex_lock(&pSeekLock);
+    if (profileSeekMap) {
+        GrepSeekProfile* gsProfile = (GrepSeekProfile *)hash_map_get(profileSeekMap,profileName);
+        if (NULL != gsProfile) {
+            gsProfile->execCounter = 0;
+        }
+    }
+    pthread_mutex_unlock(&pSeekLock);
     T2Debug("%s --out\n", __FUNCTION__);
 }
 

@@ -162,6 +162,7 @@ static void removeProfileMarkers(char *profileName) {
     if (NULL != markerList) {
         removeProfileFromSeekMap(profileName);
     }
+    removeProfileFromExecMap(profileName);
 
     T2Debug("--out %s \n", __FUNCTION__);
 }

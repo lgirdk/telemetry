@@ -37,7 +37,7 @@ typedef enum
 
 typedef enum
 {
-    REPORTTIMESTAMP_UNIXEPOCH,
+    REPORTTIMESTAMP_UNIXEPOCH = 1,
     REPORTTIMESTAMP_NONE
 }reportTimestampFormat;
 

@@ -70,18 +70,6 @@ static int getScheduleInSeconds(const char* cronPattern) {
 /**
  * Comparator eventually called by qsort
  */
-static int compareLogFileNames(const void *g1, const void *g2)
-{
-   GrepMarker** p1 = (GrepMarker**) g1 ;
-   GrepMarker** p2 = (GrepMarker**) g2 ;
-
-   if ( NULL != p1 && NULL != p2) {
-       return strcmp((*p1)->logFile, (*p2)->logFile);
-   } else {
-       T2Error("compareLogFileNames : either p1 or p2 is NULL \n");
-       return -1 ;
-   }
-}
 
 static T2ERROR addParameter(ProfileXConf *profile, const char* name, const char* ref, const char* fileName, int skipFreq)
 {

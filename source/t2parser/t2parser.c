@@ -26,6 +26,8 @@
 #include "reportprofiles.h"
 #include "t2log_wrapper.h"
 #include "rbusInterface.h"
+#include "t2common.h"
+
 #define DEFAULT_TIME_REFERENCE "0001-01-01T00:00:00Z"
 
 static const int MAX_STATIC_PROP_VAL_LEN = 128 ;
@@ -704,6 +706,9 @@ T2ERROR addParameter_marker_config(Profile* profile, cJSON *jprofileParameter, i
             profileParamCount++;
         }
     }
+      // GrepMarkerlist expects the list to be sorted based on logfile names
+    Vector_Sort(profile->gMarkerList,  sizeof(GrepMarker*), compareLogFileNames);
+
     T2Info("Number of tr181params/markers successfully added in profile = %lu \n", (unsigned long)profileParamCount);
     return T2ERROR_SUCCESS;
 }
@@ -1552,6 +1557,9 @@ T2ERROR addParameterMsgpack_marker_config(Profile* profile, msgpack_object* valu
         free(paramtype);
         free(method);
     }
+      // GrepMarkerlist expects the list to be sorted based on logfile names
+    Vector_Sort(profile->gMarkerList,  sizeof(GrepMarker*), compareLogFileNames);
+
     T2Debug("Added parameter count:%d \n", profileParamCount);
     return T2ERROR_SUCCESS;
 }

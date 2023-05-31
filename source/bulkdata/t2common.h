@@ -115,4 +115,6 @@ void freeTriggerCondition(void *data);
 
 void freeAccumulatedParam(void *data);
 
+int compareLogFileNames(const void *g1, const void *g2);
+
 #endif /* _T2COMMON_H_ */

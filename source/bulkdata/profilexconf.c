@@ -493,6 +493,21 @@ void ProfileXConf_updateMarkerComponentMap()
     T2Debug("%s --out\n", __FUNCTION__);
 }
 
+bool ProfileXConf_isNameEqual(char* profileName)
+{
+    bool isName = false;
+    pthread_mutex_lock(&plMutex);
+    if(initialized)
+    {
+        if(singleProfile && !strcmp(singleProfile->name, profileName))
+        {
+            isName = true;
+        }
+    }
+    pthread_mutex_unlock(&plMutex);
+    return isName;
+}
+
 T2ERROR ProfileXConf_delete(ProfileXConf *profile)
 {
     T2Debug("%s ++in\n", __FUNCTION__);
@@ -502,6 +517,8 @@ T2ERROR ProfileXConf_delete(ProfileXConf *profile)
         return T2ERROR_FAILURE;
     }
 
+    bool isNameEqual = ProfileXConf_isNameEqual(profile->name);
+  
     pthread_mutex_lock(&plMutex);
     if(!singleProfile)
     {
@@ -511,14 +528,14 @@ T2ERROR ProfileXConf_delete(ProfileXConf *profile)
     }
 
     pthread_mutex_unlock(&plMutex);
-    if(profile != NULL){
+    if(isNameEqual){
+        T2Info("Profile exists already, updating the config in file system\n");
         if(profile->cachedReportList != NULL) {
             singleProfile->isUpdated = true;
-        }else {
-            if(T2ERROR_SUCCESS != unregisterProfileFromScheduler(singleProfile->name)) {
-                T2Error("Profile : %s failed to  unregister from scheduler\n", singleProfile->name);
-            }
         }
+    }else {
+        if(T2ERROR_SUCCESS != unregisterProfileFromScheduler(singleProfile->name))
+            T2Error("Profile : %s failed to  unregister from scheduler\n", singleProfile->name);
     }
 
     if(singleProfile->reportInProgress)
@@ -532,7 +549,7 @@ T2ERROR ProfileXConf_delete(ProfileXConf *profile)
 
     int count = Vector_Size(singleProfile->cachedReportList);
     // Copy any cached message present in previous single profile to new profile
-    if(profile != NULL) {
+    if(isNameEqual) {
         profile->bClearSeekMap = singleProfile->bClearSeekMap ;
         profile->reportInProgress = false ;
         if(count > 0 && profile->cachedReportList != NULL) {
@@ -544,61 +561,61 @@ T2ERROR ProfileXConf_delete(ProfileXConf *profile)
                 index++;
             }
         }
-        // Copy the event's recived till now and pass it on to the new profile
-        if((Vector_Size(singleProfile->eMarkerList) > 0) && (Vector_Size(profile->eMarkerList) > 0)){
-            T2Info("check the events from the old profile and forward to the new profile \n");
-            for (int j=0; j < Vector_Size(profile->eMarkerList);j++){
-                EventMarker *eMarkerNew = NULL;
-                eMarkerNew = (EventMarker *)Vector_At(profile->eMarkerList,j);
-                T2Debug("Check the New Event : %s index : %d \n",eMarkerNew->markerName,j);
-                for (int i=0; i < Vector_Size(singleProfile->eMarkerList);i++){
-                    EventMarker *eMarkerCurrent = NULL;
-                    eMarkerCurrent = (EventMarker *)Vector_At(singleProfile->eMarkerList,i);
-                    T2Debug("Check the Old Event : %s index : %d \n",eMarkerCurrent->markerName,i);
-                    if((strcmp(eMarkerNew->markerName,eMarkerCurrent->markerName)==0) && eMarkerNew->mType == eMarkerCurrent->mType){
-                        T2Debug("Event marker with name : %s type %d is in both profiles copy the value \n",eMarkerCurrent->markerName,eMarkerCurrent->mType);
-                        switch(eMarkerNew->mType){
-                            case MTYPE_XCONF_COUNTER:
-                                T2Debug("Marker type MTYPE_XCONF_COUNTER and value : %d \n",eMarkerCurrent->u.count);
-                                eMarkerNew->u.count = eMarkerCurrent->u.count;
-                                break;
-                            case MTYPE_XCONF_ABSOLUTE:
-                                T2Debug("Marker type MTYPE_XCONF_ABSOLUTE and value : %s \n",eMarkerCurrent->u.markerValue);
-                                if (eMarkerCurrent->u.markerValue != NULL){
-                                    eMarkerNew->u.markerValue = strdup(eMarkerCurrent->u.markerValue);
+    }
+    // copy max events irrespective of the profile name
+    // Copy the event's recived till now and pass it on to the new profile
+    if((Vector_Size(singleProfile->eMarkerList) > 0) && (Vector_Size(profile->eMarkerList) > 0)){
+        T2Info("check the events from the old profile and forward to the new profile \n");
+        for (int j=0; j < Vector_Size(profile->eMarkerList);j++){
+            EventMarker *eMarkerNew = NULL;
+            eMarkerNew = (EventMarker *)Vector_At(profile->eMarkerList,j);
+            T2Debug("Check the New Event : %s index : %d \n",eMarkerNew->markerName,j);
+            for (int i=0; i < Vector_Size(singleProfile->eMarkerList);i++){
+                EventMarker *eMarkerCurrent = NULL;
+                eMarkerCurrent = (EventMarker *)Vector_At(singleProfile->eMarkerList,i);
+                T2Debug("Check the Old Event : %s index : %d \n",eMarkerCurrent->markerName,i);
+                if((strcmp(eMarkerNew->markerName,eMarkerCurrent->markerName)==0) && eMarkerNew->mType == eMarkerCurrent->mType){
+                    T2Debug("Event marker with name : %s type %d is in both profiles copy the value \n",eMarkerCurrent->markerName,eMarkerCurrent->mType);
+                    switch(eMarkerNew->mType){
+                        case MTYPE_XCONF_COUNTER:
+                            T2Debug("Marker type MTYPE_XCONF_COUNTER and value : %d \n",eMarkerCurrent->u.count);
+                            eMarkerNew->u.count = eMarkerCurrent->u.count;
+                            break;
+                        case MTYPE_XCONF_ABSOLUTE:
+                            T2Debug("Marker type MTYPE_XCONF_ABSOLUTE and value : %s \n",eMarkerCurrent->u.markerValue);
+                            if (eMarkerCurrent->u.markerValue != NULL){
+                                eMarkerNew->u.markerValue = strdup(eMarkerCurrent->u.markerValue);
+                            }
+                            break;
+                        case MTYPE_XCONF_ACCUMULATE:
+                            count =  Vector_Size(eMarkerCurrent->u.accumulatedValues);
+                            T2Debug("Marker type MTYPE_XCONF_ACCUMULATE and count : %d \n",count);
+                            if(eMarkerCurrent->u.accumulatedValues != NULL && count > 0){
+                                int index = 0;
+                                while(index < count) {
+                                    Vector_PushBack(eMarkerNew->u.accumulatedValues, (void *) Vector_At(eMarkerCurrent->u.accumulatedValues, 0));
+                                    Vector_RemoveItem(eMarkerCurrent->u.accumulatedValues, (void *) Vector_At(eMarkerCurrent->u.accumulatedValues, 0), NULL);
+                                    index++;
                                 }
-                                break;
-                            case MTYPE_XCONF_ACCUMULATE:
-                                count =  Vector_Size(eMarkerCurrent->u.accumulatedValues);
-                                T2Debug("Marker type MTYPE_XCONF_ACCUMULATE and count : %d \n",count);
-                                if(eMarkerCurrent->u.accumulatedValues != NULL && count > 0){
-                                    int index = 0;
-                                    while(index < count) {
-                                        Vector_PushBack(eMarkerNew->u.accumulatedValues, (void *) Vector_At(eMarkerCurrent->u.accumulatedValues, 0));
-                                        Vector_RemoveItem(eMarkerCurrent->u.accumulatedValues, (void *) Vector_At(eMarkerCurrent->u.accumulatedValues, 0), NULL);
-                                        index++;
-                                    }
-                                }
-                                break;
-                            default:
-                                T2Error("The Marker Type with enum %d is not supported \n",eMarkerNew->mType);
-                                break;
-                         }
-                    Vector_RemoveItem(singleProfile->eMarkerList, (void *) eMarkerCurrent, freeEMarker);
-                    break;    
+                            }
+                            break;
+                        default:
+                            T2Error("The Marker Type with enum %d is not supported \n",eMarkerNew->mType);
+                            break;
                     }
-                }
-            }
-        }
+                    Vector_RemoveItem(singleProfile->eMarkerList, (void *) eMarkerCurrent, freeEMarker);
+                    break;
+                   }
+              }
+         }
     }
 
 
     if (Vector_Size(singleProfile->gMarkerList) > 0 )
     {
-        bool clearSeekMap = false;
-        // need to change this if any modfication to profile logic
-        if(profile == NULL)
-            clearSeekMap = true;
+        bool clearSeekMap = true;
+        if(isNameEqual)
+            clearSeekMap = false;
         removeGrepConfig(singleProfile->name, clearSeekMap, true);
     }
 
@@ -624,21 +641,6 @@ bool ProfileXConf_isSet()
 
     pthread_mutex_unlock(&plMutex);
     return isSet;
-}
-
-bool ProfileXConf_isNameEqual(char* profileName)
-{
-    bool isName = false;
-    pthread_mutex_lock(&plMutex);
-    if(initialized)
-    {
-        if(singleProfile && !strcmp(singleProfile->name, profileName))
-        { 
-            isName = true;
-        }
-    }
-    pthread_mutex_unlock(&plMutex);
-    return isName;
 }
 
 char* ProfileXconf_getName() {

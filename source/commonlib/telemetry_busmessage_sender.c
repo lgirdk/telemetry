@@ -507,7 +507,7 @@ static T2ERROR doPopulateEventMarkerList( ) {
             const char* eventname = rbusProperty_GetName(rbusPropertyList);
             if(eventname && strlen(eventname) > 0) {
                 EVENT_DEBUG("\t %s\n", eventname);
-                hash_map_put(eventMarkerMap, (void*) strdup(eventname), (void*) strdup(eventname));
+                hash_map_put(eventMarkerMap, (void*) strdup(eventname), (void*) strdup(eventname), free);
             }
             rbusPropertyList = rbusProperty_GetNext(rbusPropertyList);
         }

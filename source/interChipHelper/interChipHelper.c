@@ -68,6 +68,27 @@ T2ERROR initGrepMarkerMap() {
     return T2ERROR_SUCCESS;
 }
 
+void freegrepMarkerListMap(void* data){
+     T2Debug("++in %s \n", __FUNCTION__);
+     if(data != NULL)
+     {
+         GrepMarker *gMarker = (GrepMarker *)data;
+         if(gMarker->logFile != NULL)
+             free(gMarker->logFile);
+         if(gMarker->markerName != NULL)
+             free(gMarker->markerName);
+         if(gMarker->searchString != NULL)
+             free(gMarker->searchString);
+         if(gMarker->paramType != NULL)
+             free(gMarker->paramType);
+         if(gMarker->mType == MTYPE_ABSOLUTE && gMarker->u.markerValue)
+             free(gMarker->u.markerValue);
+
+         free(gMarker);
+     }
+     T2Debug("--out %s \n", __FUNCTION__);
+}
+
 static T2ERROR addGrepMarkersToMap () {
     T2Debug("++in %s \n", __FUNCTION__);
 
@@ -146,8 +167,7 @@ static T2ERROR addGrepMarkersToMap () {
         T2Debug("Adding maker to grep list : %s %s %s %s %d  \n", gMarker->markerName, gMarker->searchString, gMarker->logFile, gMarker->mType == MTYPE_COUNTER ? USE_COUNTER:USE_ABSOLUTE,  gMarker->skipFreq);
         Vector_PushBack(markerList, gMarker);
     }
-
-    hash_map_put(grepMarkerListMap, ProfileName, markerList);
+    hash_map_put(grepMarkerListMap, ProfileName, markerList, freegrepMarkerListMap);
 
     fclose(gMarkerFptr);
     T2Debug("--out %s \n", __FUNCTION__);

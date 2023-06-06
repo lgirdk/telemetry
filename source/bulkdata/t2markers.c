@@ -119,11 +119,11 @@ T2ERROR updateEventMap(const char* markerName, T2Marker* t2Marker) {
     pthread_mutex_lock(&t2MarkersMutex);
     if(!markerCompMap) {
         markerCompMap = hash_map_create();
-        hash_map_put(markerCompMap, strdup(markerName), (void *) t2Marker);
+        hash_map_put(markerCompMap, strdup(markerName), (void *) t2Marker, freeT2Marker);
     }else {
         T2Marker *eventName = hash_map_get(markerCompMap, markerName);
         if(NULL == eventName) {
-            hash_map_put(markerCompMap, strdup(markerName), (void *) t2Marker);
+            hash_map_put(markerCompMap, strdup(markerName), (void *) t2Marker, freeT2Marker);
         }
 	else{
 		free(eventName);

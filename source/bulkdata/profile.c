@@ -1152,7 +1152,7 @@ hash_map_t *getProfileHashMap()
         tempProfile = (Profile *)Vector_At(profileList, profileIndex);
         char *profileName = strdup(tempProfile->name);
         char *profileHash = strdup(tempProfile->hash);
-        hash_map_put(profileHashMap, profileName, profileHash);
+        hash_map_put(profileHashMap, profileName, profileHash, free);
     }
     pthread_mutex_unlock(&plMutex);
 

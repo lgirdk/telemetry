@@ -632,6 +632,7 @@ static void freeReportProfileHashMap(void *data) {
         }
 
         if (element->data) {
+            T2Debug("Freeing element data\n");
             ReportProfile *entry = (ReportProfile *)element->data;
 
             if (entry->hash)
@@ -731,7 +732,7 @@ void ReportProfiles_ProcessReportProfilesBlob(cJSON *profiles_root , bool rprofi
         profileName = strdup(nameObj->valuestring);
         profileEntry->hash = strdup(hashObj->valuestring);
         profileEntry->config = cJSON_PrintUnformatted(profileObj);
-        hash_map_put(receivedProfileHashMap, profileName, profileEntry);
+        hash_map_put(receivedProfileHashMap, profileName, profileEntry, freeReportProfileHashMap);
 
     } // End of looping through report profiles
 

@@ -47,6 +47,57 @@ static pthread_mutex_t pExecCountLock = PTHREAD_MUTEX_INITIALIZER;
 /**
  * Start of functions dealing with log seek values
  */
+
+static void freeLogFileSeekMap(void *data) {
+    T2Debug("%s ++in\n", __FUNCTION__);
+    if (data != NULL) {
+        hash_element_t *element = (hash_element_t *) data;
+
+        if (element->key) {
+            T2Debug("Freeing hash entry element for Log file Name:%s\n", element->key);
+            free(element->key);
+        }
+        if (element->data) {
+            T2Debug("Freeing element data\n");
+            free(element->data);
+        }
+
+        free(element);
+    }
+    T2Debug("%s --out\n", __FUNCTION__);
+}
+
+static void freeGrepSeekProfile(GrepSeekProfile *gsProfile) {
+    T2Debug("%s ++in\n", __FUNCTION__);
+    if (gsProfile) {
+        hash_map_destroy(gsProfile->logFileSeekMap, freeLogFileSeekMap);
+        free(gsProfile);
+    }
+    T2Debug("%s --out\n", __FUNCTION__);
+}
+
+static void freeProfileSeekHashMap(void *data) {
+    T2Debug("%s ++in\n", __FUNCTION__);
+    if (data != NULL) {
+        hash_element_t *element = (hash_element_t *) data;
+
+        if (element->key) {
+            T2Debug("Freeing hash entry element for Profiles object Name:%s\n", element->key);
+            free(element->key);
+        }
+
+        if (element->data) {
+            T2Debug("Freeing GrepSeekProfile data\n");
+            GrepSeekProfile* gsProfile = (GrepSeekProfile *)element->data;
+            freeGrepSeekProfile(gsProfile);
+            gsProfile = NULL;
+        }
+
+        free(element);
+    }
+    T2Debug("%s --out\n", __FUNCTION__);
+}
+
 GrepSeekProfile *addToProfileSeekMap(char* profileName){
     if(profileName == NULL){
         T2Error("profileName is NULL\n");
@@ -75,7 +126,7 @@ GrepSeekProfile *addToProfileSeekMap(char* profileName){
 	}
         pthread_mutex_unlock(&pExecCountLock);
 
-        hash_map_put(profileSeekMap, strdup(profileName), (void*)gsProfile);
+        hash_map_put(profileSeekMap, strdup(profileName), (void*)gsProfile, freeProfileSeekHashMap);
     } else {
         T2Debug("profileSeekMap exists .. \n");
     }
@@ -83,55 +134,6 @@ GrepSeekProfile *addToProfileSeekMap(char* profileName){
     T2Debug("%s --out\n", __FUNCTION__);
     return gsProfile;
 }
-
-static void freeLogFileSeekMap(void *data) {
-    if (data != NULL) {
-        hash_element_t *element = (hash_element_t *) data;
-
-        if (element->key) {
-            T2Debug("Freeing hash entry element for Log file Name:%s\n", element->key);
-            free(element->key);
-        }
-
-        if (element->data) {
-            free(element->data);
-        }
-
-        free(element);
-    }
-}
-
-static void freeGrepSeekProfile(GrepSeekProfile *gsProfile) {
-    T2Debug("%s ++in\n", __FUNCTION__);
-    if (gsProfile) {
-        hash_map_destroy(gsProfile->logFileSeekMap, freeLogFileSeekMap);
-        free(gsProfile);
-    }
-    T2Debug("%s --out\n", __FUNCTION__);
-}
-
-#if 0
-static void freeProfileSeekHashMap(void *data) {
-    T2Debug("%s ++in\n", __FUNCTION__);
-    if (data != NULL) {
-        hash_element_t *element = (hash_element_t *) data;
-
-        if (element->key) {
-            T2Debug("Freeing hash entry element for Profiles object Name:%s\n", element->key);
-            free(element->key);
-        }
-
-        if (element->data) {
-            GrepSeekProfile* gsProfile = (GrepSeekProfile *)element->data;
-            freeGrepSeekProfile(gsProfile);
-            gsProfile = NULL;
-        }
-
-        free(element);
-    }
-    T2Debug("%s --out\n", __FUNCTION__);
-}
-#endif
 
 void removeProfileFromSeekMap(char *profileName) {
     T2Debug("%s ++in\n", __FUNCTION__);
@@ -149,7 +151,7 @@ void removeProfileFromSeekMap(char *profileName) {
                     profileExecCountMap = hash_map_create();
                 }
                 *temp = gsProfile->execCounter;
-                hash_map_put(profileExecCountMap, strdup(profileName),(void *) temp);
+                hash_map_put(profileExecCountMap, strdup(profileName),(void *) temp, free);
                 pthread_mutex_unlock(&pExecCountLock);
             }
             freeGrepSeekProfile(gsProfile);
@@ -273,7 +275,7 @@ T2ERROR updateLogSeek(hash_map_t *logSeekMap, char* logFileName) {
         long* val = (long *) malloc(sizeof(long));
         if(NULL != val) {
             *val = LAST_SEEK_VALUE ;
-            hash_map_put(logSeekMap, strdup(logFileName), val);
+            hash_map_put(logSeekMap, strdup(logFileName), (void *)val, free);
         } else {
             T2Warning("Unable to allocate memory for seek value pointer \n");
         }

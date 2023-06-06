@@ -170,7 +170,6 @@ void t2_queue_destroy(queue_t *q, queue_cleanup freeItem)
 	element_t	*e, *tmp;
         if(q == NULL || freeItem == NULL)
              return;
-
 	e = q->head;
 
 	while (e != NULL) {
@@ -251,7 +250,7 @@ void *hash_map_remove(hash_map_t *map, const char *key)
     return data;
 }
 
-int8_t hash_map_put(hash_map_t *map, char *key, void *data)
+int8_t hash_map_put(hash_map_t *map, char *key, void *data, hashelement_data_cleanup freeItem) 
 {
     hash_element_t *e;
   
@@ -261,13 +260,12 @@ int8_t hash_map_put(hash_map_t *map, char *key, void *data)
 
     // Hash map should support only unique keys. If previous entry exists, replace it.
     if(hash_map_get(map,key)) {
-       void * data =  hash_map_remove(map, key);
-       if(data) {
-           free(data);
-           data = NULL ;
-       }
+        void* dataelement = hash_map_remove(map, key);
+        if(dataelement != NULL && freeItem != NULL){
+            freeItem(dataelement);
+	    dataelement = NULL;
+        }
     }
-
     e = (hash_element_t *)malloc(sizeof(hash_element_t));
     if (e == NULL) {
         return -1;

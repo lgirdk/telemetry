@@ -803,7 +803,7 @@ T2ERROR regDEforCompEventList(const char* componentName, T2EventMarkerListCallba
     ret = rbus_regDataElements(t2bus_handle, 1, dataElements);
     if(ret == RBUS_ERROR_SUCCESS) {
         T2Debug("Registered data element %s with bus \n ", deNameSpace);
-        hash_map_put(compTr181ParamMap, (void*) strdup(deNameSpace), (void*) strdup(componentName));
+        hash_map_put(compTr181ParamMap, (void*) strdup(deNameSpace), (void*) strdup(componentName), free);
         T2Debug("Save dataelement mapping, %s with component name %s \n ", deNameSpace, componentName);
     }else {
         T2Error("Failed in registering data element %s \n", deNameSpace);

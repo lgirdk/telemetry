@@ -45,7 +45,7 @@ typedef struct{
 
 
 typedef void (*queue_cleanup)(void *);
-
+typedef void (*hashelement_data_cleanup)(void *);
 // queue operations
 queue_t *t2_queue_create(void);
 void t2_queue_destroy(queue_t *q, queue_cleanup freeItem);
@@ -59,7 +59,7 @@ uint32_t t2_queue_count(queue_t *q);
 // hash map operations, currently hash map is flat there are no buckets
 hash_map_t *hash_map_create(void);
 void hash_map_destroy(hash_map_t *map, queue_cleanup freeItem);
-int8_t hash_map_put(hash_map_t *map, char *key, void *data);
+int8_t hash_map_put(hash_map_t *map, char *key, void *data, hashelement_data_cleanup freeItem);
 void *hash_map_get(hash_map_t *map, const char *key);
 void *hash_map_remove(hash_map_t *map, const char *key);
 void *hash_map_lookup(hash_map_t *map, uint32_t n);

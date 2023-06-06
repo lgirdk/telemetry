@@ -456,17 +456,17 @@ TEST(HASH_MAP_TEST, check_markercompmap)
 
 TEST(HASH_MAP_PUT, HASH_MAP_1_NULL)
 {
-    EXPECT_EQ(-1, hash_map_put(NULL, teststring, markerh1));
+    EXPECT_EQ(-1, hash_map_put(NULL, teststring, markerh1, NULL));
 }
 
 TEST(HASH_MAP_PUT, HASH_MAP_2_NULL)
 {
-    EXPECT_EQ(-1, hash_map_put(markerCompMap, NULL, markerh1));
+    EXPECT_EQ(-1, hash_map_put(markerCompMap, NULL, markerh1, NULL));
 }
 
 TEST(HASH_MAP_PUT, HASH_MAP_3_NULL)
 {
-    EXPECT_EQ(-1, hash_map_put(markerCompMap, teststring, NULL));
+    EXPECT_EQ(-1, hash_map_put(markerCompMap, teststring, NULL, NULL));
 }
 
 TEST(HASH_MAP_COUNT, HASH_MAP_NULL)

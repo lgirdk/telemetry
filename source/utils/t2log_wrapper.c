@@ -42,6 +42,13 @@ void T2Log(unsigned int level, const char *msg, ...)
   va_start(arg, msg);
   int messageLen = vsnprintf(NULL, 0, msg, arg);
   va_end(arg);
+
+  if (messageLen < 1)
+  {
+      RDK_LOG(level, "LOG.RDK.T2", "Failed [%d] to compose a message [%s].", messageLen, msg);
+      return;
+  }
+
   messageLen++;
   pTempChar = (char *)malloc(messageLen);
   memset(pTempChar, '\0' , messageLen);

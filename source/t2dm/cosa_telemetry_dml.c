@@ -251,11 +251,9 @@ BOOL Telemetry_SetParamStringValue(ANSC_HANDLE hInsContext, char* ParamName, cha
 BOOL
 Telemetry_GetParamUlongValue(ANSC_HANDLE hInsContext, char* ParamName, unsigned int *pValue)
 {
-    unsigned int *temp = 0;
     if (strcmp(ParamName, "TotalUsedMem") == 0)
     {
-        profilemem_usage(temp);
-        *pValue = *temp;
+        profilemem_usage(pValue);
         return TRUE;
     }
     return FALSE;

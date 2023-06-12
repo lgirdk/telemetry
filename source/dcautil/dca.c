@@ -401,11 +401,13 @@ static int getSplitParameterValue(char *line, pcdata_t *pcnode) {
 int getErrorCode(char *str, char *ec) {
 
     T2Debug("%s ++in\n", __FUNCTION__);
-    int i = 0, j = 0, len = strlen(str);
+    int i = 0, j = 0, len = 0;
+// Solution: Check if str is NULL before dereferencing it.
     if(str == NULL){
        T2Error("Str is NULL for %s\n", __FUNCTION__);
        return -1;
     }
+    len = strlen(str);
     char tmpEC[LEN] = { 0 };
     while(str[i] != '\0') {
         if(len >= 4 && str[i] == 'R' && str[i + 1] == 'D' && str[i + 2] == 'K' && str[i + 3] == '-') {

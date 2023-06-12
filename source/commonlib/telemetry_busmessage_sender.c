@@ -403,7 +403,7 @@ int filtered_event_send(const char* data, char *markerName) {
 
         rbusProperty_t objProperty = NULL ;
         rbusValue_t objVal, value;
-        rbusSetOptions_t options;
+        rbusSetOptions_t options = {0};
         options.commit = true;
 
         rbusValue_Init(&objVal);

@@ -74,8 +74,10 @@ static void freeT2ComponentList(void *data){
 T2ERROR initT2MarkerComponentMap()
 {
     T2Debug("%s ++in\n", __FUNCTION__);
-    markerCompMap = hash_map_create();
     pthread_mutex_init(&t2MarkersMutex, NULL);
+    pthread_mutex_lock(&t2MarkersMutex);
+    markerCompMap = hash_map_create();
+    pthread_mutex_unlock(&t2MarkersMutex);
     pthread_mutex_init(&t2CompListMutex, NULL);
     if(componentList == NULL) {
         Vector_Create(&componentList);

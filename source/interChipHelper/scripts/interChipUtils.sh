@@ -79,6 +79,8 @@ MAX_SSH_RETRY=3
 TELEMETRY_ER_READY="/tmp/.t2ReadyToReceiveEvents"
 TELEMETRY_GREP_PROFILE_NAME="/tmp/t2ProfileName"
 
+VAR_SAM_PATH="/var/sam"
+
 ARM_INTERFACE_IP="192.168.254.253"
 ATOM_INTERFACE_IP="192.168.254.254"
 
@@ -300,11 +302,13 @@ copyLogsFromArm() {
     mkdir -p $LOG_PATH
     mkdir -p $TMP_SCP_PATH
     mkdir -p $TELEMETRY_PATH_TEMP
+    mkdir -p $VAR_SAM_PATH
     if [ ! -f $PEER_COMM_ID ]; then
         GetConfigFile $PEER_COMM_ID
     fi
     icucp -i $PEER_COMM_ID -r $ARM_INTERFACE_IP:$LOG_PATH/* $TMP_SCP_PATH/ > /dev/null 2>&1
     icucp -i $PEER_COMM_ID -r $ARM_INTERFACE_IP:$LOG_SYNC_PATH/$SelfHealBootUpLogFile  $ARM_INTERFACE_IP:$LOG_SYNC_PATH/$PcdLogFile  $TMP_SCP_PATH/ > /dev/null 2>&1
+    icucp -i $PEER_COMM_ID $ARM_INTERFACE_IP:$VAR_SAM_PATH/*.log $VAR_SAM_PATH/ > /dev/null 2>&1
 
     rpcRes=`rpcclient2 "touch $SCP_COMPLETE"`
     rpcOk=`echo $rpcRes | grep "RPC CONNECTED"`

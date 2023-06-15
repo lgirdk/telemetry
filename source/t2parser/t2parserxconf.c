@@ -67,10 +67,6 @@ static int getScheduleInSeconds(const char* cronPattern) {
     return scheduleIntervalInSec ;
 }
 
-/**
- * Comparator eventually called by qsort
- */
-
 static T2ERROR addParameter(ProfileXConf *profile, const char* name, const char* ref, const char* fileName, int skipFreq)
 {
     if(skipFreq == -1)

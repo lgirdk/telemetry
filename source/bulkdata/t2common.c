@@ -113,6 +113,9 @@ void freeGMarker(void *data)
     }
 }
 
+/**
+ * Comparator eventually called by qsort
+ */
 int compareLogFileNames(const void *g1, const void *g2)
 {
    GrepMarker** p1 = (GrepMarker**) g1 ;

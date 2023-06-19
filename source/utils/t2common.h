@@ -90,6 +90,7 @@ typedef struct _GrepMarker
         char* markerValue;
     }u;
     unsigned int skipFreq;
+    int firstSeekFromEOF;
 }GrepMarker;
 
 typedef struct _TriggerCondition

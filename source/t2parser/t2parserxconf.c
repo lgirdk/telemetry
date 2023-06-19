@@ -118,6 +118,7 @@ static T2ERROR addParameter(ProfileXConf *profile, const char* name, const char*
         gMarker->markerName = strdup(name);
         gMarker->searchString = strdup(ref);
         gMarker->logFile = strdup(fileName);
+        gMarker->firstSeekFromEOF = 0;// memset will already set to 0 just a safeguard
         splitSuffix = strstr(name, SPLITMARKER_SUFFIX);
         if(splitSuffix != NULL && strcmp(splitSuffix, SPLITMARKER_SUFFIX) == 0)
         {

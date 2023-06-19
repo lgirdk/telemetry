@@ -82,7 +82,7 @@ GrepSeekProfile *getLogSeekMapForProfile(char* profileName);
 /**
  * Get log line from log file including the rotated log file if applicable
  */
-char* getLogLine(hash_map_t *logSeekMap, char *buf, int buflen, char *name);
+char* getLogLine(hash_map_t *logSeekMap, char *buf, int buflen, char *name, int *seekFromEOF);
 
 void clearConfVal(void);
 

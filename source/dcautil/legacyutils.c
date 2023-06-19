@@ -29,7 +29,6 @@
 
 #define EC_BUF_LEN 20
 
-
 static char* PERSISTENT_PATH = NULL;
 static char* LOG_PATH        = NULL;
 static char* DEVICE_TYPE     = NULL;
@@ -423,7 +422,7 @@ void updateLastSeekval(hash_map_t *logSeekMap, char **prev_file, char* filename)
  *
  *  @return Returns Seek Log file. 
  */
-char *getLogLine(hash_map_t *logSeekMap, char *buf, int buflen, char *name) {
+char *getLogLine(hash_map_t *logSeekMap, char *buf, int buflen, char *name,int *firstSeekFromEOF) {
     static FILE *pcurrentLogFile = NULL;
     static int is_rotated_log = 0;
     char *rval = NULL;
@@ -438,29 +437,26 @@ char *getLogLine(hash_map_t *logSeekMap, char *buf, int buflen, char *name) {
     }
 
     char *logpath = LOG_PATH;
-#if defined(_LG_OFW_)
+
     /* If name is already an absolute path then prepend empty string instead of LOG_PATH */
     if (name[0] == '/')
         logpath = "";
-#endif
+
     int logname_len = strlen(logpath) + strlen(name) +1;
     if(NULL == pcurrentLogFile) {
         char *currentLogFile = NULL;
         long seek_value = 0;
 
         currentLogFile = malloc(logname_len);
-
         if(NULL != currentLogFile) {
             snprintf(currentLogFile,logname_len, "%s%s", logpath, name);
             if(0 != getLogSeekValue(logSeekMap, name, &seek_value)) {
                 pcurrentLogFile = fopen(currentLogFile, "rb");
                 free(currentLogFile);
-
                 if(NULL == pcurrentLogFile)
                     return NULL;
             }else {
                 long fileSize = 0;
-
                 pcurrentLogFile = fopen(currentLogFile, "rb");
                 free(currentLogFile);
 
@@ -468,11 +464,18 @@ char *getLogLine(hash_map_t *logSeekMap, char *buf, int buflen, char *name) {
                     LAST_SEEK_VALUE = 0;
                     return NULL;
                 }
-
                 fileSize = fsize(pcurrentLogFile);
 
+                // if the seek value is given in the profile use that value to calculate the seek value from the END OF FILE
+                // the seek value becomes filesize - firstSeekFromEOF since it cant be negetive set it zero if negative
+                if (*firstSeekFromEOF != 0){
+                    seek_value = (fileSize > (*firstSeekFromEOF)) ? (fileSize - (*firstSeekFromEOF)) : 0 ;
+                    T2Debug("First Seek from the EOF is given  value : %d; the size of file is %ld; current seek after calculations %ld\n",*firstSeekFromEOF, fileSize, seek_value);
+                    *firstSeekFromEOF = 0; // update this to zero as this initial seek update should only run for the first time
+                }
+
                 if(seek_value <= fileSize) {
-                    if( fseek(pcurrentLogFile, seek_value, 0) != 0){
+                    if( fseek(pcurrentLogFile,seek_value, 0) != 0){
                          T2Error("Cannot set the file position indicator for the stream pointed to by stream\n");
                     }
                 }else {
@@ -485,12 +488,12 @@ char *getLogLine(hash_map_t *logSeekMap, char *buf, int buflen, char *name) {
                         char *fileExtn = ".1";
                         int fileExtn_len = logname_len + strlen(fileExtn);
                         char * rotatedLog = malloc(fileExtn_len);
+
                         if(NULL != rotatedLog) {
                             snprintf(rotatedLog, fileExtn_len, "%s%s%s", logpath, name, fileExtn);
 
                             fclose(pcurrentLogFile);
                             pcurrentLogFile = NULL;
-
                             pcurrentLogFile = fopen(rotatedLog, "rb");
 
                             if(NULL == pcurrentLogFile) {
@@ -512,7 +515,6 @@ char *getLogLine(hash_map_t *logSeekMap, char *buf, int buflen, char *name) {
             }
         }
     }
-
     if(NULL != pcurrentLogFile) {
         rval = fgets(buf, buflen, pcurrentLogFile);
         if(NULL == rval) {
@@ -538,19 +540,18 @@ char *getLogLine(hash_map_t *logSeekMap, char *buf, int buflen, char *name) {
                     }
 
                     free(curLog);
-
                     rval = fgets(buf, buflen, pcurrentLogFile);
                     if(NULL == rval) {
                         seek_value = ftell(pcurrentLogFile);
-                        LAST_SEEK_VALUE = seek_value;
 
+                        LAST_SEEK_VALUE = seek_value;
                         fclose(pcurrentLogFile);
                         pcurrentLogFile = NULL;
+                    }
                 }
             }
         }
     }
-}
     return rval;
 }
 /**
@@ -713,4 +714,3 @@ bool isPropsInitialized() {
 
     return isPropsIntialized ;
 }
-

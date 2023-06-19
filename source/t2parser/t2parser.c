@@ -142,7 +142,7 @@ static T2ERROR addRbusMethodParameter(Profile *profile, const char* name, const 
     return T2ERROR_SUCCESS;
 }
 
-static T2ERROR addParameter(Profile *profile, const char* name, const char* ref, const char* fileName, int skipFreq, const char* ptype,
+static T2ERROR addParameter(Profile *profile, const char* name, const char* ref, const char* fileName, int skipFreq, int firstSeekFromEOF, const char* ptype,
         const char* use, bool ReportEmpty, reportTimestampFormat reportTimestamp) {
 
     T2Debug("%s ++in\n", __FUNCTION__);
@@ -248,6 +248,7 @@ static T2ERROR addParameter(Profile *profile, const char* name, const char* ref,
             gMarker->u.markerValue = NULL;
         }
         gMarker->skipFreq = skipFreq;
+        gMarker->firstSeekFromEOF = firstSeekFromEOF;
         Vector_PushBack(profile->gMarkerList, gMarker);
     }
 
@@ -609,6 +610,7 @@ T2ERROR addParameter_marker_config(Profile* profile, cJSON *jprofileParameter, i
     char* content = NULL;
     char* logfile = NULL;
     int skipFrequency = 0;
+    int firstSeekFromEOF = 0;
     size_t profileParamCount = 0;
     int ProfileParameterIndex = 0;
     char* method = NULL;
@@ -620,6 +622,7 @@ T2ERROR addParameter_marker_config(Profile* profile, cJSON *jprofileParameter, i
         content = NULL;
         logfile = NULL;
         skipFrequency = 0;
+        firstSeekFromEOF = 0;
         paramtype = NULL;
         use = NULL;
         reportEmpty = false;
@@ -706,6 +709,7 @@ T2ERROR addParameter_marker_config(Profile* profile, cJSON *jprofileParameter, i
                 cJSON *jpSubitemname = cJSON_GetObjectItem(pSubitem, "marker");
                 cJSON *jpSubitSearchString = cJSON_GetObjectItem(pSubitem, "search");
                 cJSON *jpSubitemLogFile = cJSON_GetObjectItem(pSubitem, "logFile");
+                cJSON *jpSubitemFirstSeekFromEOF = cJSON_GetObjectItem(pSubitem, "firstSeekFromEOF");
                 if(jpSubitemname) {
                     header = jpSubitemname->valuestring;
                 }
@@ -715,12 +719,20 @@ T2ERROR addParameter_marker_config(Profile* profile, cJSON *jprofileParameter, i
                 if(jpSubitemLogFile) {
                     logfile = jpSubitemLogFile->valuestring;
                 }
+                if(jpSubitemFirstSeekFromEOF) {
+                    if (cJSON_IsNumber(jpSubitemFirstSeekFromEOF)){
+                        firstSeekFromEOF = (int) jpSubitemFirstSeekFromEOF->valuedouble;
+                    }else{
+                        T2Error("%s First SeekFromEOF is not a number ignoring the value \n", __FUNCTION__);
+                    }
+                }
             }else {
                 T2Error("%s Unknown parameter type %s \n", __FUNCTION__, paramtype);
                 continue;
             }
+
             T2Debug("%s : reportTimestamp = %d\n", __FUNCTION__, rtformat);
-            ret = addParameter(profile, header, content, logfile, skipFrequency, paramtype, use, reportEmpty, rtformat); //add Multiple Report Profile Parameter
+            ret = addParameter(profile, header, content, logfile, skipFrequency, firstSeekFromEOF, paramtype, use, reportEmpty, rtformat); //add Multiple Report Profile Parameter
             if(ret != T2ERROR_SUCCESS) {
                 T2Error("%s Error in adding parameter to profile %s \n", __FUNCTION__, profile->name);
                 continue;
@@ -1435,6 +1447,8 @@ T2ERROR addParameterMsgpack_marker_config(Profile* profile, msgpack_object* valu
     msgpack_object *Parameter_method_str;
     msgpack_object *Parameter_reportEmpty_boolean;
     msgpack_object *Parameter_reportTimestamp_str;
+    msgpack_object *Parameter_firstSeekFromEOF_int;
+
     uint32_t Parameter_array_size = 0;
     int i = 0;
     int ret = 0;
@@ -1464,12 +1478,14 @@ T2ERROR addParameterMsgpack_marker_config(Profile* profile, msgpack_object* valu
         char* method;
         bool reportEmpty;
         int skipFrequency;
+        int firstSeekFromEOF;
         reportTimestampFormat rtformat;
 
         header = NULL;
         content = NULL;
         logfile = NULL;
         skipFrequency = 0;
+        firstSeekFromEOF = 0;
         paramtype = NULL;
         use = NULL;
         method = NULL;
@@ -1574,14 +1590,20 @@ T2ERROR addParameterMsgpack_marker_config(Profile* profile, msgpack_object* valu
             msgpack_print(Parameter_logFile_str, msgpack_get_obj_name(Parameter_logFile_str));
             logfile = msgpack_strdup(Parameter_logFile_str);
 
+            if((Parameter_firstSeekFromEOF_int = msgpack_get_map_value(Parameter_array_map, "firstSeekFromEOF")) != NULL ){
+                msgpack_print(Parameter_firstSeekFromEOF_int, msgpack_get_obj_name(firstSeekFromEOF));
+                MSGPACK_GET_NUMBER(Parameter_firstSeekFromEOF_int, firstSeekFromEOF);
+            }
+
         }else {
             T2Error("%s Unknown parameter type %s \n", __FUNCTION__, paramtype);
             free(paramtype);
             free(use);
             continue;
         }
+
         T2Debug("%s : reportTimestamp = %d\n", __FUNCTION__, rtformat);
-        ret = addParameter(profile, header, content, logfile, skipFrequency, paramtype, use, reportEmpty, rtformat);
+        ret = addParameter(profile, header, content, logfile, skipFrequency, firstSeekFromEOF, paramtype, use, reportEmpty, rtformat);
         /* Add Multiple Report Profile Parameter */
         if(T2ERROR_SUCCESS != ret) {
             T2Error("%s Error in adding parameter to profile %s \n", __FUNCTION__, profile->name);

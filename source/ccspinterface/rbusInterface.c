@@ -58,7 +58,7 @@ static char* tmpReportProfileVal = NULL ;
 static char* reportProfilemsgPckVal = NULL ;
 uint32_t t2MemUsage = 0;
 
-
+static pthread_mutex_t asyncMutex = PTHREAD_MUTEX_INITIALIZER;
 static rbusMethodAsyncHandle_t onDemandReportCallBackHandler = NULL ;
 
 typedef struct MethodData {
@@ -657,14 +657,13 @@ void publishReportUploadStatus(char* status){
     } else{
         T2Info("%s rbusMethod_SendAsyncResponse sent successfully \n", __FUNCTION__);
     }
-
+    pthread_mutex_unlock(&asyncMutex);
     rbusValue_Release(value);
     rbusObject_Release(outParams);
 
     T2Debug("--OUT %s\n", __FUNCTION__);
 
 }
-
 
 static rbusError_t dcmOnDemandMethodHandler(rbusHandle_t handle, char const* methodName, rbusObject_t inParams, rbusObject_t outParams,
         rbusMethodAsyncHandle_t asyncCallBackHandle) {
@@ -675,19 +674,46 @@ static rbusError_t dcmOnDemandMethodHandler(rbusHandle_t handle, char const* met
 
     /* Trigger a report generation asynchronously */
     if(!strncmp(methodName, T2_ON_DEMAND_REPORT, maxParamLen)) {
-        pthread_t rpOnDemandTh;
-        pthread_attr_t rpOnDemandAttr;
-        pthread_attr_init(&rpOnDemandAttr);
-        pthread_attr_setdetachstate(&rpOnDemandAttr, PTHREAD_CREATE_DETACHED);
-        // Calls within reportOnDemandCallBack are thread safe, thread synchronization is not required
-        if(pthread_create(&rpOnDemandTh, &rpOnDemandAttr, reportOnDemandCallBack, ON_DEMAND_ACTION_UPLOAD) != 0) {
-            T2Error("Failed to create thread for report on demand.\n");
-        }
-        pthread_attr_destroy(&rpOnDemandAttr);
+        if(!pthread_mutex_trylock(&asyncMutex)){
+            T2Info("Lock is acquired for asyncMutex\n");
+            pthread_t rpOnDemandTh;
+            pthread_attr_t rpOnDemandAttr;
+            pthread_attr_init(&rpOnDemandAttr);
+            pthread_attr_setdetachstate(&rpOnDemandAttr, PTHREAD_CREATE_DETACHED);
+            // Calls within reportOnDemandCallBack are thread safe, thread synchronization is not required
+            if(pthread_create(&rpOnDemandTh, &rpOnDemandAttr, reportOnDemandCallBack, ON_DEMAND_ACTION_UPLOAD) != 0) {
+               T2Error("Failed to create thread for report on demand.\n");
+            }
+            pthread_attr_destroy(&rpOnDemandAttr);
 
-        /* If a callback handler is included use it to report the status of report sending status */
-        if(NULL != asyncCallBackHandle) {
-            onDemandReportCallBackHandler = asyncCallBackHandle ;
+            /* If a callback handler is included use it to report the status of report sending status */
+           if(NULL != asyncCallBackHandle) {
+               onDemandReportCallBackHandler = asyncCallBackHandle ;
+           }
+        }
+        else{
+           T2Error("Failed to lock as previous upload request is already in progress\n");
+           if(NULL != asyncCallBackHandle) {
+               rbusObject_t outputParams;
+               rbusValue_t value;
+               rbusError_t err;
+
+               rbusObject_Init(&outputParams, NULL);
+               rbusValue_Init(&value);
+               rbusValue_SetString(value, "PREVIOUS_UPLOAD_IN_PROGRESS_REQUEST_FAILED");
+               rbusObject_SetValue(outputParams, "UPLOAD_STATUS", value);
+
+               T2Info("Sending response as PREVIOUS_UPLOAD_IN_PROGRESS_REQUEST_FAILED for %s from %s \n", methodName, __FUNCTION__);
+               err = rbusMethod_SendAsyncResponse(asyncCallBackHandle, RBUS_ERROR_SUCCESS, outputParams);
+               if(err != RBUS_ERROR_SUCCESS) {
+                  T2Error("%s rbusMethod_SendAsyncResponse failed err:%d\n", __FUNCTION__, err);
+               }else {
+                  T2Info("%s rbusMethod_SendAsyncResponse sent successfully \n", __FUNCTION__);
+               }
+
+               rbusValue_Release(value);
+               rbusObject_Release(outputParams);
+	   }
         }
     }else if(!strncmp(methodName, T2_ABORT_ON_DEMAND_REPORT, maxParamLen)) {
 

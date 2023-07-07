@@ -369,8 +369,8 @@ static void* CollectAndReport(void* data)
                 T2Error("Unable to generate report for : %s\n", profile->name);
                 profile->reportInProgress = false;
                 if(profile->triggerReportOnCondition) {
-                    pthread_mutex_unlock(&profile->triggerCondMutex);
                     profile->triggerReportOnCondition = false ;
+                    pthread_mutex_unlock(&profile->triggerCondMutex);
 
                     if(profile->callBackOnReportGenerationComplete)
                         profile->callBackOnReportGenerationComplete(profile->name);
@@ -389,7 +389,6 @@ static void* CollectAndReport(void* data)
                     profile->reportInProgress = false;
                     if(profile->triggerReportOnCondition) {
                         T2Info(" Unlock trigger condition mutex and set report on condition to false \n");
-                        pthread_mutex_unlock(&profile->triggerCondMutex);
                         profile->triggerReportOnCondition = false ;
                         pthread_mutex_unlock(&profile->triggerCondMutex);
                         if(profile->callBackOnReportGenerationComplete)
@@ -495,8 +494,8 @@ static void* CollectAndReport(void* data)
                             T2Debug("RBUS_METHOD doesn't exists after 3 retries\n");
                             profile->reportInProgress = false;
                             if(profile->triggerReportOnCondition) {
-                              
                                 profile->triggerReportOnCondition = false ;
+                                pthread_mutex_unlock(&profile->triggerCondMutex);
                                 if(profile->callBackOnReportGenerationComplete)
                                     profile->callBackOnReportGenerationComplete(profile->name);
                             } else {
@@ -548,8 +547,8 @@ static void* CollectAndReport(void* data)
     profile->reportInProgress = false;
     if(profile->triggerReportOnCondition) {
         T2Info(" Unlock trigger condition mutex and set report on condition to false \n");
-        pthread_mutex_unlock(&profile->triggerCondMutex);
         profile->triggerReportOnCondition = false ;
+        pthread_mutex_unlock(&profile->triggerCondMutex);
 
         if(profile->callBackOnReportGenerationComplete){
             T2Debug("Calling callback function profile->callBackOnReportGenerationComplete \n");

@@ -876,6 +876,7 @@ void msgpack_free_blob(void *exec_data)
     execData *execDataPf = (execData *)exec_data;
     __msgpack_free_blob((void *)execDataPf->user_data);
     free(execDataPf);
+    execDataPf = NULL;
 }
 
 #endif
@@ -979,10 +980,6 @@ void ReportProfiles_ProcessReportProfilesMsgPackBlob(char *msgpack_blob , int ms
     PushBlobRequest(execDataPf);
     T2Debug("PushBlobRequest complete\n");
     msgpack_unpacked_destroy(&result);
-    if(execDataPf != NULL){
-         free(execDataPf);
-         execDataPf = NULL;
-    }
 #endif
     T2Debug("%s --out\n", __FUNCTION__);
     return;

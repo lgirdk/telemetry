@@ -113,7 +113,8 @@ COSA_Init(ULONG uMaxVersionSupported, void* hCosaPlugInfo /* PCOSA_PLUGIN_INFO p
         char* tmpSubsystemPrefix;
 
         if((tmpSubsystemPrefix = g_GetSubsystemPrefix(g_pDslhDmlAgent))) {
-            AnscCopyString(g_SubSysPrefix_Irep, tmpSubsystemPrefix);
+            strncpy(g_SubSysPrefix_Irep, tmpSubsystemPrefix, sizeof(g_SubSysPrefix_Irep) - 1);
+	    g_SubSysPrefix_Irep[sizeof(g_SubSysPrefix_Irep) - 1] = '\0';
         }
 
         /* retrieve the subsystem prefix */

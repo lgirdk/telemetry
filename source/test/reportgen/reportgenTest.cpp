@@ -46,7 +46,7 @@ TEST(ENCODEPARAMRESINJSON, NULL_CHECK)
     EXPECT_EQ(T2ERROR_INVALID_ARGS,  encodeParamResultInJSON(valarray, paramNlist, NULL));
     Vector_Destroy(paramNlist, free);
     Vector_Destroy(paramVlist, free);
-    free(valarray);
+    cJSON_Delete(valarray);
     valarray = NULL;
 }
 
@@ -57,7 +57,8 @@ TEST(ENCODESTATICINJSON, NULL_CHECK)
     Vector_Create(&staticparamlist);
     EXPECT_EQ(T2ERROR_INVALID_ARGS, encodeStaticParamsInJSON(NULL, staticparamlist));
     EXPECT_EQ(T2ERROR_INVALID_ARGS, encodeStaticParamsInJSON(valarray, NULL));
-    free(valarray);
+    cJSON_Delete(valarray);
+    valarray = NULL;
     Vector_Destroy(staticparamlist, free);
 }
 
@@ -68,7 +69,8 @@ TEST(ENCODEGREPRESINJSON, NULL_CHECK)
     Vector_Create(&greplist);
     EXPECT_EQ(T2ERROR_INVALID_ARGS, encodeStaticParamsInJSON(NULL, greplist));
     EXPECT_EQ(T2ERROR_INVALID_ARGS, encodeStaticParamsInJSON(valarray, NULL));
-    free(valarray);
+    cJSON_Delete(valarray);
+    valarray = NULL;
     Vector_Destroy(greplist, free);
 }
 
@@ -80,7 +82,8 @@ TEST(ENCODEEVENTRESINJSON, NULL_CHECK)
     Vector_Create(&eventlist);
     EXPECT_EQ(T2ERROR_INVALID_ARGS, encodeStaticParamsInJSON(NULL, eventlist));
     EXPECT_EQ(T2ERROR_INVALID_ARGS, encodeStaticParamsInJSON(valarray, NULL));
-    free(valarray);
+    cJSON_Delete(valarray);
+    valarray = NULL;
     Vector_Destroy(eventlist, free);
 }
 
@@ -157,16 +160,18 @@ TEST_F(reportgenTestFixture, PrepareJSONReport)
                 .Times(1)
                 .WillOnce(::testing::ReturnNull());
       EXPECT_EQ(T2ERROR_FAILURE, prepareJSONReport(jsonobj, &rb));
-      free(jsonobj);
+      cJSON_Delete(jsonobj);
+      jsonobj = NULL;
 }
 
 TEST_F(reportgenTestFixture, destroyJSONReport)
 {
       cJSON* jsonobj = (cJSON*)malloc(320);
       EXPECT_CALL(*m_reportgenMock, cJSON_Delete(_))
-	      .Times(1);
+	      .Times(2);
       EXPECT_EQ(T2ERROR_SUCCESS, destroyJSONReport(jsonobj));
-      free(jsonobj);
+      cJSON_Delete(jsonobj);
+      jsonobj = NULL;
 }
 
 TEST_F(reportgenTestFixture, encodeStaticParamsInJSON)
@@ -185,7 +190,8 @@ TEST_F(reportgenTestFixture, encodeStaticParamsInJSON)
                  .Times(1)
                  .WillOnce(Return(mockobj));
       EXPECT_EQ(T2ERROR_FAILURE, encodeStaticParamsInJSON(valArray, staticParamList));
-      free(valArray);
+      cJSON_Delete(valArray);
+      valArray = NULL;
       Vector_Destroy(staticParamList, freeStaticParam);
 }
 
@@ -204,11 +210,12 @@ TEST_F(reportgenTestFixture, encodeStaticParamsInJSON1)
       EXPECT_CALL(*m_reportgenMock,  cJSON_CreateObject())
                  .Times(1)
                  .WillOnce(Return(mockobj));
-       EXPECT_CALL(*m_reportgenMock, cJSON_AddStringToObject(_,_,_))
+      EXPECT_CALL(*m_reportgenMock, cJSON_AddStringToObject(_,_,_))
                .Times(1)
                .WillOnce(::testing::ReturnNull());
-       EXPECT_EQ(T2ERROR_FAILURE, encodeStaticParamsInJSON(valArray, staticParamList));
-       free(valArray);
+      EXPECT_EQ(T2ERROR_FAILURE, encodeStaticParamsInJSON(valArray, staticParamList));
+      cJSON_Delete(valArray);
+      valArray = NULL;
       Vector_Destroy(staticParamList, freeStaticParam);
 }
 
@@ -227,7 +234,8 @@ TEST_F(reportgenTestFixture, encodeGrepResultInJSON)
                  .Times(1)
                  .WillOnce(Return(mockobj));
       EXPECT_EQ(T2ERROR_FAILURE, encodeGrepResultInJSON(valArray, grepResult));
-      free(valArray);
+      cJSON_Delete(valArray);
+      valArray = NULL;
       Vector_Destroy(grepResult, freeGResult);
 }
 
@@ -245,11 +253,12 @@ TEST_F(reportgenTestFixture, encodeGrepResultInJSON1)
       EXPECT_CALL(*m_reportgenMock,  cJSON_CreateObject())
                  .Times(1)
                  .WillOnce(Return(mockobj));
-       EXPECT_CALL(*m_reportgenMock, cJSON_AddStringToObject(_,_,_))
+      EXPECT_CALL(*m_reportgenMock, cJSON_AddStringToObject(_,_,_))
                .Times(1)
                .WillOnce(::testing::ReturnNull());
-       EXPECT_EQ(T2ERROR_FAILURE, encodeGrepResultInJSON(valArray, grepResult));
-       free(valArray);
+      EXPECT_EQ(T2ERROR_FAILURE, encodeGrepResultInJSON(valArray, grepResult));
+      cJSON_Delete(valArray);
+      valArray = NULL;
       Vector_Destroy(grepResult, freeGResult);
 }
 
@@ -279,7 +288,8 @@ TEST_F(reportgenTestFixture, encodeParamResultInJSON)
                  .Times(1)
                  .WillOnce(Return(mockobj));
     EXPECT_EQ(T2ERROR_FAILURE, encodeParamResultInJSON(valArray,paramNameList,paramValueList));
-    free(valArray);
+    cJSON_Delete(valArray);
+    valArray = NULL;
     Vector_Destroy(paramNameList, freeParam);
     Vector_Destroy(paramValueList, freeProfileValues);
 }
@@ -310,7 +320,8 @@ TEST_F(reportgenTestFixture, encodeParamResultInJSON1)
                  .Times(1)
                  .WillOnce(Return(mockobj));
     EXPECT_EQ(T2ERROR_FAILURE, encodeParamResultInJSON(valArray,paramNameList,paramValueList));
-    free(valArray);
+    cJSON_Delete(valArray);
+    valArray = NULL;
     Vector_Destroy(paramNameList, freeParam);
     Vector_Destroy(paramValueList, freeProfileValues);
 }
@@ -336,7 +347,7 @@ TEST_F(reportgenTestFixture, encodeParamResultInJSON2)
     param1->alias = strdup("EventMarker2");
     Vector_PushBack(paramNameList, param1);
     profileValues *profVals = (profileValues *) malloc(sizeof(profileValues));
-    profVals->paramValues = (tr181ValStruct_t**) malloc(sizeof(tr181ValStruct_t*));
+    profVals->paramValues = (tr181ValStruct_t**) malloc(2 * sizeof(tr181ValStruct_t*));
     profVals->paramValues[0] = (tr181ValStruct_t*) malloc(sizeof(tr181ValStruct_t));
     profVals->paramValues[0]->parameterName = strdup("Event1");
     profVals->paramValues[0]->parameterValue = strdup("Event_Marker1");
@@ -349,7 +360,8 @@ TEST_F(reportgenTestFixture, encodeParamResultInJSON2)
                  .Times(1)
 		 .WillOnce(::testing::ReturnNull());
     EXPECT_EQ(T2ERROR_FAILURE, encodeParamResultInJSON(valArray,paramNameList,paramValueList));
-    free(valArray);
+    cJSON_Delete(valArray);
+    valArray = NULL;
     Vector_Destroy(paramNameList, freeParam);
     Vector_Destroy(paramValueList, freeProfileValues);
 }
@@ -375,7 +387,7 @@ TEST_F(reportgenTestFixture, encodeParamResultInJSON10)
     param1->alias = strdup("EventMarker2");
     Vector_PushBack(paramNameList, param1);
     profileValues *profVals = (profileValues *) malloc(sizeof(profileValues));
-    profVals->paramValues = (tr181ValStruct_t**) malloc(sizeof(tr181ValStruct_t*));
+    profVals->paramValues = (tr181ValStruct_t**) malloc(2 * sizeof(tr181ValStruct_t*));
     profVals->paramValues[0] = (tr181ValStruct_t*) malloc(sizeof(tr181ValStruct_t));
     profVals->paramValues[0]->parameterName = strdup("Event1");
     profVals->paramValues[0]->parameterValue = strdup("Event_Marker1");
@@ -393,7 +405,8 @@ TEST_F(reportgenTestFixture, encodeParamResultInJSON10)
             .Times(1)
             .WillOnce(Return(mockobj));
     EXPECT_EQ(T2ERROR_FAILURE, encodeParamResultInJSON(valArray,paramNameList,paramValueList));
-    free(valArray);
+    cJSON_Delete(valArray);
+    valArray = NULL;
     Vector_Destroy(paramNameList, freeParam);
     Vector_Destroy(paramValueList, freeProfileValues);
 }
@@ -404,7 +417,7 @@ TEST_F(reportgenTestFixture, encodeParamResultInJSON3)
     Vector *paramValueList = NULL;
     Vector_Create(&paramNameList);
     Vector_Create(&paramValueList);
-     cJSON* valArray = NULL;
+    cJSON* valArray = NULL;
     valArray = (cJSON*)malloc(320);
     Param* param = (Param *) malloc(sizeof(Param));
     param->reportEmptyParam = true;
@@ -428,7 +441,8 @@ TEST_F(reportgenTestFixture, encodeParamResultInJSON3)
                .WillOnce(::testing::ReturnNull());
 
     EXPECT_EQ(T2ERROR_FAILURE, encodeParamResultInJSON(valArray,paramNameList,paramValueList));
-    free(valArray);
+    cJSON_Delete(valArray);
+    valArray = NULL;
     Vector_Destroy(paramNameList, freeParam);
     Vector_Destroy(paramValueList, freeProfileValues);
 }
@@ -462,7 +476,8 @@ TEST_F(reportgenTestFixture, encodeParamResultInJSON4)
                .Times(1)
                .WillOnce(::testing::ReturnNull());
     EXPECT_EQ(T2ERROR_FAILURE, encodeParamResultInJSON(valArray,paramNameList,paramValueList));
-    free(valArray);
+    cJSON_Delete(valArray);
+    valArray = NULL;
     Vector_Destroy(paramNameList, freeParam);
     Vector_Destroy(paramValueList, freeProfileValues);
 }
@@ -473,7 +488,7 @@ TEST_F(reportgenTestFixture, encodeParamResultInJSON5)
     Vector *paramValueList = NULL;
     Vector_Create(&paramNameList);
     Vector_Create(&paramValueList);
-     cJSON* valArray = NULL;
+    cJSON* valArray = NULL;
     valArray = (cJSON*)malloc(320);
     Param* param = (Param *) malloc(sizeof(Param));
     param->reportEmptyParam = true;
@@ -488,11 +503,11 @@ TEST_F(reportgenTestFixture, encodeParamResultInJSON5)
     param1->alias = strdup("EventMarker2");
     Vector_PushBack(paramNameList, param1);
     profileValues *profVals = (profileValues *) malloc(sizeof(profileValues));
-    profVals->paramValues = (tr181ValStruct_t**) malloc(sizeof(tr181ValStruct_t*));
+    profVals->paramValues = (tr181ValStruct_t**) malloc(2 * sizeof(tr181ValStruct_t*));
     profVals->paramValues[0] = (tr181ValStruct_t*) malloc(sizeof(tr181ValStruct_t));
     profVals->paramValues[0]->parameterName = strdup("Event1");
     profVals->paramValues[0]->parameterValue = strdup("Event_Marker1");
-	profVals->paramValues[1] = (tr181ValStruct_t*) malloc(sizeof(tr181ValStruct_t));
+    profVals->paramValues[1] = (tr181ValStruct_t*) malloc(sizeof(tr181ValStruct_t));
     profVals->paramValues[1]->parameterName = strdup("Event2");
     profVals->paramValues[1]->parameterValue = strdup("Event_Marker2");
 
@@ -510,8 +525,9 @@ TEST_F(reportgenTestFixture, encodeParamResultInJSON5)
             .Times(1)
             .WillOnce(::testing::ReturnNull());
     EXPECT_EQ(T2ERROR_FAILURE, encodeParamResultInJSON(valArray,paramNameList,paramValueList));
-     free(valArray);
-     Vector_Destroy(paramNameList, freeParam);
+    cJSON_Delete(valArray);
+    valArray = NULL;
+    Vector_Destroy(paramNameList, freeParam);
     Vector_Destroy(paramValueList, freeProfileValues);
 }
 
@@ -536,7 +552,8 @@ TEST_F(reportgenTestFixture,  encodeEventMarkersInJSON)
             .Times(1)
             .WillOnce(::testing::ReturnNull());
     EXPECT_EQ(T2ERROR_FAILURE, encodeEventMarkersInJSON(valArray, eventMarkerList));
-    free(valArray);
+    cJSON_Delete(valArray);
+    valArray = NULL;
     Vector_Destroy(eventMarkerList, freeEMarker);
 }
 
@@ -565,7 +582,8 @@ TEST_F(reportgenTestFixture,  encodeEventMarkersInJSON1)
 	    .Times(1)
 	    .WillOnce(::testing::ReturnNull());
     EXPECT_EQ(T2ERROR_FAILURE, encodeEventMarkersInJSON(valArray, eventMarkerList));
-    free(valArray);
+    cJSON_Delete(valArray);
+    valArray = NULL;
     Vector_Destroy(eventMarkerList, freeEMarker);
 
 }
@@ -595,7 +613,8 @@ TEST_F(reportgenTestFixture,  encodeEventMarkersInJSON2)
 	    .WillOnce(Return(mockobj))
             .WillOnce(::testing::ReturnNull());
     EXPECT_EQ(T2ERROR_FAILURE, encodeEventMarkersInJSON(valArray, eventMarkerList));
-    free(valArray);
+    cJSON_Delete(valArray);
+    valArray = NULL;
     Vector_Destroy(eventMarkerList, freeEMarker);
 
 }
@@ -621,7 +640,8 @@ TEST_F(reportgenTestFixture,  encodeEventMarkersInJSON4)
             .Times(1)
             .WillOnce(::testing::ReturnNull());
     EXPECT_EQ(T2ERROR_FAILURE, encodeEventMarkersInJSON(valArray, eventMarkerList));
-    free(valArray);
+    cJSON_Delete(valArray);
+    valArray = NULL;
     Vector_Destroy(eventMarkerList, freeEMarker);
 
 }
@@ -651,7 +671,8 @@ TEST_F(reportgenTestFixture,  encodeEventMarkersInJSON5)
             .Times(1)
             .WillOnce(::testing::ReturnNull());
     EXPECT_EQ(T2ERROR_FAILURE, encodeEventMarkersInJSON(valArray, eventMarkerList));
-    free(valArray);
+    cJSON_Delete(valArray);
+    valArray = NULL;
     Vector_Destroy(eventMarkerList, freeEMarker);
 
 }
@@ -682,7 +703,8 @@ TEST_F(reportgenTestFixture,  encodeEventMarkersInJSON6)
             .WillOnce(Return(mockobj))
             .WillOnce(::testing::ReturnNull());
     EXPECT_EQ(T2ERROR_FAILURE, encodeEventMarkersInJSON(valArray, eventMarkerList));
-    free(valArray);
+    cJSON_Delete(valArray);
+    valArray = NULL;
     Vector_Destroy(eventMarkerList, freeEMarker);
 
 }
@@ -713,7 +735,8 @@ TEST_F(reportgenTestFixture,  encodeEventMarkersInJSON8)
             .Times(1)
             .WillOnce(::testing::ReturnNull());
     EXPECT_EQ(T2ERROR_FAILURE, encodeEventMarkersInJSON(valArray, eventMarkerList));
-    free(valArray);
+    cJSON_Delete(valArray);
+    valArray = NULL;
     Vector_Destroy(eventMarkerList, freeEMarker);
 
 }
@@ -748,7 +771,8 @@ TEST_F(reportgenTestFixture,  encodeEventMarkersInJSON9)
 	    .Times(1)
 	    .WillOnce(::testing::ReturnNull());
     EXPECT_EQ(T2ERROR_FAILURE, encodeEventMarkersInJSON(valArray, eventMarkerList));
-    free(valArray);
+    cJSON_Delete(valArray);
+    valArray = NULL;
     Vector_Destroy(eventMarkerList, freeEMarker);
 }
 

@@ -26,9 +26,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/inotify.h>
+#include <sys/select.h>
 #include <sys/stat.h>
 #include <unistd.h>
-#include <sys/inotify.h>
 #include <cjson/cJSON.h>
 #include <fcntl.h>
 
@@ -352,6 +352,26 @@ int listenForInterProcessorChipEvents(int notifyfd, int watchfd) {
     char buffer[sizeof(struct inotify_event) + MAX_EVENT_TYPE_BUFFER + 1] = { '0' };
     struct inotify_event * event_ptr;
     char absEventFilePath[MAX_EVENT_TYPE_BUFFER] = { '0' };
+
+#ifndef _COSA_INTEL_USG_ATOM_
+    fd_set set;
+    struct timeval timeout;
+    FD_ZERO(&set);
+    FD_SET(notifyfd, &set);
+    timeout.tv_sec = 600;
+    timeout.tv_usec = 0;
+
+    ret = select(notifyfd + 1, &set, NULL, NULL, &timeout);
+
+    if (ret < 0) {
+        T2Error("Failure in select\n");
+        return -1;
+    }
+    if (ret == 0) {
+        T2Error("listenForInterProcessorChipEvents timeout\n");
+        return -1;
+    }
+#endif
 
     size_t count = read(notifyfd, buffer, sizeof(buffer));
     if(count < 0) {

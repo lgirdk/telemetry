@@ -248,11 +248,16 @@ void getMarkerCompRbusSub(bool subscription){
                     T2Error("Error while retrieving Marker Name at index : %d \n",i);
                 }
             }
-	}
-        if(eventMarkerListForComponent != NULL){
-             Vector_Destroy(eventMarkerListForComponent, free);
+            if(eventMarkerListForComponent != NULL){
+                 Vector_Destroy(eventMarkerListForComponent, free);
+            }
         }
-
+        //CID 255490: Resource leak (RESOURCE_LEAK)
+        else {
+          if(eventMarkerListForComponent != NULL){
+            Vector_Destroy(eventMarkerListForComponent, free);
+          }
+        }
     T2Debug("%s --out\n", __FUNCTION__);
 }
 
@@ -1289,6 +1294,9 @@ T2ERROR appendTriggerCondition (Profile *tempProfile, const char *referenceName,
 
             T2Debug("%s : Unlock on triggerConditionQueMutex\n", __FUNCTION__);
             pthread_mutex_unlock(&triggerConditionQueMutex);
+            if(triggerCond != NULL) {
+            free(triggerCond);//CID 335291: Resource leak (RESOURCE_LEAK)
+          }
 
         } else {
             T2Warning("%s : Failed to get a lock on triggerConditionQueMutex for condition %s \n ", __FUNCTION__, referenceName);

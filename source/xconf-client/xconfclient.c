@@ -167,7 +167,10 @@ static char *getTimezone () {
                         long numbytes = ftell(file);
                         jsonDoc = (char*)malloc(sizeof(char)*(numbytes + 1));
                         fseek(file, 0, SEEK_SET);
+                        //CID 190258: Argument cannot be negative (NEGATIVE_RETURNS)
+                        if (numbytes >0 ){
                         fread(jsonDoc, numbytes, 1, file);
+                        }
                         fclose(file);
                         cJSON *root = cJSON_Parse(jsonDoc);
                         if (root != NULL){
@@ -179,6 +182,10 @@ static char *getTimezone () {
                                       cJSON * timezone = cJSON_GetObjectItem(subarray, "timezone");
                                       if(timezone){
                                           char *time = cJSON_GetStringValue(timezone);
+                                          //CID 190236: Resource leak (RESOURCE_LEAK)
+                                          if (zoneValue != NULL){
+                                          free(zoneValue);
+                                          }
                                           zoneValue = strdup(time);
                                       }
                                  }
@@ -458,6 +465,7 @@ static T2ERROR doHttpGet(char* httpsUrl, char **data) {
         T2ERROR ret = T2ERROR_FAILURE;
         curlResponseData* httpResponse = (curlResponseData *) malloc(sizeof(curlResponseData));
         httpResponse->data = (char*)malloc(1);
+        httpResponse->data[0]='\0';//CID 282084 : Uninitialized scalar variable (UNINIT)
         httpResponse->size = 0;
 
         curl = curl_easy_init();

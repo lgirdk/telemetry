@@ -170,6 +170,7 @@ int getProcUsage(char *processName, Vector* grepResultList) {
         if (!(cmdPid = popen(psCommand, "r")))
     #endif
         {
+            free(pid);//CID 172839:Resource leak (RESOURCE_LEAK)
             return 0;
         }
 

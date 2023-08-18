@@ -103,7 +103,7 @@ static void drop_root()
        T2Info("NonRoot feature is enabled, dropping root privileges for Telemetry 2.0 Process\n");
        init_capability();
        drop_root_caps(&appcaps);
-       update_process_caps(&appcaps);
+       if(update_process_caps(&appcaps) != -1)//CID 281096: Unchecked return value (CHECKED_RETURN)
        read_capability(&appcaps);
     }
 }

@@ -668,7 +668,10 @@ T2ERROR addParameter_marker_config(Profile* profile, cJSON *jprofileParameter, i
                     if(!(strcmp(method, "subscribe"))) {
                         T2Info("Method is subscribe converting the parmeter to event type\n");
                         paramtype = "event";
+                        //CID 337455: Dereference after null check (FORWARD_NULL)
+                        if (jpSubitemreference != NULL){
                         header = jpSubitemreference->valuestring;
+                        }
                         content = T2REPORTCOMPONENT;
                         if(jpSubitemname) {
                             logfile = jpSubitemname->valuestring;
@@ -732,7 +735,10 @@ T2ERROR addParameter_marker_config(Profile* profile, cJSON *jprofileParameter, i
             }
 
             T2Debug("%s : reportTimestamp = %d\n", __FUNCTION__, rtformat);
+            //CID 337454: Explicit null dereferenced (FORWARD_NULL) ;CID 337448: Explicit null dereferenced (FORWARD_NULL)
+            if (content != NULL && header != NULL){
             ret = addParameter(profile, header, content, logfile, skipFrequency, firstSeekFromEOF, paramtype, use, reportEmpty, rtformat); //add Multiple Report Profile Parameter
+            }
             if(ret != T2ERROR_SUCCESS) {
                 T2Error("%s Error in adding parameter to profile %s \n", __FUNCTION__, profile->name);
                 continue;

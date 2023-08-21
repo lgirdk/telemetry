@@ -31,6 +31,7 @@
 #include "rbusmethodinterface.h"
 #include "reportprofiles.h"
 #include "t2log_wrapper.h"
+#define MAX_RETRY_ATTEMPTS 5
 
 static pthread_once_t rbusMethodMutexOnce = PTHREAD_ONCE_INIT;
 static pthread_mutex_t rbusMethodMutex;
@@ -45,7 +46,7 @@ static void asyncMethodHandler(rbusHandle_t handle, char const* methodName, rbus
     (void) handle;
     (void) params;
 
-    T2Debug("T2 asyncMethodHandler called: %s with return error code  = %s \n", methodName, rbusError_ToString(retStatus));
+    T2Info("T2 asyncMethodHandler called: %s with return error code  = %s \n", methodName, rbusError_ToString(retStatus));
     if(retStatus == RBUS_ERROR_SUCCESS) {
         isRbusMethod = true ;
     } else {
@@ -96,14 +97,30 @@ T2ERROR sendReportsOverRBUSMethod(char *methodName, Vector* inputParams, char* p
     pthread_mutex_lock(&rbusMethodMutex);
     isRbusMethod = false ;
     if ( T2ERROR_SUCCESS == rbusMethodCaller(methodName, &inParams, payload, &asyncMethodHandler)) {
-        if (isRbusMethod) {
-             T2Info("Return status of send via rbusMethod is success \n " );
-             ret = T2ERROR_SUCCESS ;
-        } else {
-             T2Info("Return status of send via rbusMethod is failure \n " );
-	     ret = T2ERROR_NO_RBUS_METHOD_PROVIDER;
+         int retry_count = 0;
+         while (retry_count < MAX_RETRY_ATTEMPTS){
+            if(!(pthread_mutex_trylock(&rbusMethodMutex))){ // locking the rbusMethodMutex, in asyncMethodHandler mutex unlock is present
+                if (isRbusMethod) {
+                    T2Info("Return status of send via rbusMethod is success \n " );
+                    ret = T2ERROR_SUCCESS ;
+                } else {
+                    T2Info("Return status of send via rbusMethod is failure \n " );
+                    ret = T2ERROR_NO_RBUS_METHOD_PROVIDER;
+                }
+                break;
+            }
+            else{
+                    retry_count++;
+                    sleep(2); // giving 2 seconds sleep for 5 times which will be equal to waiting for RBUS_METHOD_TIMEOUT value
+                    if(retry_count == 5){
+                        T2Error("Max attempts reached for rbusmethodlock. Unlocking it\n");
+                        ret = T2ERROR_NO_RBUS_METHOD_PROVIDER;
+                    }
+            }
         }
     }
+  /*rbusMethodMutex is locked before rbusMethodCaller if rbusMethodCaller function returns failure rbusMethodMutex will be unlocked here and in second case if rbusMethodCaller returns success then in asyncMethodHandler already mutex unlock is done which unlocks the rbusMethodMutex
+    lock done above so adding another lock inside rbusMethodCaller if loop for rbusMethodMutex which later gets unlocked by the below mutex unlock.*/
     pthread_mutex_unlock(&rbusMethodMutex);
     rbusObject_Release(inParams);
 

@@ -491,11 +491,17 @@ static T2ERROR doHttpGet(char* httpsUrl, char **data) {
 
             if(mtls_enable == true) {
                 if(T2ERROR_SUCCESS == getMtlsCerts(&pCertFile, &pPasswd)) {
+#if defined (ENABLE_CUSTOM_ENGINE)
+                    code = curl_easy_setopt(curl, CURLOPT_SSLENGINE, "e4sss");
+                    if (code != CURLE_OK) {
+                        T2Error("%s: Curl set ops failed with error setting ssl engine error %s \n", __FUNCTION__, curl_easy_strerror(code));
+                    }
+#else
                     code = curl_easy_setopt(curl, CURLOPT_SSLENGINE_DEFAULT, 1L);
                     if(code != CURLE_OK) {
                         T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
                     }
-
+#endif
                     code = curl_easy_setopt(curl, CURLOPT_SSLCERTTYPE, "P12");
                     if(code != CURLE_OK) {
                         T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));

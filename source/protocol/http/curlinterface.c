@@ -140,11 +140,19 @@ static T2ERROR setMtlsHeaders(CURL *curl, const char* certFile, const char* pPas
           return T2ERROR_FAILURE;
     }
     CURLcode code = CURLE_OK;
+#if defined (ENABLE_CUSTOM_ENGINE)
+    code = curl_easy_setopt(curl, CURLOPT_SSLENGINE, "e4sss");
+    if (code != CURLE_OK) {
+         T2Error("%s: Curl set ops failed with error setting ssl engine error %s \n", __FUNCTION__, curl_easy_strerror(code));
+	 return T2ERROR_FAILURE;
+    }
+#else
     code = curl_easy_setopt(curl, CURLOPT_SSLENGINE_DEFAULT, 1L);
     if(code != CURLE_OK) {
         T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
 	return T2ERROR_FAILURE;
     }
+#endif
     code = curl_easy_setopt(curl, CURLOPT_SSLCERTTYPE, "P12");
     if(code != CURLE_OK) {
         T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
@@ -264,6 +272,8 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid) {
                     setMtlsHeaders(curl, pCertFile, pKeyFile);
                 }else {
                     T2Error("mTLS_cert get failed\n");
+                    free(pCertFile);
+                    free(pKeyFile);
                     curl_easy_cleanup(curl); // CID 189985: Resource leak
                     return T2ERROR_FAILURE;
                 }

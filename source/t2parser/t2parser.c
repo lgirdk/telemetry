@@ -82,8 +82,10 @@ static char * getProfileParameter(Profile * profile, const char *ref) {
 
 static T2ERROR addhttpURIreqParameter(Profile *profile, const char* Hname, const char* Href) {
     T2Debug("%s ++in\n", __FUNCTION__);
-    if(NULL == Hname || NULL == Href )
-        return T2ERROR_SUCCESS ;
+    if(NULL == Hname || NULL == Href ){
+        T2Error("Hname or Href is NULL\n");
+        return T2ERROR_FAILURE ;
+    }
 
     char* value = NULL;
 
@@ -1680,24 +1682,24 @@ T2ERROR protocolSetMsgpack(Profile *profile, msgpack_object* value_map, msgpack_
             RequestURIParameter_Reference_str = msgpack_get_map_value(RequestURIParameter_array_map, "Reference");
             msgpack_print(RequestURIParameter_Reference_str, msgpack_get_obj_name(RequestURIParameter_Reference_str));
             href = msgpack_strdup(RequestURIParameter_Reference_str);
-            if(NULL == href) {
-
+            if(NULL != href){/*if reference is empty avoid adding this object*/
                 RequestURIParameter_Name_str = msgpack_get_map_value(RequestURIParameter_array_map, "Name");
                 msgpack_print(RequestURIParameter_Name_str, msgpack_get_obj_name(RequestURIParameter_Name_str));
                 hname = msgpack_strdup(RequestURIParameter_Name_str);
-                if(NULL == hname)
+                if(NULL == hname){
                     hname = msgpack_strdup(RequestURIParameter_Reference_str);
-
+                }
                 httpret = addhttpURIreqParameter(profile, hname, href);
                 if(T2ERROR_SUCCESS != httpret) {
-                    T2Error("%s Error in adding request URIparameterReference: %s for the profile: %s \n", __FUNCTION__, (href)? href : "", profile->name);
+                    T2Error("%s Error in adding request URIparameterReference: %s for the profile: %s \n", __FUNCTION__, href, profile->name);
                 }else {
-                    T2Debug("Added  request URIparameterReference: %s \n", (href)? href : "");
+                    T2Debug("Added  request URIparameterReference: %s \n", href);
                     httpParamCount++;
                 }
+
+                free(href);
+                free(hname);
             }
-            free(href);
-            free(hname);
         }
         T2Debug("Added URI parameter count:%d \n", httpParamCount);
     } else if ( 0 == msgpack_strcmp(Protocol_str, "RBUS_METHOD") ) {

@@ -54,11 +54,14 @@
 //Including Webconfig Framework For Telemetry 2.0 As part of RDKB-28897
 #define SUBDOC_COUNT    1
 #define SUBDOC_NAME "telemetry"
-#if defined(DEVICE_EXTENDER)
+#if defined(ENABLE_RDKB_SUPPORT)
+#define WEBCONFIG_BLOB_VERSION "/nvram/telemetry_webconfig_blob_version.txt"
+#elif defined(DEVICE_EXTENDER)
 #define WEBCONFIG_BLOB_VERSION "/usr/opensync/data/telemetry_webconfig_blob_version.txt"
 #else
-#define WEBCONFIG_BLOB_VERSION "/nvram/telemetry_webconfig_blob_version.txt"
+#define WEBCONFIG_BLOB_VERSION "/opt/telemetry_webconfig_blob_version.txt"
 #endif
+
 
 //Used in check_component_crash to inform Webconfig about telemetry component crash
 #define TELEMETRY_INIT_FILE_BOOTUP "/tmp/telemetry_initialized_bootup"

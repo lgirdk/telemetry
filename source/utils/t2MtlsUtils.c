@@ -101,6 +101,21 @@ void uninitMtls() {
 }
 
 /**
+ * read system uptime 
+ */
+double get_system_uptime() {
+    double uptime=0.0;
+    FILE* uptime_file = fopen("/proc/uptime", "r");
+    if (uptime_file != NULL) {
+        if (fscanf(uptime_file, "%lf", &uptime) == 1) {
+        fclose(uptime_file);
+        return uptime;
+        }
+        fclose(uptime_file);
+    }
+    return uptime;
+}
+/**
  * Retrieves the certs and keys associated to respective end points
  */
 T2ERROR getMtlsCerts(char **certName, char **phrase) {
@@ -168,6 +183,7 @@ T2ERROR getMtlsCerts(char **certName, char **phrase) {
         if (staticMtlsCert != NULL) { // Static cert
 #endif
         T2Info("Using xpki Static Certs connection certname: %s\n", staticMtlsCert);
+        T2Info("xPKIStaticCert: /etc/ssl/certs/staticDeviceCert.pk12 uptime %.2lf seconds,telemetry",get_system_uptime());
         *certName = strdup(staticMtlsCert);
 
 	/* CID: 189984 Time of check time of use (TOCTOU) */

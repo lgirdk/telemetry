@@ -32,6 +32,7 @@ void initMtls();
 void uninitMtls();
 
 T2ERROR getMtlsCerts(char **certName, char **phrase);
+double get_system_uptime();
 
 #endif // _T2UTILS_H_
 

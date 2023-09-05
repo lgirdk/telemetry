@@ -649,11 +649,13 @@ T2ERROR addParameter_marker_config(Profile* profile, cJSON *jprofileParameter, i
                     header = jpSubitemname->valuestring;
                 }
                 cJSON *jpSubitemreference = cJSON_GetObjectItem(pSubitem, "reference");
-                if(jpSubitemreference) {
-                    content = jpSubitemreference->valuestring;
-                    if(!jpSubitemname) {
-                        header = jpSubitemreference->valuestring; /*Default Name can be reference*/
-                    }
+                if(jpSubitemreference == NULL) {
+                    T2Error("Reference property is mandatory for datamodel parameter. Ignore the adding of this parameter to paramlist\n");
+                    continue;
+                }
+                content = jpSubitemreference->valuestring;
+                if(!jpSubitemname) {
+                     header = jpSubitemreference->valuestring; /*Default Name can be reference*/
                 }
                 cJSON *jpMethod = cJSON_GetObjectItem(pSubitem, "method");
                 cJSON *jpSubitemreportTimestamp = cJSON_GetObjectItem(pSubitem, "reportTimestamp");
@@ -1480,7 +1482,7 @@ T2ERROR addParameterMsgpack_marker_config(Profile* profile, msgpack_object* valu
         if(NULL == Parameter_type_str)
             continue;
         msgpack_print(Parameter_type_str, msgpack_get_obj_name(Parameter_type_str));
-		 paramtype = msgpack_strdup(Parameter_type_str);
+        paramtype = msgpack_strdup(Parameter_type_str);
 
         Parameter_use_str = msgpack_get_map_value(Parameter_array_map, "use");
         msgpack_print(Parameter_use_str, msgpack_get_obj_name(Parameter_use_str));
@@ -1498,8 +1500,14 @@ T2ERROR addParameterMsgpack_marker_config(Profile* profile, msgpack_object* valu
 
             Parameter_reference_str = msgpack_get_map_value(Parameter_array_map, "reference");
             msgpack_print(Parameter_reference_str, msgpack_get_obj_name(Parameter_reference_str));
+            if(Parameter_reference_str == NULL){
+                 T2Error("Reference property is mandatory for datamodel parameter. Ignore the adding of this parameter to paramlist\n");
+                 if(header != NULL){
+                      free(header);
+                 }
+                 continue;
+            }
             content = msgpack_strdup(Parameter_reference_str);
-
             if(NULL == header)
                 header = msgpack_strdup(Parameter_reference_str);
 

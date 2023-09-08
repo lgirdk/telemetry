@@ -342,7 +342,7 @@ T2ERROR ReportProfiles_deleteProfile(const char* profileName) {
     return T2ERROR_SUCCESS;
 }
 
-static void createComponentDataElements() {
+void createComponentDataElements() {
     T2Debug("%s ++in\n", __FUNCTION__);
     Vector* componentList = NULL ;
     FILE* cfgReadyFlag = NULL ;

@@ -42,6 +42,7 @@
 #include "telemetry2_0.h"
 #include "busInterface.h"
 #include "curlinterface.h"
+#include "t2markers.h"
 #include "t2common.h"
 #ifdef LIBRDKCERTSEL_BUILD
 #include "rdkcertselector.h"
@@ -1089,6 +1090,12 @@ static void* getUpdatedConfigurationThread(void *data)
                     {
                         T2Info("Successfully set new profile : %s\n", profile->name);
                         configFetch = T2ERROR_SUCCESS;
+
+                        if (access(T2_CONFIG_READY, F_OK) != 0)
+                        {
+                            createComponentDataElements();
+                            getMarkerCompRbusSub(true);
+                        }
                     }
 
                     /* Set a cronjob for auto downloading DCMresponse.txt file */

@@ -962,6 +962,12 @@ static void* getUpdatedConfigurationThread(void *data)
                 {
                     T2Info("Successfully set new profile : %s\n", profile->name);
                     configFetch = T2ERROR_SUCCESS;
+
+                    if(isRbusEnabled())
+                    {
+			            createComponentDataElements();
+			            getMarkerCompRbusSub(true);
+                    }
                 }
 
                 /* Set a cronjob for auto downloading DCMresponse.txt file */

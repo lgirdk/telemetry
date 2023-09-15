@@ -1521,6 +1521,12 @@ T2ERROR addParameterMsgpack_marker_config(Profile* profile, msgpack_object* valu
                  if(header != NULL){
                       free(header);
                  }
+                 if(paramtype != NULL){
+                      free(paramtype);
+                 }
+                 if(use != NULL){
+                      free(use);
+                 }
                  continue;
             }
             content = msgpack_strdup(Parameter_reference_str);

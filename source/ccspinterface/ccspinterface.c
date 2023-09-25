@@ -28,6 +28,7 @@
 #include "vector.h"
 #include "t2common.h"
 #include "ssp_global.h"
+#include <custom_alias_utils.h>
 
 static void *bus_handle = NULL;
 
@@ -252,7 +253,26 @@ Vector* getCCSPProfileParamValues(Vector *paramList) {
             T2Error("Unable allocate memory for profVals\n");
             continue;
         }
-        paramNames[0] = strdup(((Param *) Vector_At(paramList, i))->alias);
+
+        char *internalName = NULL;
+        int relMem = 0;
+        internalName = aliasGetInternalName((char*)((Param *) Vector_At(paramList, i))->alias, &relMem);
+        if (internalName)
+        {
+            if (relMem)
+            {
+                paramNames[0] = internalName;
+            }
+            else
+            {
+                paramNames[0] = strdup(internalName);
+            }
+        }
+        else
+        {
+            paramNames[0] = strdup(((Param *) Vector_At(paramList, i))->alias);
+        }
+
         if(paramNames[0] == NULL) {
             T2Error("Unable allocate memory for paramNames[0]\n");
             free(profVals);

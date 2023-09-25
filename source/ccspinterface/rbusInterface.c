@@ -32,6 +32,7 @@
 #include "telemetry2_0.h"
 #include "t2log_wrapper.h"
 #include "profile.h"
+#include <custom_alias_utils.h>
 
 #define buffLen 1024
 #define maxParamLen 128
@@ -197,7 +198,24 @@ Vector* getRbusProfileParamValues(Vector *paramList) {
         profileValues* profVals = (profileValues *) malloc(sizeof(profileValues));
         char *param = (char*)((Param *) Vector_At(paramList, i))->alias ;
 	if(param != NULL){
-            paramNames[0] = strdup(param);
+            char *internalName = NULL;
+            int relMem = 0;
+            internalName = aliasGetInternalName(param, &relMem);
+            if (internalName)
+            {
+                if (relMem)
+                {
+                    paramNames[0] = internalName;
+                }
+                else
+                { 
+                    paramNames[0] = strdup(internalName);
+                }
+            }
+            else
+            {
+                paramNames[0] = strdup(param);
+            }
 	}
 	else{
 	    paramNames[0] = NULL;

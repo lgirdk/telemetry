@@ -452,12 +452,12 @@ T2ERROR ProfileXConf_set(ProfileXConf *profile)
         if(registerProfileWithScheduler(singleProfile->name, singleProfile->reportingInterval, INFINITE_TIMEOUT, false, true, false, DEFAULT_FIRST_REPORT_INT, NULL) == T2ERROR_SUCCESS)
         {
             T2Info("Successfully set profile : %s\n", singleProfile->name);
-            #ifdef _COSA_INTEL_XB3_ARM_
+#if defined(_PUMA6_ARM_)
             if (Vector_Size(profile->gMarkerList) > 0 )
             {
                 saveGrepConfig(singleProfile->name, profile->gMarkerList) ;
             }
-            #endif
+#endif
             ret = T2ERROR_SUCCESS;
         }
         else

@@ -212,7 +212,8 @@ T2ERROR T2ER_Init()
     }
 
     system("touch /tmp/.t2ReadyToReceiveEvents");
-#ifdef _COSA_INTEL_XB3_ARM_
+
+#if defined(_PUMA6_ARM_)
     execNotifier("notifyEventReceiverReady");
 #endif
 
@@ -245,7 +246,7 @@ static T2ERROR flushCacheFromFile(void)
         char telemetry_data[255]="";
         size_t data_len = 0 ;
 
-#ifdef  _COSA_INTEL_XB3_ARM_
+#if defined(_PUMA6_ARM_)
         T2Debug("Copy cache file\n");
         execNotifier("copyT2CacheFileToArm");
 #endif

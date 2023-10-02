@@ -745,7 +745,7 @@ T2ERROR addProfile(Profile *profile)
     pthread_mutex_lock(&plMutex);
     Vector_PushBack(profileList, profile);
 
-#ifdef _COSA_INTEL_XB3_ARM_
+#if defined(_PUMA6_ARM_)
     if (Vector_Size(profile->gMarkerList) > 0)
         saveGrepConfig(profile->name, profile->gMarkerList) ;
 #endif

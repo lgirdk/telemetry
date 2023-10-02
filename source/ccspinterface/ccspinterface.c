@@ -45,12 +45,14 @@ static T2ERROR CCSPInterface_Init()
     char *pCfg = CCSP_MSG_BUS_CFG;
     char *componentId = NULL;
 
-#ifndef _COSA_INTEL_USG_ATOM_    /* Avoid duplicate componentId in multiprocessor devices */
+#if defined(_PUMA6_ATOM_)
+    /* Hardcoded ID to avoid duplicate componentId in multiprocessor devices */
+    componentId = strdup(CCSP_COMPONENT_ID);
+#else
     componentId = getComponentId();
-#endif
-
     if (componentId == NULL)
         componentId = strdup(CCSP_COMPONENT_ID);
+#endif
 
     int ret = CCSP_Message_Bus_Init(componentId, pCfg, &bus_handle, (CCSP_MESSAGE_BUS_MALLOC)Ansc_AllocateMemory_Callback, Ansc_FreeMemory_Callback);
     free(componentId);

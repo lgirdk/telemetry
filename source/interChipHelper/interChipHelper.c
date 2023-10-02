@@ -28,7 +28,6 @@
 #include <sys/inotify.h>
 #include <sys/stat.h>
 #include <unistd.h>
-#include <sys/inotify.h>
 #include <cjson/cJSON.h>
 #include <fcntl.h>
 

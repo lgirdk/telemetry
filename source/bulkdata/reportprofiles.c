@@ -604,7 +604,7 @@ T2ERROR ReportProfiles_uninit( ) {
     free(bulkdata.encodingTypes);
     bulkdata.encodingTypes = NULL ;
 
-#ifdef _COSA_INTEL_XB3_ARM_
+#if defined(_PUMA6_ARM_)
     execNotifier("notifyStopRunning");
 #endif
 

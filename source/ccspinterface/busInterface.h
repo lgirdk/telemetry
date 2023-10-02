@@ -26,7 +26,7 @@
 #if defined(CCSP_SUPPORT_ENABLED)
 #define CCSP_DBUS_INTERFACE_CR     "com.cisco.spvtg.ccsp.CR"
 
-#ifdef _COSA_INTEL_USG_ATOM_
+#if defined(_PUMA6_ATOM_)
 #define CCSP_COMPONENT_ID          "eRT.com.cisco.spvtg.ccsp.t2atom"       /* Use different componentId for Atom and Arm */
 #else
 #define CCSP_COMPONENT_ID          "eRT.com.cisco.spvtg.ccsp.telemetry"

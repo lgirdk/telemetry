@@ -38,7 +38,7 @@
 #endif
 #endif
 #endif
-#ifdef DUAL_CORE_XB3
+#if defined(_PUMA6_ARM_) || defined(_PUMA6_ATOM_)
 #include <sys/inotify.h>
 #endif
 #include "t2log_wrapper.h"
@@ -46,7 +46,7 @@
 #include "reportprofiles.h"
 #include "xconfclient.h"
 #include "scheduler.h"
-#ifdef DUAL_CORE_XB3
+#if defined(_PUMA6_ARM_) || defined(_PUMA6_ATOM_)
 #include "interChipHelper.h"
 #endif
 #include "t2eventreceiver.h"
@@ -214,7 +214,7 @@ void sig_handler(int sig, siginfo_t* info, void* uc)
 }
 
 
-#ifndef _COSA_INTEL_USG_ATOM_
+#if !defined(_PUMA6_ATOM_)
 static void t2DaemonMainModeInit( ) {
 
     /**
@@ -253,7 +253,7 @@ static void t2DaemonMainModeInit( ) {
     sigaction(LOG_UPLOAD_ONDEMAND, &act, NULL);
     sigaction(SIGIO, &act, NULL);
 
-    #ifdef _COSA_INTEL_XB3_ARM_
+#if defined(_PUMA6_ARM_)
     if ( createNotifyDir() != 0 ) {
         T2Error("Failed to initialize Telemetry inotify directory .. exiting the process\n");
         exit(0);
@@ -263,7 +263,7 @@ static void t2DaemonMainModeInit( ) {
     	T2Error("Failed to initialize for inotify events .. exiting the process\n");
     	exit(0);
     }
-    #endif
+#endif
 
     if(T2ERROR_SUCCESS != initTelemetry()) {
         T2Error("Failed to initialize Telemetry.. exiting the process\n");
@@ -278,9 +278,9 @@ static void t2DaemonMainModeInit( ) {
     }
     T2Info("Telemetry 2.0 Process Terminated\n");
 }
-#endif // End of _COSA_INTEL_USG_ATOM_
 
-#ifdef _COSA_INTEL_USG_ATOM_
+#else
+
 static void t2DaemonHelperModeInit( ) {
 
     T2Info("Init inotify event watcher for ATOM  CHIP");
@@ -315,7 +315,7 @@ static void t2DaemonHelperModeInit( ) {
     inotify_rm_watch(notifyfd, watchfd);
     T2Info("Telemetry 2.0 Process Terminated\n");
 }
-#endif //End of  _COSA_INTEL_USG_ATOM_
+#endif
 
 static int checkAnotherTelemetryInstance (void)
 {
@@ -389,13 +389,12 @@ int main(int argc, char* argv[])
 
 
     T2Info("Initializing Telemetry 2.0 Component\n");
-    #ifndef _COSA_INTEL_USG_ATOM_   // This doesn't apply for helper daemon on atom
-    t2DaemonMainModeInit();
-    #endif
 
-    #ifdef _COSA_INTEL_USG_ATOM_
+#if !defined(_PUMA6_ATOM_)
+    t2DaemonMainModeInit();
+#else
     t2DaemonHelperModeInit();
-    #endif
+#endif
 
     return 0;
 }

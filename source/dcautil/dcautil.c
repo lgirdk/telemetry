@@ -21,7 +21,7 @@
 #include <stdio.h>
 #include <unistd.h>
 
-#ifdef DUAL_CORE_XB3
+#if defined(_PUMA6_ARM_) || defined(_PUMA6_ATOM_)
 #include <sys/inotify.h>
 #include <sys/stat.h>
 #include "interChipHelper.h"
@@ -35,7 +35,7 @@
 #include "legacyutils.h"
 
 
-#ifdef  _COSA_INTEL_XB3_ARM_
+#if defined(_PUMA6_ARM_)
 static pthread_mutex_t pInterChipLock = PTHREAD_MUTEX_INITIALIZER;
 
 static T2ERROR getInterChipDCAResult(char* profileName, cJSON** pdcaResultObj, bool isClearSeekMap) {
@@ -200,7 +200,9 @@ getGrepResults (char *profileName, Vector *markerList, Vector **grepResultList, 
         T2Error("Invalid Args or Args are NULL\n");
         return T2ERROR_FAILURE;
     }
-	#ifdef  _COSA_INTEL_XB3_ARM_  // Get the grep results from atom in case of XB3 platforms
+
+#if defined(_PUMA6_ARM_)
+        // Get the grep results from atom in case of Puma6 ARM platforms
         cJSON* dcaResultObj = NULL;
         // Notify atom and wait for results from atom
         getInterChipDCAResult(profileName, &dcaResultObj, isClearSeekMap);
@@ -231,12 +233,12 @@ getGrepResults (char *profileName, Vector *markerList, Vector **grepResultList, 
             T2Info("%s No data from dcaUtils getDCAResults", __FUNCTION__);
         }
         *grepResultList = vgrepResult;
-	#else
+#else
         getDCAResultsInVector(profileName, markerList, grepResultList, check_rotated);
         if (isClearSeekMap) {
             removeProfileFromSeekMap(profileName);
         }
-	#endif
+#endif
 
     T2Debug("%s --out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;
@@ -245,7 +247,7 @@ getGrepResults (char *profileName, Vector *markerList, Vector **grepResultList, 
 void removeGrepConfig(char* profileName, bool clearSeekMap, bool clearExecMap) {
     T2Debug("%s ++in\n", __FUNCTION__);
 
-#ifdef  _COSA_INTEL_XB3_ARM_
+#if defined(_PUMA6_ARM_)
     sendDeleteProfileEvent(profileName);
 #else
     if(clearSeekMap)

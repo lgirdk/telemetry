@@ -351,10 +351,10 @@ static int processEventType(char *eventType) {
         // Unknown event type
         T2Info("Unknown event %s !!!! Ignore and return \n", eventType);
         // Safe return to unblock wait on grep results in case of any rare condition
-        #ifdef _COSA_INTEL_USG_ATOM_
+#if defined(_PUMA6_ATOM_)
         T2Debug("Initiating saveDcaGrepResults for avoiding data loss \n");
         saveDcaGrepResults();
-        #endif
+#endif
     }
     T2Debug("--out processEventType \n");
     return returnStatus;

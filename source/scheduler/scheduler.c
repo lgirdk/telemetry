@@ -38,6 +38,7 @@
 #define DEFAULT_TIME_REFERENCE "0001-01-01T00:00:00Z"
 char *strptime(const char *s, const char *format, struct tm *tm);
 
+static NotifySchedulerstartCB notifySchedulerstartcb;
 static TimeoutNotificationCB timeoutNotificationCb;
 static ActivationTimeoutCB activationTimeoutCb;
 static Vector *profileList = NULL;
@@ -188,15 +189,18 @@ void* TimeoutThread(void *arg)
         }
         //When first reporting interval is given waiting for first report int vale
         if(tProfile->firstreportint > 0 && tProfile->firstexecution == true ){
+             notifySchedulerstartcb(tProfile->name, true);
              T2Info("Waiting for %d sec for next TIMEOUT for profile as firstreporting interval is given - %s\n", tProfile->firstreportint, tProfile->name);
              n = pthread_cond_timedwait(&tProfile->tCond, &tProfile->tMutex, &_ts);
         }
         else{
              if(tProfile->timeOutDuration == UINT_MAX && tProfile->timeRefinSec == 0){
+                 notifySchedulerstartcb(tProfile->name, true);
                  T2Info("Waiting for condition as reporting interval is not configured for profile - %s\n", tProfile->name);
                  n = pthread_cond_wait(&tProfile->tCond, &tProfile->tMutex);
              }
              else{
+                 notifySchedulerstartcb(tProfile->name, true);
                  T2Info("Waiting for timeref or reporting interval for the profile - %s is started\n", tProfile->name);
                  n = pthread_cond_timedwait(&tProfile->tCond, &tProfile->tMutex, &_ts);
              }
@@ -345,6 +349,7 @@ T2ERROR SendInterruptToTimeoutThread(char* profileName)
             pthread_cond_signal(&tProfile->tCond);
             if(pthread_mutex_unlock(&tProfile->tMutex) != 0){
                  T2Error("tProfile Mutex unlocking failed\n");
+                 pthread_mutex_unlock(&scMutex);
                  return T2ERROR_FAILURE;
 	    }
         }
@@ -357,7 +362,7 @@ T2ERROR SendInterruptToTimeoutThread(char* profileName)
     return T2ERROR_SUCCESS;
 }
 
-T2ERROR initScheduler(TimeoutNotificationCB notificationCb, ActivationTimeoutCB activationCB)
+T2ERROR initScheduler(TimeoutNotificationCB notificationCb, ActivationTimeoutCB activationCB, NotifySchedulerstartCB notifyschedulerCB)
 {
     T2Debug("%s ++in\n", __FUNCTION__);
 
@@ -368,6 +373,7 @@ T2ERROR initScheduler(TimeoutNotificationCB notificationCb, ActivationTimeoutCB 
     }
     timeoutNotificationCb = notificationCb;
     activationTimeoutCb = activationCB;
+    notifySchedulerstartcb = notifyschedulerCB;
 
     sc_initialized = true;
     if(pthread_mutex_init(&scMutex, NULL) != 0){
@@ -539,6 +545,7 @@ T2ERROR unregisterProfileFromScheduler(const char* profileName)
             pthread_cond_signal(&tProfile->tCond);
             if(pthread_mutex_unlock(&tProfile->tMutex) != 0){
                 T2Error("tProfile Mutex unlock failed\n");
+                pthread_mutex_unlock(&scMutex);
                 return T2ERROR_FAILURE;
 	    }
 

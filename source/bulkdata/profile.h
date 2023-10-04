@@ -41,6 +41,7 @@ typedef struct _JSONEncoding
 typedef struct _Profile
 {
     bool enable;
+    bool isSchedulerstarted;
     bool isUpdated;
     bool reportInProgress;
     bool generateNow;
@@ -119,4 +120,5 @@ unsigned int getMinThresholdDuration(char *profileName);
 
 void reportGenerationCompleteReceiver(char* profileName);
 
+void NotifySchedulerstart(char* profileName, bool isschedulerstarted);
 #endif /* _PROFILE_H_ */

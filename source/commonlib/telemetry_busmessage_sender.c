@@ -43,8 +43,7 @@
 #include "telemetry_busmessage_internal.h"
 
 #define MESSAGE_DELIMITER "<#=#>"
-
-#define MAX_CACHED_EVENTS_LIMIT 50
+#define MAX_EVENT_CACHE 200
 #define T2_COMPONENT_READY    "/tmp/.t2ReadyToReceiveEvents"
 #define T2_SCRIPT_EVENT_COMPONENT "telemetry_client"
 #define SENDER_LOG_FILE "/tmp/t2_sender_debug.log"
@@ -58,7 +57,7 @@ static bool isRFCT2Enable = false ;
 static bool isT2Ready = false;
 static bool getParamStatus = false;
 static bool isRbusEnabled = false ;
-
+static bool cachestart = false;
 static pthread_mutex_t initMtx = PTHREAD_MUTEX_INITIALIZER;
 static bool isMutexInitialized = false ;
 
@@ -284,8 +283,10 @@ void *cacheEventToFile(void *arg)
         fl.l_start = 0;
         fl.l_len = 0;
         fl.l_pid = 0;
-
-	pthread_detach(pthread_self());
+        FILE *fs = NULL;
+        char path[100];
+        int count = 0;
+        pthread_detach(pthread_self());
         EVENT_ERROR("%s:%d, Caching the event to File\n", __func__, __LINE__);
 	if(telemetry_data == NULL)
 	{
@@ -319,7 +320,20 @@ void *cacheEventToFile(void *arg)
                EVENT_ERROR("%s: File open error %s\n", __FUNCTION__, T2_CACHE_FILE);
                goto unlock;
         }
-        fprintf(fp, "%s\n", telemetry_data);
+        if(cachestart){
+              fs = popen ("cat /tmp/t2_caching_file | wc -l","r");
+	      if(fs != NULL){
+                   fgets(path,100,fs);
+                   count = atoi ( path );
+                   pclose(fs);
+              }
+        }
+        if(count < MAX_EVENT_CACHE){
+             fprintf(fp, "%s\n", telemetry_data);
+             cachestart = true;
+        }else{
+             EVENT_ERROR("Reached Max cache limit of 200, dropping\n");
+        }
         fclose(fp);
 
 unlock:

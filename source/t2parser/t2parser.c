@@ -737,7 +737,11 @@ T2ERROR addParameter_marker_config(Profile* profile, cJSON *jprofileParameter, i
             T2Debug("%s : reportTimestamp = %d\n", __FUNCTION__, rtformat);
             //CID 337454: Explicit null dereferenced (FORWARD_NULL) ;CID 337448: Explicit null dereferenced (FORWARD_NULL)
             if (content != NULL && header != NULL){
-            ret = addParameter(profile, header, content, logfile, skipFrequency, firstSeekFromEOF, paramtype, use, reportEmpty, rtformat); //add Multiple Report Profile Parameter
+                ret = addParameter(profile, header, content, logfile, skipFrequency, firstSeekFromEOF, paramtype, use, reportEmpty, rtformat); //add Multiple Report Profile Parameter
+            }
+            else{
+                T2Error("%s Error in adding parameter to profile %s \n", __FUNCTION__, profile->name); // header and content is mandatory for adding the parameter
+          	continue;
             }
             if(ret != T2ERROR_SUCCESS) {
                 T2Error("%s Error in adding parameter to profile %s \n", __FUNCTION__, profile->name);
@@ -1052,6 +1056,7 @@ T2ERROR processConfiguration(char** configData, char *profileName, char* profile
     profile->firstReportingInterval = 0;
     profile->maxUploadLatency = 0;
     profile->timeRef = NULL;
+    profile->isSchedulerstarted = false;
     if(jprofileDeleteOnTimeout) {
         profile->deleteonTimeout = (cJSON_IsTrue(jprofileDeleteOnTimeout) == 1);
         T2Info("profile->deleteonTimeout: %i\n", profile->deleteonTimeout);
@@ -1615,7 +1620,31 @@ T2ERROR addParameterMsgpack_marker_config(Profile* profile, msgpack_object* valu
         }
 
         T2Debug("%s : reportTimestamp = %d\n", __FUNCTION__, rtformat);
-        ret = addParameter(profile, header, content, logfile, skipFrequency, firstSeekFromEOF, paramtype, use, reportEmpty, rtformat);
+        if(header != NULL && content != NULL){
+            ret = addParameter(profile, header, content, logfile, skipFrequency, firstSeekFromEOF, paramtype, use, reportEmpty, rtformat);
+        }
+        else{
+            T2Error("%s Error in adding parameter to profile %s \n", __FUNCTION__, profile->name); // header and content is mandatory for adding the parameter
+            if(header != NULL){
+                free(header);
+            }
+            if(content != NULL){
+                free(content);
+            }
+            if(logfile != NULL){
+                free(logfile);
+            }
+            if(use != NULL){
+                free(use);
+            }
+            if(paramtype != NULL){
+                free(paramtype);
+            }
+            if(method != NULL){
+                free(method);
+            }
+            continue;
+        }
         /* Add Multiple Report Profile Parameter */
         if(T2ERROR_SUCCESS != ret) {
             T2Error("%s Error in adding parameter to profile %s \n", __FUNCTION__, profile->name);
@@ -1904,6 +1933,7 @@ T2ERROR processMsgPackConfiguration(msgpack_object *profiles_array_map, Profile 
     profile->firstReportingInterval = 0;
     profile->maxUploadLatency = 0;
     profile->timeRef = NULL;
+    profile->isSchedulerstarted = false;
 
     DeleteOnTimout_boolean = msgpack_get_map_value(value_map, "DeleteOnTimeout");
     msgpack_print(DeleteOnTimout_boolean, msgpack_get_obj_name(DeleteOnTimeout_boolean));

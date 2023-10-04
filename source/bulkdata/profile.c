@@ -290,6 +290,14 @@ static void* CollectAndReport(void* data)
     T2ERROR ret = T2ERROR_FAILURE;
     if( profile->name == NULL || profile->encodingType == NULL || profile->protocol == NULL ){
         T2Error("Incomplete profile parameters\n");
+        if(profile->triggerReportOnCondition) {
+                T2Info(" Unlock trigger condition mutex and set report on condition to false \n");
+                profile->triggerReportOnCondition = false ;
+                pthread_mutex_unlock(&profile->triggerCondMutex);
+        } else {
+                T2Debug(" profile->triggerReportOnCondition is not set \n");
+        }
+        profile->reportInProgress = false;
         return NULL;
     }
 
@@ -441,6 +449,19 @@ static void* CollectAndReport(void* data)
                                 free(httpUrl);
                                 httpUrl = NULL;
                             }
+                            profile->reportInProgress = false;
+                            if(profile->triggerReportOnCondition) {
+                                T2Info(" Unlock trigger condition mutex and set report on condition to false \n");
+                                profile->triggerReportOnCondition = false ;
+                                pthread_mutex_unlock(&profile->triggerCondMutex);
+
+                                if(profile->callBackOnReportGenerationComplete){
+                                    T2Debug("Calling callback function profile->callBackOnReportGenerationComplete \n");
+                                    profile->callBackOnReportGenerationComplete(profile->name);
+                                }
+                            } else {
+                                    T2Debug(" profile->triggerReportOnCondition is not set \n");
+                            }
                             return NULL;
                         }
                         pthread_mutex_unlock(&reportMutex);
@@ -463,6 +484,19 @@ static void* CollectAndReport(void* data)
                             T2Error("Profile : %s pthread_cond_timedwait ERROR!!!\n", profile->name);
                             pthread_mutex_unlock(&reportMutex);
                             pthread_cond_destroy(&reportcond);
+                            profile->reportInProgress = false;
+                            if(profile->triggerReportOnCondition) {
+                                T2Info(" Unlock trigger condition mutex and set report on condition to false \n");
+                                profile->triggerReportOnCondition = false ;
+                                pthread_mutex_unlock(&profile->triggerCondMutex);
+
+                                if(profile->callBackOnReportGenerationComplete){
+                                    T2Debug("Calling callback function profile->callBackOnReportGenerationComplete \n");
+                                    profile->callBackOnReportGenerationComplete(profile->name);
+                                }
+                            } else {
+                                    T2Debug(" profile->triggerReportOnCondition is not set \n");
+                            }
                             return NULL;
                         }
                         pthread_mutex_unlock(&reportMutex);
@@ -580,7 +614,6 @@ void NotifyTimeout(const char* profileName, bool isClearSeekMap)
     }
 
     pthread_mutex_unlock(&plMutex);
-
     T2Info("%s: profile %s is in %s state\n", __FUNCTION__, profileName, profile->enable ? "Enabled" : "Disabled");
     if(profile->enable && !profile->reportInProgress)
     {
@@ -755,7 +788,6 @@ T2ERROR addProfile(Profile *profile)
         saveGrepConfig(profile->name, profile->gMarkerList) ;
 #endif
     pthread_mutex_unlock(&plMutex);
-
     T2Debug("%s --out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;
 }
@@ -787,6 +819,7 @@ T2ERROR enableProfile(const char *profileName)
         profile->enable = true;
         if(pthread_mutex_init(&profile->triggerCondMutex, NULL) != 0){
             T2Error(" %s Mutex init has failed\n", __FUNCTION__);
+            pthread_mutex_unlock(&plMutex);
             return T2ERROR_FAILURE;
         }
 
@@ -804,7 +837,6 @@ T2ERROR enableProfile(const char *profileName)
             pthread_mutex_unlock(&plMutex);
             return T2ERROR_FAILURE;
         }
-
         T2ER_StartDispatchThread();
 
         T2Info("Successfully enabled profile : %s\n", profileName);
@@ -863,8 +895,8 @@ T2ERROR disableProfile(const char *profileName, bool *isDeleteRequired) {
     } else {
         profile->enable = false;
     }
+    profile->isSchedulerstarted = false;
     pthread_mutex_unlock(&plMutex);
-
     T2Debug("%s --out\n", __FUNCTION__);
 
     return T2ERROR_SUCCESS;
@@ -877,13 +909,14 @@ T2ERROR deleteAllProfiles(bool delFromDisk) {
     int profileIndex = 0;
     Profile *tempProfile = NULL;
 
+    pthread_mutex_lock(&plMutex);
     if(profileList == NULL)
     {
         T2Error("profile list is not initialized yet or profileList is empty, ignoring\n");
+        pthread_mutex_unlock(&plMutex);
         return T2ERROR_FAILURE;
     }
 
-    pthread_mutex_lock(&plMutex);
     count = Vector_Size(profileList);
     pthread_mutex_unlock(&plMutex);
 
@@ -892,6 +925,7 @@ T2ERROR deleteAllProfiles(bool delFromDisk) {
         pthread_mutex_lock(&plMutex);
         tempProfile = (Profile *)Vector_At(profileList, profileIndex);
         tempProfile->enable = false;
+        tempProfile->isSchedulerstarted = false;
         pthread_mutex_unlock(&plMutex);
 
 	if(T2ERROR_SUCCESS != unregisterProfileFromScheduler(tempProfile->name))
@@ -965,7 +999,8 @@ T2ERROR deleteProfile(const char *profileName)
 
     if(profile->enable)
         profile->enable = false;
-    
+    if(profile->isSchedulerstarted)
+        profile->isSchedulerstarted = false; 
     pthread_mutex_unlock(&plMutex);
     if(T2ERROR_SUCCESS != unregisterProfileFromScheduler(profileName))
     {
@@ -1238,6 +1273,24 @@ T2ERROR registerTriggerConditionConsumer()
     return ret;
 }
 
+void NotifySchedulerstart(char* profileName, bool isschedulerstarted)
+{
+    int profileIndex = 0;
+    Profile *tempProfile = NULL;
+    pthread_mutex_lock(&plMutex);
+    T2Debug("plMutex is locked  %s\n", __FUNCTION__);
+    for(; profileIndex < Vector_Size(profileList); profileIndex++)
+    {
+        tempProfile = (Profile *)Vector_At(profileList, profileIndex);
+        if(strncmp(tempProfile->name, profileName, strlen(profileName) + 1) == 0){
+            tempProfile->isSchedulerstarted = isschedulerstarted;
+	}
+    }
+    pthread_mutex_unlock(&plMutex);
+    T2Debug("plMutex is unlocked  %s\n", __FUNCTION__);
+    return;
+}
+
 T2ERROR appendTriggerCondition (Profile *tempProfile, const char *referenceName, const char *referenceValue){
     T2Debug("%s ++in\n", __FUNCTION__);
 
@@ -1375,7 +1428,15 @@ T2ERROR triggerReportOnCondtion(const char *referenceName, const char *reference
                             pthread_mutex_unlock(&plMutex);
                             T2Info("Triggering report on condition for %s with %s operator, %d threshold\n", triggerCondition->reference,
                                                         triggerCondition->oprator, triggerCondition->threshold);
-                            SendInterruptToTimeoutThread(tempProfilename);
+                            if(tempProfile->isSchedulerstarted){
+                                SendInterruptToTimeoutThread(tempProfilename);
+                            }
+                            else{
+                                T2Info("For Profile %s scheduler is not enabled yet so triggering the condition is ignored now\n", tempProfilename);
+                                tempProfile->triggerReportOnCondition = false;
+                                pthread_mutex_unlock(&tempProfile->triggerCondMutex);
+
+                            }
                             free(tempProfilename); //RDKB-42640
                             return T2ERROR_SUCCESS ;
                         } else {

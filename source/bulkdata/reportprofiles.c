@@ -423,7 +423,7 @@ T2ERROR initReportProfiles()
     bulkdata.maxNoOfParamReferences = MAX_PARAM_REFERENCES;
     bulkdata.maxReportSize = DEFAULT_MAX_REPORT_SIZE;
 
-    initScheduler((TimeoutNotificationCB)ReportProfiles_TimeoutCb, (ActivationTimeoutCB)ReportProfiles_ActivationTimeoutCb);
+    initScheduler((TimeoutNotificationCB)ReportProfiles_TimeoutCb, (ActivationTimeoutCB)ReportProfiles_ActivationTimeoutCb, (NotifySchedulerstartCB)NotifySchedulerstart);
     initT2MarkerComponentMap();
     T2ER_Init();
 

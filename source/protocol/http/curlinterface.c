@@ -40,6 +40,16 @@
 
 extern sigset_t blocking_signal;
 
+typedef struct 
+{
+    bool curlStatus;
+    CURLcode curlResponse;
+    CURLcode curlSetopCode;
+    long http_code;
+    int lineNumber;
+
+} childResponse ;
+
 #if defined(ENABLE_RDKB_SUPPORT) && !defined(_WNXL11BWL_PRODUCT_REQ_)
 
 #if defined(WAN_FAILOVER_SUPPORTED) || defined(FEATURE_RDKB_CONFIGURABLE_WAN_INTERFACE)
@@ -66,36 +76,41 @@ static size_t writeToFile(void *ptr, size_t size, size_t nmemb, void *stream) {
     return written;
 }
 
-static T2ERROR setHeader(CURL *curl, const char* destURL, struct curl_slist **headerList)
+static T2ERROR setHeader(CURL *curl, const char* destURL, struct curl_slist **headerList,childResponse *childCurlResponse)
 {
     
-    T2Debug("%s ++in\n", __FUNCTION__);
+    //T2Debug("%s ++in\n", __FUNCTION__);
     if(curl == NULL || destURL == NULL)
     {
-          return T2ERROR_FAILURE;
+        childCurlResponse->lineNumber = __LINE__;
+        return T2ERROR_FAILURE;
     }
 
-    T2Debug("%s DEST URL %s \n", __FUNCTION__, destURL);
+    //T2Debug("%s DEST URL %s \n", __FUNCTION__, destURL);
     CURLcode code=CURLE_OK;
     code = curl_easy_setopt(curl, CURLOPT_URL, destURL);
     if(code != CURLE_OK){
-       T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
-       return T2ERROR_FAILURE;
+        childCurlResponse->curlSetopCode = code;
+        childCurlResponse->lineNumber = __LINE__;
+        return T2ERROR_FAILURE;
     }
     code = curl_easy_setopt(curl, CURLOPT_SSLVERSION, TLSVERSION);
     if(code != CURLE_OK){
-       T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
-       return T2ERROR_FAILURE;
+        childCurlResponse->curlSetopCode = code;
+        childCurlResponse->lineNumber = __LINE__;
+        return T2ERROR_FAILURE;
     }
     code = curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, HTTP_METHOD);
     if(code != CURLE_OK){
-       T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
-       return T2ERROR_FAILURE;
+        childCurlResponse->curlSetopCode = code;
+        childCurlResponse->lineNumber = __LINE__;
+        return T2ERROR_FAILURE;
     }
     code = curl_easy_setopt(curl, CURLOPT_TIMEOUT, TIMEOUT);
     if(code != CURLE_OK){
-       T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
-       return T2ERROR_FAILURE;
+        childCurlResponse->curlSetopCode = code;
+        childCurlResponse->lineNumber = __LINE__;
+        return T2ERROR_FAILURE;
     }
 
 #if defined(ENABLE_RDKB_SUPPORT) && !defined(_WNXL11BWL_PRODUCT_REQ_)
@@ -103,15 +118,17 @@ static T2ERROR setHeader(CURL *curl, const char* destURL, struct curl_slist **he
 #if defined(WAN_FAILOVER_SUPPORTED) || defined(FEATURE_RDKB_CONFIGURABLE_WAN_INTERFACE)
     code = curl_easy_setopt(curl, CURLOPT_INTERFACE, waninterface);
     if(code != CURLE_OK) {
-        T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
-	return T2ERROR_FAILURE;
+        childCurlResponse->curlSetopCode = code;
+        childCurlResponse->lineNumber = __LINE__;
+        return T2ERROR_FAILURE;
     }
 #else
      /* CID 125287: Unchecked return value from library */
     code = curl_easy_setopt(curl, CURLOPT_INTERFACE, INTERFACE);
     if(code != CURLE_OK){
-       T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
-       return T2ERROR_FAILURE;
+        childCurlResponse->curlSetopCode = code;
+        childCurlResponse->lineNumber = __LINE__;
+        return T2ERROR_FAILURE;
     }
 
 #endif
@@ -121,80 +138,96 @@ static T2ERROR setHeader(CURL *curl, const char* destURL, struct curl_slist **he
 
     code = curl_easy_setopt(curl, CURLOPT_HTTPHEADER, *headerList);
     if(code != CURLE_OK){
-       T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
-       return T2ERROR_FAILURE;
+        childCurlResponse->curlSetopCode = code;
+        childCurlResponse->lineNumber = __LINE__;
+	return T2ERROR_FAILURE;
     }
 
     code = curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, writeToFile);
     if(code != CURLE_OK){
-       T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
-       return T2ERROR_FAILURE;
+        childCurlResponse->curlSetopCode = code;
+        childCurlResponse->lineNumber = __LINE__;
+	return T2ERROR_FAILURE;
     }
-
-    T2Debug("%s --out\n", __FUNCTION__);
+    childCurlResponse->curlSetopCode = code;
+    childCurlResponse->lineNumber = __LINE__;
+    //T2Debug("%s --out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;
 }
 
-static T2ERROR setMtlsHeaders(CURL *curl, const char* certFile, const char* pPasswd) {
+static T2ERROR setMtlsHeaders(CURL *curl, const char* certFile, const char* pPasswd, childResponse *childCurlResponse) {
     if(curl == NULL || certFile == NULL || pPasswd == NULL){
-          return T2ERROR_FAILURE;
+        childCurlResponse->lineNumber = __LINE__;
+	return T2ERROR_FAILURE;  
     }
     CURLcode code = CURLE_OK;
 #if defined (ENABLE_CUSTOM_ENGINE)
     code = curl_easy_setopt(curl, CURLOPT_SSLENGINE, "e4sss");
     if (code != CURLE_OK) {
-         T2Error("%s: Curl set ops failed with error setting ssl engine error %s \n", __FUNCTION__, curl_easy_strerror(code));
-	 return T2ERROR_FAILURE;
+	childCurlResponse->curlSetopCode = code;
+        childCurlResponse->lineNumber = __LINE__;
+	return T2ERROR_FAILURE;
     }
 #else
     code = curl_easy_setopt(curl, CURLOPT_SSLENGINE_DEFAULT, 1L);
     if(code != CURLE_OK) {
-        T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
-	return T2ERROR_FAILURE;
+        childCurlResponse->curlSetopCode = code;
+        childCurlResponse->lineNumber = __LINE__;
+	    return T2ERROR_FAILURE;
     }
 #endif
     code = curl_easy_setopt(curl, CURLOPT_SSLCERTTYPE, "P12");
     if(code != CURLE_OK) {
-        T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
-	return T2ERROR_FAILURE;
+        childCurlResponse->curlSetopCode = code;
+        childCurlResponse->lineNumber = __LINE__;
+	    return T2ERROR_FAILURE;
     }
     /* set the cert for client authentication */
     code = curl_easy_setopt(curl, CURLOPT_SSLCERT, certFile);
     if(code != CURLE_OK) {
-        T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
-	return T2ERROR_FAILURE;
+        childCurlResponse->curlSetopCode = code;
+        childCurlResponse->lineNumber = __LINE__;
+	    return T2ERROR_FAILURE;
     }
     code = curl_easy_setopt(curl, CURLOPT_KEYPASSWD, pPasswd);
     if(code != CURLE_OK) {
-        T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
-	return T2ERROR_FAILURE;
+        childCurlResponse->curlSetopCode = code;
+        childCurlResponse->lineNumber = __LINE__;
+	    return T2ERROR_FAILURE;
     }
     /* disconnect if we cannot authenticate */
     code = curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1L);
     if(code != CURLE_OK) {
-        T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
-	return T2ERROR_FAILURE;
+        childCurlResponse->curlSetopCode = code;
+        childCurlResponse->lineNumber = __LINE__;
+	    return T2ERROR_FAILURE;
     }
-
+    childCurlResponse->curlSetopCode = code;
+    childCurlResponse->lineNumber = __LINE__;
     return T2ERROR_SUCCESS;
 }
 
-static T2ERROR setPayload(CURL *curl, const char* payload)
+static T2ERROR setPayload(CURL *curl, const char* payload, childResponse *childCurlResponse)
 {
     if(curl == NULL || payload == NULL){
-	  return T2ERROR_FAILURE;
+        childCurlResponse->lineNumber = __LINE__;
+	    return T2ERROR_FAILURE;
     }
     CURLcode code = CURLE_OK ;
     code = curl_easy_setopt(curl, CURLOPT_POSTFIELDS, payload);
     if(code != CURLE_OK){
-        T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
-	return T2ERROR_FAILURE;
+        childCurlResponse->curlSetopCode = code;
+        childCurlResponse->lineNumber = __LINE__;
+	    return T2ERROR_FAILURE;
     }
     code = curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, strlen(payload));
     if(code != CURLE_OK){
-        T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
-	return T2ERROR_FAILURE;
+        childCurlResponse->curlSetopCode = code;
+        childCurlResponse->lineNumber = __LINE__;
+        return T2ERROR_FAILURE;
     }
+    childCurlResponse->curlSetopCode = code;
+    childCurlResponse->lineNumber = __LINE__;
     return T2ERROR_SUCCESS;
 }
 
@@ -204,10 +237,11 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid) {
     FILE *fp = NULL;
     CURLcode res, code = CURLE_OK;
     T2ERROR ret = T2ERROR_FAILURE;
-    long http_code;
+    childResponse childCurlResponse = {0};
     struct curl_slist *headerList = NULL;
     char *pCertFile = NULL;
     char *pKeyFile = NULL;
+    long http_code;
     bool mtls_enable = false;
     pid_t childPid;
     int sharedPipeFds[2];
@@ -215,12 +249,12 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid) {
     T2Debug("%s ++in\n", __FUNCTION__);
     if(httpUrl == NULL || payload == NULL)
     {
-        return T2ERROR_FAILURE;
+        return ret;
     }
     if(pipe(sharedPipeFds) != 0) {
         T2Error("Failed to create pipe !!! exiting...\n");
         T2Debug("%s --out\n", __FUNCTION__);
-        return T2ERROR_FAILURE;
+        return ret;
     }
 #if defined(ENABLE_RDKB_SUPPORT) && !defined(_WNXL11BWL_PRODUCT_REQ_)
 
@@ -242,11 +276,24 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid) {
  #endif
  #endif
     mtls_enable = isMtlsEnabled();
+    if(mtls_enable == true && T2ERROR_SUCCESS != getMtlsCerts(&pCertFile, &pKeyFile)){
+        T2Error("mTLS_cert get failed\n");
+        if(NULL != pCertFile)
+            free(pCertFile);
+        if(NULL != pKeyFile)
+            free(pKeyFile);
+        return ret;
+    }
+
     // Block the userdefined signal handlers before fork
     pthread_sigmask(SIG_BLOCK,&blocking_signal,NULL);
     if((childPid = fork()) < 0) {
         T2Error("Failed to fork !!! exiting...\n");
-        // Unblock the userdefined signal handlers
+        // Unblock the userdefined signal handler
+	if(NULL != pCertFile)
+            free(pCertFile);
+        if(NULL != pKeyFile)
+            free(pKeyFile);
         pthread_sigmask(SIG_UNBLOCK,&blocking_signal,NULL);
         T2Debug("%s --out\n", __FUNCTION__);
         return T2ERROR_FAILURE;
@@ -261,24 +308,21 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid) {
 
         curl = curl_easy_init();
         if(curl) {
-            if(setHeader(curl, httpUrl, &headerList) != T2ERROR_SUCCESS) {
-                T2Error("Failed to Set HTTP Header\n");
+            childCurlResponse.curlStatus = true;
+            if(setHeader(curl, httpUrl, &headerList, &childCurlResponse) != T2ERROR_SUCCESS) {
                 curl_easy_cleanup(curl);
-                return ret;
+                goto child_cleanReturn;
             }
 
-            if(mtls_enable == true) {
-                if(T2ERROR_SUCCESS == getMtlsCerts(&pCertFile, &pKeyFile)) {
-                    setMtlsHeaders(curl, pCertFile, pKeyFile);
-                }else {
-                    T2Error("mTLS_cert get failed\n");
-                    free(pCertFile);
-                    free(pKeyFile);
-                    curl_easy_cleanup(curl); // CID 189985: Resource leak
-                    return T2ERROR_FAILURE;
-                }
+            if((mtls_enable == true) && (setMtlsHeaders(curl, pCertFile, pKeyFile, &childCurlResponse)!= T2ERROR_SUCCESS)) {
+                curl_easy_cleanup(curl); // CID 189985: Resource leak
+                goto child_cleanReturn;
             }
-            setPayload(curl, payload);
+
+            if (setPayload(curl, payload, &childCurlResponse)!= T2ERROR_SUCCESS){
+                curl_easy_cleanup(curl); // CID 189985: Resource leak
+                goto child_cleanReturn;
+            }
 
             pthread_once(&curlFileMutexOnce, sendOverHTTPInit);
             pthread_mutex_lock(&curlFileMutex);
@@ -286,37 +330,44 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid) {
             fp = fopen(CURL_OUTPUT_FILE, "wb");
             if(fp) {
                 /* CID 143029 Unchecked return value from library */
-                code = curl_easy_setopt(curl, CURLOPT_WRITEDATA, fp);
+                code = curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)fp);
                 if(code != CURLE_OK) {
-                    T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
+                    // This might not be working we need to review this
+                    childCurlResponse.curlSetopCode = code;
                 }
                 res = curl_easy_perform(curl);
                 curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
                 if(res != CURLE_OK || http_code != 200) {
                     fprintf(stderr, "curl failed: %s\n", curl_easy_strerror(res));
-                    T2Error("Failed to send report over HTTP, HTTP Response Code : %ld\n", http_code);
+                    childCurlResponse.lineNumber = __LINE__;
                 }else {
-                    T2Info("Report Sent Successfully over HTTP : %ld\n", http_code);
-                    ret = T2ERROR_SUCCESS;
+                    childCurlResponse.lineNumber = __LINE__;
+                    
                 }
+                childCurlResponse.curlResponse = res;
+                childCurlResponse.http_code = http_code;
 
                 fclose(fp);
             }
-            if(NULL != pCertFile)
-                free(pCertFile);
-
-            if(NULL != pKeyFile)
-                free(pKeyFile);
             curl_slist_free_all(headerList);
             curl_easy_cleanup(curl);
 
             pthread_mutex_unlock(&curlFileMutex);
         }else {
-            T2Error("Unable to initialize Curl\n");
+            childCurlResponse.curlStatus = false;
         }
 
+        child_cleanReturn :
+
+        if(NULL != pCertFile)
+            free(pCertFile);
+
+        if(NULL != pKeyFile)
+            free(pKeyFile);
+
         close(sharedPipeFds[0]);
-        if( -1 == write(sharedPipeFds[1], &ret, sizeof(T2ERROR))){
+        if( -1 == write(sharedPipeFds[1], &childCurlResponse, sizeof(childResponse))){
+            fprintf(stderr, "unable to write to shared pipe from pid : %d \n", getpid());
             T2Error("unable to write \n");
         }
         close(sharedPipeFds[1]);
@@ -336,11 +387,22 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid) {
         if ( -1 == close(sharedPipeFds[1])){
             T2Error("Failed in close \n");
         }
-        if( -1 == read(sharedPipeFds[0], &ret, sizeof(T2ERROR))){
-            T2Error("unable to write \n");
+        if( -1 == read(sharedPipeFds[0], &childCurlResponse, sizeof(childResponse))){
+            T2Error("unable to read from the pipe \n");
         }
         if ( -1 == close(sharedPipeFds[0])){
-            T2Error("Failed in close \n");
+            T2Error("Failed in close the pipe\n");
+        }
+	if(NULL != pCertFile)
+            free(pCertFile);
+        if(NULL != pKeyFile)
+            free(pKeyFile);
+        T2Info("The return status from the child with pid %d is CurlStatus : %d\n",childPid, childCurlResponse.curlStatus);
+        //if(childCurlResponse.curlStatus == CURLE_OK) commenting this as we are observing childCurlResponse.curlStatus as 1, from line with CID 143029 Unchecked return value from library
+        T2Info("The return status from the child with pid %d SetopCode: %s; ResponseCode : %s; HTTP_CODE : %ld; Line Number : %d \n", childPid, curl_easy_strerror(childCurlResponse.curlSetopCode), curl_easy_strerror(childCurlResponse.curlResponse), childCurlResponse.http_code, childCurlResponse.lineNumber);
+        if (childCurlResponse.http_code == 200 || childCurlResponse.curlResponse == CURLE_OK){
+            ret = T2ERROR_SUCCESS;
+            T2Info("Report Sent Successfully over HTTP : %ld\n", childCurlResponse.http_code);
         }
         T2Debug("%s --out\n", __FUNCTION__);
         return ret;

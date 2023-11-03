@@ -39,6 +39,11 @@ void T2Log(unsigned int level, const char *msg, ...)
   char *pTempChar = NULL;
   int ret = 0;
 
+  if (NULL == msg) {
+    RDK_LOG(level, "LOG.RDK.T2", "NULL message passed to T2Log");
+    return;
+  }
+
   va_start(arg, msg);
   int messageLen = vsnprintf(NULL, 0, msg, arg);
   va_end(arg);

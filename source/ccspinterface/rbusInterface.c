@@ -894,6 +894,8 @@ void unregisterDEforCompEventList(){
                 dataElements[i].name = dataElementName;
                 dataElements[i].type = RBUS_ELEMENT_TYPE_PROPERTY;
                 dataElements[i].cbTable = cbTable;
+            } else {
+                dataElements[i].name = NULL;
             }
         }
         if(RBUS_ERROR_SUCCESS != rbus_unregDataElements(t2bus_handle, count, dataElements)) {
@@ -1193,7 +1195,7 @@ T2ERROR T2RbusConsumer(TriggerCondition *triggerCondition)
        return T2ERROR_SUCCESS;
     }    
        
-    rbusFilter_RelationOperator_t filterOperator; 
+    rbusFilter_RelationOperator_t filterOperator = RBUS_FILTER_OPERATOR_EQUAL; // Initialized with a default value
     rbusFilter_t filter;
     rbusValue_t filterValue;
     rbusEventSubscription_t subscription = {triggerCondition->reference, NULL, 0, 0, triggerCondtionReceiveHandler, NULL, NULL, NULL, false};

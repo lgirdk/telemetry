@@ -144,7 +144,6 @@ int getProcUsage(char *processName, Vector* grepResultList, bool trim) {
                 return 0;
             }
             pid = temp;
-            temp = NULL;
         }
 
        
@@ -383,7 +382,8 @@ int getMemInfo(procMemCpuInfo *pmInfo) {
         intStr = intStr / 1024;
     snprintf(retMem, sizeof(retMem), "%d%c", intStr, (intValue >= 1024) ? 'm' : 'k');
 
-    strncpy(pmInfo->memUse, retMem, strlen(retMem) + 1);
+    strncpy(pmInfo->memUse, retMem, sizeof(pmInfo->memUse) - 1);
+    pmInfo->memUse[sizeof(pmInfo->memUse) - 1] = '\0';
     T2Debug("%s --out \n", __FUNCTION__);
     return 1;
 }

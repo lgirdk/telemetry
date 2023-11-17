@@ -995,7 +995,7 @@ T2ERROR processConfiguration(char** configData, char *profileName, char* profile
         }else if(strcmp(jprofileProtocol->valuestring, "RBUS_METHOD") == 0) {
             jprofileRBUSMethod = cJSON_GetObjectItem(json_root, "RBUS_METHOD");
             jprofileRBUSMethodName = cJSON_GetObjectItem(jprofileRBUSMethod, "Method");
-            if(jprofileRBUSMethodName == NULL || strcmp(jprofileRBUSMethodName->valuestring,"") == 0){
+            if(jprofileRBUSMethodName == NULL || jprofileRBUSMethodName->valuestring == NULL|| strcmp(jprofileRBUSMethodName->valuestring,"") == 0){
                T2Error("RBUS Method not configured . Ignoring profile %s \n", profileName);
                cJSON_Delete(json_root);
                return T2ERROR_FAILURE;

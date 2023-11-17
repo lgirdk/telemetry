@@ -631,26 +631,47 @@ static T2ERROR doHttpGet(char* httpsUrl, char **data) {
         pthread_sigmask(SIG_UNBLOCK,&blocking_signal,NULL);
         // Get the return status via IPC from child process
         close(sharedPipeFdStatus[1]);
-        read(sharedPipeFdStatus[0], &ret, sizeof(T2ERROR));
+        ssize_t readBytes = read(sharedPipeFdStatus[0], &ret, sizeof(T2ERROR));
+        if(readBytes == -1) {
+            T2Error("Failed to read from pipe\n");
+            return T2ERROR_FAILURE;
+        }
         close(sharedPipeFdStatus[0]);
 
         // Get the datas via IPC from child process
         if(ret == T2ERROR_SUCCESS) {
             size_t len = 0;
             close(sharedPipeFdDataLen[1]);
-            read(sharedPipeFdDataLen[0], &len, sizeof(size_t));
+            readBytes = read(sharedPipeFdDataLen[0], &len, sizeof(size_t));
+            if(readBytes == -1) {
+                T2Error("Failed to read from pipe\n");
+                return T2ERROR_FAILURE;
+            }
             close(sharedPipeFdDataLen[0]);
-
-            *data = (char*)malloc(len + 1);
+            *data = NULL;
+            if(len <= SIZE_MAX)
+            {
+                *data = (char*)malloc(len + 1);
+            }
             if(*data == NULL) {
                 T2Error("Unable to allocate memory for XCONF config data \n");
                 ret = T2ERROR_FAILURE;
             }else {
-                memset(*data, '\0', len + 1);
+                if(len <= SIZE_MAX)
+                {
+                    memset(*data, '\0', len + 1);
+                }
                 FILE *httpOutput = fopen(HTTP_RESPONSE_FILE, "r+");
                 if(httpOutput){
                     // Read the whole file content
-                    fread(*data, len, 1, httpOutput);
+                    if(len <= SIZE_MAX)
+                    {
+                        readBytes = fread(*data, len, 1, httpOutput);
+                    }
+                    if(readBytes == -1) {
+                        T2Error("Failed to read from pipe\n");
+                        return T2ERROR_FAILURE;
+                    }
                     T2Debug("Configuration obtained from http server : \n %s \n", *data);
                     fclose(httpOutput);
                 }
@@ -675,7 +696,7 @@ static T2ERROR fetchRemoteConfiguration(char *configURL, char **configData) {
     char* urlWithParams = (char*) malloc(MAX_URL_LEN * sizeof(char));
     if (NULL != urlWithParams)
     {
-        memset(urlWithParams, '0', MAX_URL_LEN * sizeof(char));
+        memset(urlWithParams, 0, MAX_URL_LEN * sizeof(char));
         write_size = snprintf(urlWithParams, MAX_URL_LEN, "%s?", configURL);
         availableBufSize = availableBufSize - write_size;
         // Append device specific arguments to the base URL

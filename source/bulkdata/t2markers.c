@@ -79,9 +79,11 @@ T2ERROR initT2MarkerComponentMap()
     markerCompMap = hash_map_create();
     pthread_mutex_unlock(&t2MarkersMutex);
     pthread_mutex_init(&t2CompListMutex, NULL);
+    pthread_mutex_lock(&t2CompListMutex);
     if(componentList == NULL) {
         Vector_Create(&componentList);
     }
+    pthread_mutex_unlock(&t2CompListMutex);
     T2Debug("%s --out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;
 }

@@ -66,7 +66,7 @@ static void *process_rp_thread(void *data)
             {
                 ReportProfiles_ProcessReportProfilesBlob(reportProfiles , T2_RP);
                 cJSON_Delete(reportProfiles);
-                reportProfiles = NULL;
+                // Unused value reportProfiles
             }
         }
         pthread_mutex_unlock(&rpMutex);
@@ -95,7 +95,7 @@ static void *process_tmprp_thread(void *data)
             {
                 ReportProfiles_ProcessReportProfilesBlob(tmpReportProfiles , T2_TEMP_RP);
                 cJSON_Delete(tmpReportProfiles);
-                tmpReportProfiles = NULL;
+                // Unused value tmpReportProfiles
             }
         }
         pthread_mutex_unlock(&tmpRpMutex);

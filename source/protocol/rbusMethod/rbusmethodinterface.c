@@ -111,7 +111,9 @@ T2ERROR sendReportsOverRBUSMethod(char *methodName, Vector* inputParams, char* p
             }
             else{
                     retry_count++;
+                    pthread_mutex_unlock(&rbusMethodMutex);
                     sleep(2); // giving 2 seconds sleep for 5 times which will be equal to waiting for RBUS_METHOD_TIMEOUT value
+                    pthread_mutex_lock(&rbusMethodMutex);
                     if(retry_count == 5){
                         T2Error("Max attempts reached for rbusmethodlock. Unlocking it\n");
                         ret = T2ERROR_NO_RBUS_METHOD_PROVIDER;

@@ -373,7 +373,7 @@ int listenForInterProcessorChipEvents(int notifyfd, int watchfd) {
     struct inotify_event * event_ptr;
     char absEventFilePath[MAX_EVENT_TYPE_BUFFER] = { '0' };
 
-    size_t count = read(notifyfd, buffer, sizeof(buffer));
+    ssize_t count = read(notifyfd, buffer, sizeof(buffer));
     if(count < 0) {
         T2Info("Failure in reading buffer \n");
         return -1;
@@ -385,7 +385,7 @@ int listenForInterProcessorChipEvents(int notifyfd, int watchfd) {
     if(event_ptr != NULL) {
         if((event_ptr->mask & IN_CREATE) && event_ptr->len > 0) {
             memset(absEventFilePath, sizeof(char), MAX_EVENT_TYPE_BUFFER);
-            if(event_ptr->name != NULL) {
+            if(event_ptr->name[0] != '\0') {
                 ret = 0;
                 snprintf(absEventFilePath, MAX_EVENT_TYPE_BUFFER, "%s/%s", DIRECTORY_TO_MONITOR, event_ptr->name);
                 processEventType(event_ptr->name);

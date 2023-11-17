@@ -857,6 +857,7 @@ void updateMarkerComponentMap()
     int profileIndex = 0;
     Profile *tempProfile = NULL;
 
+    pthread_mutex_lock(&plMutex);
     for(; profileIndex < Vector_Size(profileList); profileIndex++)
     {
         tempProfile = (Profile *)Vector_At(profileList, profileIndex);
@@ -872,6 +873,7 @@ void updateMarkerComponentMap()
             }
         }
     }
+    pthread_mutex_unlock(&plMutex);
     T2Debug("%s --out\n", __FUNCTION__);
 }
 
@@ -1154,7 +1156,9 @@ T2ERROR initProfileList()
         return T2ERROR_FAILURE;
     }
 
+    pthread_mutex_lock(&plMutex);
     Vector_Create(&profileList);
+    pthread_mutex_unlock(&plMutex);
 
     registerConditionalReportCallBack(&triggerReportOnCondtion);
 

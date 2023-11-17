@@ -204,8 +204,9 @@ static void* CollectAndReportXconf(void* data)
         }
         if(profile->paramList != NULL && Vector_Size(profile->paramList) > 0)
         {
-
+           pthread_mutex_unlock(&plMutex);
            profileParamVals = getProfileParameterValues(profile->paramList);
+           pthread_mutex_lock(&plMutex);
            T2Info("Fetch complete for TR-181 Object/Parameter Values for parameters \n");
            if(profileParamVals != NULL)
            {
@@ -276,7 +277,9 @@ static void* CollectAndReportXconf(void* data)
                ret = T2ERROR_FAILURE ;
            } else {
                T2Debug("Abort upload is not yet set.\n");
+               pthread_mutex_unlock(&plMutex);
                ret = sendReportOverHTTP(profile->t2HTTPDest->URL, jsonReport, &xconfReportPid);
+               pthread_mutex_lock(&plMutex);
            }
 
            xconfReportPid = -1 ;

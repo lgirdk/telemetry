@@ -63,10 +63,11 @@ void freeSchedulerProfile(void *data)
     if(data != NULL)
     {
         SchedulerProfile *schProfile = (SchedulerProfile *)data;
-        free(schProfile->name);
         pthread_mutex_destroy(&schProfile->tMutex);
         pthread_cond_destroy(&schProfile->tCond);
-        pthread_detach(schProfile->tId);
+        pthread_join(schProfile->tId, NULL);
+        T2Info(" schProfile->name = %s schProfile->tId = %d\n", schProfile->name, (int)schProfile->tId);
+        free(schProfile->name);
         free(schProfile);
     }
 }
@@ -413,7 +414,8 @@ void uninitScheduler()
         if(pthread_mutex_unlock(&tProfile->tMutex) != 0){
             T2Error("tProfile Mutex unlocked failed\n");
 	}
-        pthread_join(tProfile->tId, NULL);
+	T2Info(" tProfile->tId = %d tProfile->name = %s\n", (int)tProfile->tId, tProfile->name);
+        //pthread_join(tProfile->tId, NULL); // pthread_detach in freeSchedulerProfile will detach the thread
         T2Info("Profile %s successfully removed from Scheduler\n", tProfile->name);
     }
     Vector_Destroy(profileList, freeSchedulerProfile);
@@ -548,8 +550,8 @@ T2ERROR unregisterProfileFromScheduler(const char* profileName)
                 pthread_mutex_unlock(&scMutex);
                 return T2ERROR_FAILURE;
 	    }
-
-            pthread_join(tProfile->tId, NULL);
+            T2Info(" tProfile->tId = %d tProfile->name = %s\n", (int)tProfile->tId, tProfile->name);
+            // pthread_join(tProfile->tId, NULL); // pthread_detach in freeSchedulerProfile will detach the thread
 
             Vector_RemoveItem(profileList, tProfile, freeSchedulerProfile);
             if(pthread_mutex_unlock(&scMutex) != 0){

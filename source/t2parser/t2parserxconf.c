@@ -206,9 +206,6 @@ T2ERROR processConfigurationXConf(char* configData, ProfileXConf **localProfile)
 #elif defined (ENABLE_RDKC_SUPPORT)
     addParameter(profile, "camIp", TR181_DEVICE_WAN_IPv4, NULL, -1);
     addParameter(profile, "camIpv6", TR181_DEVICE_WAN_IPv6, NULL, -1);
-#elif defined(ENABLE_STB_SUPPORT)
-    addParameter(profile, "StbIp", TR181_DEVICE_WAN_IPv6, NULL, -1);
-    addParameter(profile, "receiverId", TR181_DEVICE_RECEIVER_ID, NULL, -1);
 #else
     addParameter(profile, "StbIp", TR181_DEVICE_WAN_IPv6, NULL, -1);
 #endif

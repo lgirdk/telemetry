@@ -74,7 +74,6 @@
 #define TR181_DEVICE_WAN_IPv6                       "Device.DeviceInfo.X_COMCAST-COM_STB_IP"
 #define TR181_DEVICE_CM_MAC                         "Device.DeviceInfo.X_COMCAST-COM_STB_IP"
 #define TR181_DEVICE_CM_IP                          "Device.DeviceInfo.X_COMCAST-COM_STB_IP"
-#define TR181_DEVICE_RECEIVER_ID                    "Device.X_COMCAST-COM_Xcalibur.Client.XRE.xreReceiverId"
 
 #endif // ENABLE_RDKB_SUPPORT
 

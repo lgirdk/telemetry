@@ -241,25 +241,26 @@ T2ERROR processConfigurationXConf(char* configData, ProfileXConf **localProfile)
             else
                 skipFrequency = 0 ;
 
-            if(skipFrequency > 0)
-            {
+	    if(header != NULL && content != NULL){
+                if(skipFrequency > 0)
+                {
                 // T2Debug("Skip Frequency is Present, Need to do grep\n");
 
-                ret = addParameter(profile, header, content, logfile, skipFrequency);
+                    ret = addParameter(profile, header, content, logfile, skipFrequency);
+                }
+                else if(!strncmp(logfile, MT_TR181PARAM_PATTERN, MT_TR181PATAM_PATTERN_LENGTH))
+                {
+                    ret = addParameter(profile, header, content, NULL, -1);
+                }
+                else if(!strncmp(logfile, MT_EVENT_PATTERN, MT_EVENT_PATTERN_LENGTH))
+                {
+                    ret = addParameter(profile, header, content, NULL, skipFrequency);
+                }
+                else
+                {
+                    ret = addParameter(profile, header, content, logfile, skipFrequency);
+                }
             }
-            else if(!strncmp(logfile, MT_TR181PARAM_PATTERN, MT_TR181PATAM_PATTERN_LENGTH))
-            {
-                ret = addParameter(profile, header, content, NULL, -1);
-            }
-            else if(!strncmp(logfile, MT_EVENT_PATTERN, MT_EVENT_PATTERN_LENGTH))
-            {
-                ret = addParameter(profile, header, content, NULL, skipFrequency);
-            }
-            else
-            {
-                ret = addParameter(profile, header, content, logfile, skipFrequency);
-            }
-
             if (ret != T2ERROR_SUCCESS) {
                 T2Error("%s Error in adding parameter to profile %s \n", __FUNCTION__, profile->name);
                 continue;

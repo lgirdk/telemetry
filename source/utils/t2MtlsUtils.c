@@ -62,7 +62,7 @@ void initMtls() {
     T2Debug("%s ++in\n", __FUNCTION__);
     // Prepare certs required for mTls commmunication
     // CPG doesn't support api's - will have to use v_secure_system calls
-#if !defined (ENABLE_RDKC_SUPPORT)
+#if !defined (MTLS_FROM_ENV)
     char UseHWBasedCert[8] = { '\0' };
     bool ret = false;
     ret = getDevicePropertyData("UseSEBasedCert", UseHWBasedCert, sizeof(UseHWBasedCert));
@@ -106,7 +106,7 @@ void initMtls() {
 
 void uninitMtls() {
     T2Debug("%s ++in\n", __FUNCTION__);
-#if !defined (ENABLE_RDKC_SUPPORT)
+#if !defined (MTLS_FROM_ENV)
     #ifdef LIBSYSWRAPPER_BUILD
     v_secure_system("rm -f %s", staticMtlsDestFile);
     v_secure_system("rm -f %s", dynamicMtlsDestFile);
@@ -155,7 +155,50 @@ double get_system_uptime() {
 
 /**
  * Retrieves the certs and keys associated to respective end points
+ * Camera's today gets these values from environment variables.
+ * So there are two variants of the same function depending on the logic used to retrieve values.
  */
+#if defined (MTLS_FROM_ENV)
+T2ERROR getMtlsCerts(char **certName, char **phrase) {
+    T2ERROR ret = T2ERROR_FAILURE;
+    T2Debug("%s ++in\n", __FUNCTION__);
+
+    char buf[124];
+    memset(buf, 0, sizeof(buf));
+    
+    if(getenv("XPKI") != NULL) {
+        dynamicMtlsCert = getenv("XPKI_CERT");
+        if (dynamicMtlsCert != NULL) { // Dynamic cert
+            *certName = strdup(dynamicMtlsCert);
+            T2Info("Using xpki Dynamic Certs connection certname: %s\n", dynamicMtlsCert);
+
+            dynamicPassPhrase = getenv("XPKI_PASS");
+            if (dynamicPassPhrase != NULL){
+                *phrase = strdup(dynamicPassPhrase);
+                ret = T2ERROR_SUCCESS;
+            }
+        }
+    } else if (getenv("STATICXPKI") != NULL) {
+        staticMtlsCert = getenv("STATIC_XPKI_CERT");
+        if (staticMtlsCert != NULL) { // Static cert
+            *certName = strdup(staticMtlsCert);
+            T2Info("Using xpki Static Certs connection certname: %s\n", staticMtlsCert);
+
+            staticPassPhrase = getenv("STATIC_XPKI_PASS");
+            if(staticPassPhrase != NULL){ 
+                *phrase = strdup(staticPassPhrase);
+                ret = T2ERROR_SUCCESS;
+            }
+        }
+    } else {
+        T2Error("Certs not found\n");
+    }
+    T2Debug("Using Cert = %s Pass = %s \n", *certName, *phrase);
+    T2Debug("%s --out\n", __FUNCTION__);
+    return ret;
+}
+
+#else
 T2ERROR getMtlsCerts(char **certName, char **phrase) {
 
     T2ERROR ret = T2ERROR_FAILURE;
@@ -165,7 +208,7 @@ T2ERROR getMtlsCerts(char **certName, char **phrase) {
     char UseHWBasedCert[8];
     memset(buf, 0, sizeof(buf));
     memset(UseHWBasedCert, 0, sizeof(UseHWBasedCert));
-#if !defined (ENABLE_RDKC_SUPPORT)
+
     FILE *filePointer;
     if( certName == NULL || phrase == NULL ){
         T2Error("Input args are NULL \n");
@@ -202,14 +245,8 @@ T2ERROR getMtlsCerts(char **certName, char **phrase) {
 #endif
 
     if(access(dynamicMtlsCert, F_OK) != -1) { // Dynamic cert
-#else
-    if(getenv("XPKI") != NULL) {
-      dynamicMtlsCert = getenv("XPKI_CERT");
-      if (dynamicMtlsCert != NULL) { // Dynamic cert
-#endif
         *certName = strdup(dynamicMtlsCert);
         T2Info("Using xpki Dynamic Certs connection certname: %s\n", dynamicMtlsCert);
-#if !defined (ENABLE_RDKC_SUPPORT)
         FILE *fp;
 	#ifdef LIBSYSWRAPPER_BUILD
         fp = v_secure_popen("r", "/usr/bin/rdkssacli \"{STOR=GET,SRC=kquhqtoczcbx,DST=/dev/stdout}\"");
@@ -231,26 +268,13 @@ T2ERROR getMtlsCerts(char **certName, char **phrase) {
             pclose(fp);
             #endif
         }
-#else
-        dynamicPassPhrase = getenv("XPKI_PASS");
-        if (dynamicPassPhrase != NULL)
-          *phrase = strdup(dynamicPassPhrase);
-      }
-#endif
         ret = T2ERROR_SUCCESS;
-#if !defined (ENABLE_RDKC_SUPPORT)
     }else if(access(staticMtlsCert, F_OK) != -1) { // Static cert
-#else
-    }else if (getenv("STATICXPKI") != NULL) {
-        staticMtlsCert = getenv("STATIC_XPKI_CERT");
-        if (staticMtlsCert != NULL) { // Static cert
-#endif
         T2Info("Using xpki Static Certs connection certname: %s\n", staticMtlsCert);
         T2Info("xPKIStaticCert: /etc/ssl/certs/staticDeviceCert.pk12 uptime %.2lf seconds,telemetry",get_system_uptime());
         *certName = strdup(staticMtlsCert);
 
 	/* CID: 189984 Time of check time of use (TOCTOU) */
-#if !defined (ENABLE_RDKC_SUPPORT)
 	filePointer = fopen(staticMtlsDestFile, "r");
         if( !filePointer ) {
             T2Info("%s Destination file %s is not present. Generate now.\n", __FUNCTION__, *phrase);
@@ -276,12 +300,6 @@ T2ERROR getMtlsCerts(char **certName, char **phrase) {
            }
            fclose(filePointer);
         }
-#else
-          staticPassPhrase = getenv("STATIC_XPKI_PASS");
-          if(staticPassPhrase != NULL)
-            *phrase = strdup(staticPassPhrase);
-        }
-#endif
         ret = T2ERROR_SUCCESS;
     }else {
         T2Error("Certs not found\n");
@@ -292,4 +310,4 @@ T2ERROR getMtlsCerts(char **certName, char **phrase) {
     T2Debug("%s --out\n", __FUNCTION__);
     return ret;
 }
-
+#endif

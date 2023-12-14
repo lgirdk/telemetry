@@ -144,3 +144,51 @@ void freeTriggerCondition(void *data)
     }
 }
 
+/* Description: Getting device property by reading device.property file
+ * @param: dev_prop_name : Device property name to get from file
+ * @param: out_data : pointer to hold the device property get from file
+ * @param: buff_size : Buffer size of the out_data.
+ * @return bool: Success: true  and Fail : false
+ * */
+bool getDevicePropertyData(const char *dev_prop_name, char *out_data, unsigned int buff_size)
+{
+    bool ret = false;
+    FILE *fp;
+    char tbuff[MAX_DEVICE_PROP_BUFF_SIZE];
+    char *tmp;
+    int index;
+    if (out_data == NULL || dev_prop_name == NULL) {
+       T2Error("%s : parameter is NULL\n", __FUNCTION__);
+           return ret;
+    }
+    if (buff_size == 0 || buff_size > MAX_DEVICE_PROP_BUFF_SIZE) {
+        T2Error("%s : buff size not in the range. size should be < %d\n", __FUNCTION__, MAX_DEVICE_PROP_BUFF_SIZE);
+        return ret;
+    }
+    T2Debug("%s : Trying device property data for %s and buf size=%u\n", __FUNCTION__, dev_prop_name, buff_size);
+    fp = fopen(DEVICE_PROPERTIES_FILE, "r");
+    if(fp == NULL) {
+        T2Error("%s : device.property File not found\n", __FUNCTION__);
+        return ret;
+    }
+    while((fgets(tbuff, sizeof(tbuff), fp) != NULL)) {
+        if(strstr(tbuff, dev_prop_name)) {
+            index = strcspn(tbuff, "\n");
+            if (index > 0) {
+                tbuff[index] = '\0';
+            }
+            tmp = strchr(tbuff, '=');
+            if(tmp != NULL) {
+                snprintf(out_data, buff_size, "%s", tmp+1);
+                T2Debug("%s : %s=%s\n", __FUNCTION__, dev_prop_name, out_data);
+                ret = true;
+                break;
+            } else {
+                T2Error("%s : strchr failed. '=' not found. str=%s\n", __FUNCTION__, tbuff);
+            }
+        }
+    }
+    fclose(fp);
+    return ret;
+}
+

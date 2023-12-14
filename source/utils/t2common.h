@@ -26,6 +26,9 @@
 
 #define MAX_ACCUMULATE 20
 #define MAX_ACCUMULATE_MSG "maximum accumulation reached"
+#define MAX_DEVICE_PROP_BUFF_SIZE 80
+#define DEVICE_PROPERTIES_FILE  "/etc/device.properties"
+
 
 typedef enum
 {
@@ -117,5 +120,7 @@ void freeTriggerCondition(void *data);
 void freeAccumulatedParam(void *data);
 
 int compareLogFileNames(const void *g1, const void *g2);
+
+bool getDevicePropertyData(const char *dev_prop_name, char *out_data, unsigned int buff_size);
 
 #endif /* _T2COMMON_H_ */

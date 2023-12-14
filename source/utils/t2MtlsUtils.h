@@ -26,8 +26,6 @@
 #include "telemetry2_0.h"
 
 #define MAX_URL_LENGTH 1024
-#define MAX_DEVICE_PROP_BUFF_SIZE 80
-#define DEVICE_PROPERTIES_FILE  "/etc/device.properties"
 
 void initMtls();
 

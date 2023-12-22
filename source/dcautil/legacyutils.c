@@ -422,7 +422,7 @@ void updateLastSeekval(hash_map_t *logSeekMap, char **prev_file, char* filename)
  *
  *  @return Returns Seek Log file. 
  */
-char *getLogLine(hash_map_t *logSeekMap, char *buf, int buflen, char *name,int *firstSeekFromEOF) {
+char *getLogLine(hash_map_t *logSeekMap, char *buf, int buflen, char *name,int *firstSeekFromEOF, int exec_count) {
     static FILE *pcurrentLogFile = NULL;
     static int is_rotated_log = 0;
     char *rval = NULL;
@@ -443,6 +443,8 @@ char *getLogLine(hash_map_t *logSeekMap, char *buf, int buflen, char *name,int *
         logpath = "";
 
     int logname_len = strlen(logpath) + strlen(name) +1;
+    char *fileExtn = ".1";
+    int fileExtn_len = logname_len + strlen(fileExtn);
     if(NULL == pcurrentLogFile) {
         char *currentLogFile = NULL;
         long seek_value = 0;
@@ -458,10 +460,10 @@ char *getLogLine(hash_map_t *logSeekMap, char *buf, int buflen, char *name,int *
             }else {
                 long fileSize = 0;
                 pcurrentLogFile = fopen(currentLogFile, "rb");
-                free(currentLogFile);
 
                 if(NULL == pcurrentLogFile) {
                     LAST_SEEK_VALUE = 0;
+                    free(currentLogFile);
                     return NULL;
                 }
                 fileSize = fsize(pcurrentLogFile);
@@ -473,20 +475,56 @@ char *getLogLine(hash_map_t *logSeekMap, char *buf, int buflen, char *name,int *
                     T2Debug("First Seek from the EOF is given  value : %d; the size of file is %ld; current seek after calculations %ld\n",*firstSeekFromEOF, fileSize, seek_value);
                     *firstSeekFromEOF = 0; // update this to zero as this initial seek update should only run for the first time
                 }
-
                 if(seek_value <= fileSize) {
-                    if( fseek(pcurrentLogFile,seek_value, 0) != 0){
-                         T2Error("Cannot set the file position indicator for the stream pointed to by stream\n");
+                     if(exec_count == 1){ // considering the rotated log file  within few minutes after bootup
+                         char * rotatedLog = malloc(fileExtn_len);
+                         if(NULL != rotatedLog) {
+                            snprintf(rotatedLog, fileExtn_len, "%s%s%s", logpath, name, fileExtn);
+
+                            fclose(pcurrentLogFile);
+                            pcurrentLogFile = NULL;
+                            pcurrentLogFile = fopen(rotatedLog, "rb");
+                            is_rotated_log = 1;
+                            if(NULL == pcurrentLogFile) {
+                                T2Debug("Error in opening file %s\n", rotatedLog);
+                                is_rotated_log = 0;
+                                pcurrentLogFile=fopen(currentLogFile, "rb");
+                                if(pcurrentLogFile == NULL){
+                                   T2Debug("Error in opening file %s\n", currentLogFile);
+                                   free(currentLogFile);
+                                   free(rotatedLog);
+                                   return NULL;
+                                }
+                            }
+                            free(currentLogFile);
+                            free(rotatedLog);
+                            if(fseek(pcurrentLogFile, seek_value, 0) != 0){
+                                T2Error("Cannot set the file position indicator for the stream pointed to by stream\n");
+                            }
+                         }
+                         else {
+                            T2Error("Malloc failure for rotated log\n");
+			    free(currentLogFile);
+			    fclose(pcurrentLogFile);
+			    return NULL;
+			 }
+                    }
+                    else{
+                       free(currentLogFile);
+                       if( fseek(pcurrentLogFile,seek_value, 0) != 0){
+                            T2Error("Cannot set the file position indicator for the stream pointed to by stream\n");
+                       }
                     }
                 }else {
+                    if(currentLogFile != NULL){
+                        free(currentLogFile);
+                    }
                     if((NULL != DEVICE_TYPE) && (0 == strcmp("broadband", DEVICE_TYPE))) {
                         T2Debug("Telemetry file pointer corrupted");
                         if(fseek(pcurrentLogFile, 0, 0) != 0){
                             T2Error("Cannot set the file position indicator for the stream pointed to by stream\n");
                         }
                     }else {
-                        char *fileExtn = ".1";
-                        int fileExtn_len = logname_len + strlen(fileExtn);
                         char * rotatedLog = malloc(fileExtn_len);
 
                         if(NULL != rotatedLog) {
@@ -502,7 +540,6 @@ char *getLogLine(hash_map_t *logSeekMap, char *buf, int buflen, char *name,int *
                                 free(rotatedLog);
                                 return NULL;
                             }
-
                             free(rotatedLog);
 
                             if(fseek(pcurrentLogFile, seek_value, 0) != 0){

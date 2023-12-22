@@ -306,9 +306,9 @@ TEST(GETLOGLINE, NAME_NULL)
     char* buf = (char *)malloc(512);
     char* name = "Consolelog.txt.0";
     int seekFromEOF = 0;
-    EXPECT_EQ(NULL, getLogLine(NULL, buf, 512, name, &seekFromEOF));
-    EXPECT_EQ(NULL, getLogLine(logSeekMap, NULL, 512, name, &seekFromEOF));
-    EXPECT_EQ(NULL, getLogLine(logSeekMap, buf, 512, NULL, &seekFromEOF));
+    EXPECT_EQ(NULL, getLogLine(NULL, buf, 512, name, &seekFromEOF, 0));
+    EXPECT_EQ(NULL, getLogLine(logSeekMap, NULL, 512, name, &seekFromEOF, 1));
+    EXPECT_EQ(NULL, getLogLine(logSeekMap, buf, 512, NULL, &seekFromEOF, 2));
     free(buf);
     buf = NULL;
 }
@@ -537,7 +537,7 @@ TEST_F(dcaFileTestFixture, getLogLine)
     EXPECT_CALL(*g_ffileIOMock, fopen(_,_))
             .Times(1)
             .WillOnce(Return(fp));
-    EXPECT_EQ(NULL, getLogLine(logSeekMap, buf, 10, name, &seekFromEOF));
+    EXPECT_EQ(NULL, getLogLine(logSeekMap, buf, 10, name, &seekFromEOF, 1));
 }
 
 TEST_F(dcaFileTestFixture, updateLastSeekval)
@@ -580,7 +580,7 @@ TEST_F(dcaFileTestFixture, getLogLine1)
     EXPECT_CALL(*g_ffileIOMock, fseek(_,_,_))
             .Times(1)
             .WillOnce(Return(-1));
-     EXPECT_EQ(NULL, getLogLine(logSeekMap, buf, 10, name, &seekFromEOF));
+     EXPECT_EQ(NULL, getLogLine(logSeekMap, buf, 10, name, &seekFromEOF, 1));
 
 }
 

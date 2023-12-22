@@ -482,11 +482,11 @@ static int handleRDKErrCodes(GList **rdkec_head, char *line) {
  * @return Returns status of operation.
  * @retval Return 0 upon success, -1 on failure.
  */
-static int processCountPattern(hash_map_t *logSeekMap, char *logfile, GList *pchead, int pcIndex, GList **rdkec_head, int *firstSeekFromEOF) {
+static int processCountPattern(hash_map_t *logSeekMap, char *logfile, GList *pchead, int pcIndex, GList **rdkec_head, int *firstSeekFromEOF, int exec_count) {
     T2Debug("%s ++in\n", __FUNCTION__);
     char temp[MAXLINE];
     T2Debug("Read from log file %s \n", logfile);
-    while(getLogLine(logSeekMap,temp, MAXLINE, logfile, firstSeekFromEOF) != NULL) {
+    while(getLogLine(logSeekMap,temp, MAXLINE, logfile, firstSeekFromEOF, exec_count) != NULL) {
 
         int len = strlen(temp);
         if(len > 0 && temp[len - 1] == '\n')
@@ -524,7 +524,7 @@ static int processCountPattern(hash_map_t *logSeekMap, char *logfile, GList *pch
  * @return Returns status on operation.
  * @retval Returns 0 upon success.
  */
-static int processPattern(char **prev_file, char *logfile, GList **rdkec_head, GList *pchead, int pcIndex, Vector *grepResultList, hash_map_t* logSeekMap,int *firstSeekFromEOF) {
+static int processPattern(char **prev_file, char *logfile, GList **rdkec_head, GList *pchead, int pcIndex, Vector *grepResultList, hash_map_t* logSeekMap,int *firstSeekFromEOF, int exec_count) {
 
     T2Debug("%s ++in\n", __FUNCTION__);
     if(NULL != logfile) {
@@ -559,7 +559,7 @@ static int processPattern(char **prev_file, char *logfile, GList **rdkec_head, G
                     addToJson(pchead);
                 }
             }else {
-                processCountPattern(logSeekMap, logfile, pchead, pcIndex, rdkec_head, firstSeekFromEOF);
+                processCountPattern(logSeekMap, logfile, pchead, pcIndex, rdkec_head, firstSeekFromEOF, exec_count);
                 if (grepResultList != NULL) {
                     addToVector(pchead, grepResultList);
                 } else {
@@ -705,7 +705,7 @@ static int parseMarkerList(char* profileName, Vector* vMarkerList, Vector* grepR
         if(is_skip_param == 0) {
             if(0 == insertPCNode(&pchead, temp_pattern, temp_header, dtype, 0, NULL)) {
                 pcIndex = 1;
-                processPattern(&prevfile, filename, &rdkec_head, pchead, pcIndex, grepResultList, gsProfile->logFileSeekMap, &(markerList->firstSeekFromEOF));
+                processPattern(&prevfile, filename, &rdkec_head, pchead, pcIndex, grepResultList, gsProfile->logFileSeekMap, &(markerList->firstSeekFromEOF), gsProfile->execCounter);
                 pchead = NULL;
             }
         }else {

@@ -215,7 +215,7 @@ TEST(VECTOR_PUSHBACK, VECTOR_NOT_NULL)
      Vector_Create(&config);
      EXPECT_EQ(T2ERROR_SUCCESS, Vector_PushBack(config, (void *) strdup(marker1)));
      EXPECT_EQ(T2ERROR_SUCCESS, Vector_PushBack(config, (void *) strdup(marker2)));
-     //Vector_Destroy(config,free);
+     Vector_Destroy(config,free);
 }
 
 TEST(VECTOR_SIZE, VECTOR_NULL)
@@ -225,7 +225,6 @@ TEST(VECTOR_SIZE, VECTOR_NULL)
 
 TEST(VECTOR_SIZE, VECTOR_NOT_NULL)
 {
-    Vector_Destroy(config, free);
     Vector_Create(&config);
     EXPECT_EQ(T2ERROR_SUCCESS, Vector_PushBack(config, (void *) strdup(marker1)));
     EXPECT_EQ(T2ERROR_SUCCESS, Vector_PushBack(config, (void *) strdup(marker2)));
@@ -766,6 +765,7 @@ TEST_F(UtilsFileTestFixture, POPULATECACHE_TEST)
             .Times(1)
             .WillOnce(Return(mockfp));
     ASSERT_EQ(T2ERROR_FAILURE, populateCachedReportList(profile, outReportlist));
+    Vector_Destroy(outReportlist, free);
 }
 
 TEST_F(UtilsTestFixture, POPULATECACHE)
@@ -787,5 +787,6 @@ TEST_F(UtilsTestFixture, POPULATECACHE)
                 .Times(1)
                 .WillOnce(Return(-1));
         ASSERT_EQ(T2ERROR_FAILURE, populateCachedReportList(profile, outReportlist));
+        Vector_Destroy(outReportlist, free);
 }
 

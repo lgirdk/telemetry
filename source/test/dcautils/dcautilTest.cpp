@@ -194,6 +194,7 @@ TEST(SEARCHPCNODE, NULL_CHECK)
    EXPECT_EQ(NULL, searchPCNode(NULL, "info is"));
    fnode = g_list_append(fnode, (gpointer)"Hello world!");
    EXPECT_EQ(NULL, searchPCNode(fnode, NULL));
+   g_list_free(fnode);
 }
 
 
@@ -215,6 +216,7 @@ TEST(GETPROCUSAGE, PROCESS_NULL)
    Vector_Create(&gresulist);
    EXPECT_EQ(-1, getProcUsage(NULL, gresulist, false));
    Vector_Destroy(gresulist, free);
+   gresulist = NULL;
 }
 
 TEST(GETPROCUSAGE, PROCESS_NULL_1)
@@ -275,7 +277,10 @@ TEST(GETGREPRESULTS, PROFILENAME_NULL)
    EXPECT_EQ(T2ERROR_FAILURE, getGrepResults(NULL, markerlist, &grepResultlist, false));
    EXPECT_EQ(T2ERROR_FAILURE, getGrepResults("RDKB_Profile1", NULL, &grepResultlist, false));
    EXPECT_EQ(T2ERROR_FAILURE, getGrepResults("RDKB_Profile1", markerlist, NULL, false));
-   Vector_Destroy(markerlist, NULL);
+   Vector_Destroy(markerlist, free);
+   Vector_Destroy(grepResultlist, free);
+   grepResultlist = NULL;
+   markerlist = NULL;
 }
 
 //legacyutils.c
@@ -326,6 +331,8 @@ TEST(GETLOGLINE, NAME_NULL)
     EXPECT_EQ(NULL, getLogLine(logSeekMap, buf, 512, NULL, &seekFromEOF, 2));
     free(buf);
     buf = NULL;
+    free(logSeekMap);
+    logSeekMap = NULL;
 }
 
 TEST(ISPROPSINITIALIZED, TESTING)
@@ -345,6 +352,9 @@ TEST(PROCESSTOPPATTERN, VECTOR_NULL)
     EXPECT_EQ(-1, processTopPattern(NULL, tlist, 0, grepResultlist));
     EXPECT_EQ(-1, processTopPattern(logfile, NULL, 0, grepResultlist));
     EXPECT_EQ(-1, processTopPattern(logfile, tlist, 0, NULL));
+    g_list_free(tlist);
+    Vector_Destroy(grepResultlist, free);
+    grepResultlist = NULL;
 }
 
 TEST(GETERRORCODE, STR_NULL)

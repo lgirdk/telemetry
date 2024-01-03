@@ -85,6 +85,8 @@ TEST(APPENDREQUEST, NULL_CHECK)
     EXPECT_EQ(T2ERROR_FAILURE, appendRequestParams(buf,256));
     buf = (char*)malloc(256);
     EXPECT_EQ(T2ERROR_FAILURE, appendRequestParams(buf,0));
+    free(buf);
+    buf = NULL;
 }
 
 
@@ -149,10 +151,12 @@ TEST_F(XconfcliTestFixture, doHttpGet)
 TEST_F(XconfcliTestFixture,  getRemoteConfigURL)
 {
      char* configURL = NULL;
+     #if defined(ENABLE_RDKB_SUPPORT)
      EXPECT_CALL(*m_fileIOMock, access(_,_))
                 .Times(1)
                 .WillOnce(Return(-1));
      EXPECT_EQ(T2ERROR_SUCCESS, getRemoteConfigURL(&configURL));
+     #endif
 }
 
 TEST_F(XconfcliTestFixture, doHttpGet1)

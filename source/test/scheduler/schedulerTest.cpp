@@ -25,6 +25,7 @@ sigset_t blocking_signal;
 
 using namespace std;
 
+
 TEST(GET_LOGDEMAND, TEST1)
 {
    EXPECT_EQ( false, get_logdemand());
@@ -80,14 +81,19 @@ void ReportProfiles_ActivationToutCb(const char* profileName)
     printf("ReportProfiles_ActivationTimeoutCb is done\n");
 }
 
+void schedulercb(char* profileName, bool isschedulerstarted)
+{
+    printf("schedulercb is done\n");
+}
+
 TEST(initScheduler, NULL_CALLBACK)
 {
-    EXPECT_EQ(T2ERROR_SUCCESS,  initScheduler((TimeoutNotificationCB)NULL, (ActivationTimeoutCB)NULL));
+    EXPECT_EQ(T2ERROR_SUCCESS,  initScheduler((TimeoutNotificationCB)NULL, (ActivationTimeoutCB)NULL, (NotifySchedulerstartCB)NULL));
 }
 
 TEST(initScheduler, NON_NULL_CALLBACK)
 {
-    EXPECT_EQ(T2ERROR_SUCCESS,  initScheduler((TimeoutNotificationCB)ReportProfiles_ToutCb, (ActivationTimeoutCB)ReportProfiles_ActivationToutCb));
+    EXPECT_EQ(T2ERROR_SUCCESS,  initScheduler((TimeoutNotificationCB)ReportProfiles_ToutCb, (ActivationTimeoutCB)ReportProfiles_ActivationToutCb, (NotifySchedulerstartCB)schedulercb));
 }
 
 TEST(SendInterruptToTimeoutThread, NULL_CHECK)

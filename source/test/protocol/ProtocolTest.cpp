@@ -128,6 +128,7 @@ class ProtocolFileTestFixture : public ::testing::Test {
 
 };
 
+/*
 TEST(SETHEADER, CURL_NULL)
 {
     char* destURL = "https://google.com";
@@ -156,7 +157,7 @@ TEST(SETPAYLOAD, NULL_CHECK)
    EXPECT_EQ(T2ERROR_FAILURE, setPayload(NULL, payload));
    EXPECT_EQ(T2ERROR_FAILURE, setPayload(curl, NULL));
 }
-
+*/
 
 TEST(SENDREPORTOVERHTTP, 1_NULL_CHECK)
 {

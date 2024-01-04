@@ -845,9 +845,10 @@ static void* getUpdatedConfigurationThread(void *data)
                 configData = NULL ;
             }
             xConfRetryCount++;
-            if(xConfRetryCount == MAX_XCONF_RETRY_COUNT)
+            if(xConfRetryCount >= MAX_XCONF_RETRY_COUNT)
             {
                 T2Error("Reached max xconf retry counts : %d, Using saved profile if exists until next reboot\n", MAX_XCONF_RETRY_COUNT);
+                xConfRetryCount = 0;
                 break;
             }
             T2Info("Waiting for %d sec before trying fetchRemoteConfiguration, No.of tries : %d\n", XCONF_RETRY_TIMEOUT, xConfRetryCount);

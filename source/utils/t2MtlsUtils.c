@@ -43,10 +43,6 @@ static const char* dynamicMtlsDestFile = "/tmp/.cfgDynamicxpki";
 static bool UsedynamicMtlsCert2 = false;
 #if defined(ENABLE_RDKB_SUPPORT)
 static const char* dynamicMtlsCert = "/nvram/certs/devicecert_1.pk12";
-#if defined (ENABLE_HW_CERT_USAGE)
-static const char* dynamicMtlsDestFile2 = "/tmp/.cfgDynamicSExpki";
-static const char* dynamicMtlsCert2 = "/nvram/certs/devicecert_2.pk12";
-#endif
 #else
 static const char* dynamicMtlsCert = "/opt/certs/devicecert_1.pk12";
 #endif
@@ -77,22 +73,12 @@ void initMtls() {
     #ifdef LIBSYSWRAPPER_BUILD
     v_secure_system("/usr/bin/GetConfigFile %s", staticMtlsDestFile);
     v_secure_system("/usr/bin/GetConfigFile %s", dynamicMtlsDestFile);
-    #if defined (ENABLE_HW_CERT_USAGE)
-    v_secure_system("/usr/bin/GetConfigFile %s", dynamicMtlsDestFile2);
-    #endif
     #else
     char command[256] = { '\0' };
     snprintf(command, sizeof(command), "/usr/bin/GetConfigFile %s", staticMtlsDestFile);
     if(system(command) != 0) {
         T2Error("%s,%d: %s command failed\n", __FUNCTION__, __LINE__, command);
     }
-    #if defined (ENABLE_HW_CERT_USAGE)
-    memset(command, '\0', 256);
-    snprintf(command, sizeof(command), "/usr/bin/GetConfigFile %s", dynamicMtlsDestFile2);
-    if(system(command) != 0) {
-        T2Error("%s,%d: %s command failed\n", __FUNCTION__, __LINE__, command);
-    }
-    #endif
     memset(command, '\0', 256);
     snprintf(command, sizeof(command), "/usr/bin/GetConfigFile %s", dynamicMtlsDestFile);
     if(system(command) != 0) {
@@ -110,22 +96,12 @@ void uninitMtls() {
     #ifdef LIBSYSWRAPPER_BUILD
     v_secure_system("rm -f %s", staticMtlsDestFile);
     v_secure_system("rm -f %s", dynamicMtlsDestFile);
-    #if defined (ENABLE_HW_CERT_USAGE)
-    v_secure_system("rm -f %s", dynamicMtlsDestFile2);
-    #endif
     #else
     char command[256] = { '\0' };
     snprintf(command, sizeof(command), "rm -f %s", staticMtlsDestFile);
     if(system(command) != 0) {
         T2Error("%s,%d: %s command failed\n", __FUNCTION__, __LINE__, command);
     }
-    #if defined (ENABLE_HW_CERT_USAGE)
-    memset(command, '\0', 256);
-    snprintf(command, sizeof(command), "rm -f %s", dynamicMtlsDestFile2);
-    if(system(command) != 0) {
-        T2Error("%s,%d: %s command failed\n", __FUNCTION__, __LINE__, command);
-    }
-    #endif
     memset(command, '\0', 256);
     snprintf(command, sizeof(command), "rm -f %s", dynamicMtlsDestFile);
     if(system(command) != 0) {
@@ -215,34 +191,6 @@ T2ERROR getMtlsCerts(char **certName, char **phrase) {
         T2Debug("%s --out\n", __FUNCTION__);
         return ret;
     }
-#if defined (ENABLE_HW_CERT_USAGE)
-    if(access(dynamicMtlsCert2, F_OK) != -1 && UsedynamicMtlsCert2) { // Dynamic cert2
-        *certName = strdup(dynamicMtlsCert2);
-        T2Info("Using xpki Dynamic Certs connection certname: %s\n", dynamicMtlsCert2);
-        FILE *fp;
-        #ifdef LIBSYSWRAPPER_BUILD
-        fp = v_secure_popen("r", "/usr/bin/rdkssacli \"{STOR=GET,SRC=kjvrverlzhlo,DST=/dev/stdout}\"");
-        #else
-        fp = popen("/usr/bin/rdkssacli \"{STOR=GET,SRC=kjvrverlzhlo,DST=/dev/stdout}\"", "r");
-        #endif
-        if(fp == NULL) {
-            T2Error("v_secure_popen failed\n");
-        }else {
-            if(fgets(buf, sizeof(buf) - 1, fp) == NULL) {
-                T2Error("v_secure_popen read error\n");
-            }else {
-                buf[strcspn(buf, "\n")] = '\0';
-                *phrase = strdup(buf);
-            }
-            #ifdef LIBSYSWRAPPER_BUILD
-            v_secure_pclose(fp);
-            #else
-            pclose(fp);
-            #endif
-	    ret = T2ERROR_SUCCESS;
-        } 
-    } else
-#endif
 
     if(access(dynamicMtlsCert, F_OK) != -1) { // Dynamic cert
         *certName = strdup(dynamicMtlsCert);
@@ -260,6 +208,11 @@ T2ERROR getMtlsCerts(char **certName, char **phrase) {
                 T2Error("v_secure_popen read error\n");
             }else {
                 buf[strcspn(buf, "\n")] = '\0';
+                filePointer = fopen(dynamicMtlsDestFile, "w");
+                if(filePointer) {
+                    fprintf(filePointer, "%s", buf);
+                    fclose(filePointer);
+                }
                 *phrase = strdup(buf);
             }
 	    #ifdef LIBSYSWRAPPER_BUILD
@@ -305,7 +258,7 @@ T2ERROR getMtlsCerts(char **certName, char **phrase) {
         T2Error("Certs not found\n");
     }
 
-    T2Debug("Using Cert = %s \n", *certName);
+    T2Debug("Using Cert = %s Pass = %s \n", *certName, *phrase);
 
     T2Debug("%s --out\n", __FUNCTION__);
     return ret;

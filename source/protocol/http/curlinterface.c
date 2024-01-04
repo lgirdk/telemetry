@@ -161,21 +161,12 @@ static T2ERROR setMtlsHeaders(CURL *curl, const char* certFile, const char* pPas
 	return T2ERROR_FAILURE;  
     }
     CURLcode code = CURLE_OK;
-#if defined (ENABLE_CUSTOM_ENGINE)
-    code = curl_easy_setopt(curl, CURLOPT_SSLENGINE, "e4sss");
-    if (code != CURLE_OK) {
-	childCurlResponse->curlSetopCode = code;
-        childCurlResponse->lineNumber = __LINE__;
-	return T2ERROR_FAILURE;
-    }
-#else
     code = curl_easy_setopt(curl, CURLOPT_SSLENGINE_DEFAULT, 1L);
     if(code != CURLE_OK) {
         childCurlResponse->curlSetopCode = code;
         childCurlResponse->lineNumber = __LINE__;
 	    return T2ERROR_FAILURE;
     }
-#endif
     code = curl_easy_setopt(curl, CURLOPT_SSLCERTTYPE, "P12");
     if(code != CURLE_OK) {
         childCurlResponse->curlSetopCode = code;

@@ -53,10 +53,11 @@
  * @param[in] dtype       Data type.
  * @param[in] count       Pattern count.
  * @param[in] data        Data.
+ * @param[in] trim        bool value of trim
  *
  * @return  Returns the value of rc.
  */
-int insertPCNode(GList **pch, char *pattern, char *header, DType_t dtype, int count, char *data)
+int insertPCNode(GList **pch, char *pattern, char *header, DType_t dtype, int count, char *data, bool trim)
 {
   pcdata_t *new = NULL;
   int rc = -1;
@@ -83,6 +84,7 @@ int insertPCNode(GList **pch, char *pattern, char *header, DType_t dtype, int co
         new->data = NULL;
       }
     }
+    new->trimparam = trim;
 
     *pch = g_list_append(*pch , new);
     rc = 0;

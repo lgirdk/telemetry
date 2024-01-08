@@ -39,6 +39,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <glib.h>
+#include <stdbool.h>
 
 #include "vector.h"
 
@@ -55,11 +56,12 @@ typedef struct pclist {
     int count;
     char *data;
   };
+  bool trimparam;
 } pcdata_t;
 
 extern GList *pchead;
 
-int insertPCNode(GList **pch, char *pattern, char *header, DType_t dtype, int count, char *data);
+int insertPCNode(GList **pch, char *pattern, char *header, DType_t dtype, int count, char *data, bool trim);
 pcdata_t* searchPCNode(GList *pch, char *pattern);
 void printPCNodes(GList *pch);
 void clearPCNodes(GList **pch);

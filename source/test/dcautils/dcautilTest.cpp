@@ -162,22 +162,22 @@ class dcaTestFixture : public ::testing::Test {
 GList *pch = NULL;
 TEST(INSERTPCNODE, PATT_NULL)
 {
-   EXPECT_EQ(0, insertPCNode(&pch, NULL, "SYS_INFO", STR, 0, "SYS_INFO_DATA"));
+   EXPECT_EQ(0, insertPCNode(&pch, NULL, "SYS_INFO", STR, 0, "SYS_INFO_DATA", true));
 }
 
 TEST(INSERTPCNODE, HEAD_NULL)
 {
-   EXPECT_EQ(0, insertPCNode(&pch, "info is", NULL, STR, 0, "SYS_INFO_DATA"));
+   EXPECT_EQ(0, insertPCNode(&pch, "info is", NULL, STR, 0, "SYS_INFO_DATA", true));
 }
 
 TEST(INSERTPCNODE, DATA_NULL)
 {
-   EXPECT_EQ(0, insertPCNode(&pch, "info is", "SYS_INFO", STR, 0, NULL));
+   EXPECT_EQ(0, insertPCNode(&pch, "info is", "SYS_INFO", STR, 0, NULL, false));
 }
 
 TEST(INSERTPCNODE, APPEND_CHECK)
 {
-   EXPECT_EQ(0, insertPCNode(&pch,  NULL, NULL, STR, 0, NULL));
+   EXPECT_EQ(0, insertPCNode(&pch,  NULL, NULL, STR, 0, NULL, false));
 }
 
 TEST(COMPAREPATTERN, NP_SP_NULL_CHECK)
@@ -201,16 +201,31 @@ TEST(SEARCHPCNODE, NULL_CHECK)
 
 TEST(GETPROCUSAGE, GREPRESULTLIST_NULL)
 {
-   EXPECT_EQ(-1, getProcUsage("telemetry2_0", NULL));
+   EXPECT_EQ(-1, getProcUsage("telemetry2_0", NULL, false));
+}
+
+TEST(GETPROCUSAGE, GREPRESULTLIST_NULL_1)
+{
+   EXPECT_EQ(-1, getProcUsage("telemetry2_0", NULL, true));
 }
 
 TEST(GETPROCUSAGE, PROCESS_NULL)
 {
    Vector* gresulist = NULL;
    Vector_Create(&gresulist);
-   EXPECT_EQ(-1, getProcUsage(NULL, gresulist));
+   EXPECT_EQ(-1, getProcUsage(NULL, gresulist, false));
    Vector_Destroy(gresulist, free);
 }
+
+TEST(GETPROCUSAGE, PROCESS_NULL_1)
+{
+   Vector* gresulist = NULL;
+   Vector_Create(&gresulist);
+   EXPECT_EQ(-1, getProcUsage(NULL, gresulist, true));
+   Vector_Destroy(gresulist, free);
+   gresulist = NULL;
+}
+
 
 TEST(GETPROCPIDSTAT, PINFO_NULL)
 {
@@ -297,7 +312,7 @@ TEST(UPDATELOGSEEK, LOGSEEKMAP_NULL)
 
 TEST(GETLOADAVG, VECTOR_NULL)
 {
-    EXPECT_EQ(0, getLoadAvg(NULL));
+    EXPECT_EQ(0, getLoadAvg(NULL, false));
 }
 
 TEST(GETLOGLINE, NAME_NULL)
@@ -472,7 +487,7 @@ TEST_F(dcaFileTestFixture,  getProcUsage)
     EXPECT_CALL(*g_ffileIOMock, popen(_,_))
             .Times(1)
             .WillOnce(Return(fp));
-    EXPECT_EQ(0, getProcUsage(processName, gresulist));
+    EXPECT_EQ(0, getProcUsage(processName, gresulist, false));
 }
 
 TEST_F(dcaFileTestFixture,  getProcUsage1)
@@ -487,7 +502,34 @@ TEST_F(dcaFileTestFixture,  getProcUsage1)
      EXPECT_CALL(*g_ffileIOMock, pclose(_))
              .Times(1)
              .WillOnce(Return(-1));
-    EXPECT_EQ(0, getProcUsage(processName, gresulist));
+    EXPECT_EQ(0, getProcUsage(processName, gresulist, false));
+}
+
+TEST_F(dcaFileTestFixture,  getProcUsage2)
+{
+    Vector* gresulist = NULL;
+    Vector_Create(&gresulist);
+    char* processName = "telemetry2_0";
+    FILE* fp = (FILE*)NULL;
+    EXPECT_CALL(*g_ffileIOMock, popen(_,_))
+            .Times(1)
+            .WillOnce(Return(fp));
+    EXPECT_EQ(0, getProcUsage(processName, gresulist, true));
+}
+
+TEST_F(dcaFileTestFixture,  getProcUsage3)
+{
+    Vector* gresulist = NULL;
+    Vector_Create(&gresulist);
+    char* processName = "telemetry2_0";
+    FILE* fp = (FILE*)0xffffffff;
+     EXPECT_CALL(*g_ffileIOMock, popen(_,_))
+            .Times(1)
+            .WillOnce(Return(fp));
+     EXPECT_CALL(*g_ffileIOMock, pclose(_))
+             .Times(1)
+             .WillOnce(Return(-1));
+    EXPECT_EQ(0, getProcUsage(processName, gresulist, true));
 }
 
 TEST_F( dcaFileTestFixture, addToProfileSeekMap)
@@ -507,7 +549,7 @@ TEST_F(dcaFileTestFixture, getLoadAvg)
     EXPECT_CALL(*g_ffileIOMock, fopen(_,_))
             .Times(1)
             .WillOnce(Return(fp));
-    EXPECT_EQ(0, getLoadAvg(grepResultList));
+    EXPECT_EQ(0, getLoadAvg(grepResultList, false));
 }
 
 TEST_F(dcaFileTestFixture, getLoadAvg1)
@@ -524,8 +566,37 @@ TEST_F(dcaFileTestFixture, getLoadAvg1)
     EXPECT_CALL(*g_ffileIOMock, fclose(_))
             .Times(1)
             .WillOnce(Return(0));
-    EXPECT_EQ(0, getLoadAvg(grepResultList));
+    EXPECT_EQ(0, getLoadAvg(grepResultList, false));
 }
+
+TEST_F(dcaFileTestFixture, getLoadAvg2)
+{
+    Vector* grepResultList;
+    Vector_Create(&grepResultList);
+    FILE* fp = (FILE*)NULL;
+    EXPECT_CALL(*g_ffileIOMock, fopen(_,_))
+            .Times(1)
+            .WillOnce(Return(fp));
+    EXPECT_EQ(0, getLoadAvg(grepResultList, true));
+}
+
+TEST_F(dcaFileTestFixture, getLoadAvg3)
+{
+    Vector* grepResultList;
+    Vector_Create(&grepResultList);
+    FILE* fp = (FILE*)0xffffffff;
+    EXPECT_CALL(*g_ffileIOMock, fopen(_,_))
+            .Times(1)
+            .WillOnce(Return(fp));
+    EXPECT_CALL(*g_ffileIOMock, fread(_,_,_,_))
+            .Times(1)
+            .WillOnce(Return(-1));
+    EXPECT_CALL(*g_ffileIOMock, fclose(_))
+            .Times(1)
+            .WillOnce(Return(0));
+    EXPECT_EQ(0, getLoadAvg(grepResultList, true));
+}
+
 
 TEST_F(dcaFileTestFixture, getLogLine)
 {

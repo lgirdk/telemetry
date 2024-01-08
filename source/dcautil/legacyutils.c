@@ -301,7 +301,7 @@ T2ERROR updateLogSeek(hash_map_t *logSeekMap, char* logFileName) {
  * @return  Returns status of operation.
  * @retval  Return 1 on success.
  */
-int getLoadAvg(Vector* grepResultList) {
+int getLoadAvg(Vector* grepResultList, bool trim) {
     T2Debug("%s ++in \n", __FUNCTION__);
     FILE *fp;
     char str[LEN + 1];
@@ -327,6 +327,7 @@ int getLoadAvg(Vector* grepResultList) {
         if(loadAvg) {
             loadAvg->markerName = strdup("Load_Average");
             loadAvg->markerValue = strdup(str);
+	    loadAvg->trimParameter = trim;
             Vector_PushBack(grepResultList, loadAvg);
         }
     }

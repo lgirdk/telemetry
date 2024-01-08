@@ -86,6 +86,32 @@ T2ERROR destroyJSONReport(cJSON *jsonObj)
     return T2ERROR_SUCCESS;
 }
 
+void trimLeadingAndTrailingws(char* string)
+{
+    T2Debug("%s ++in \n", __FUNCTION__);
+    int i=0, j=0;
+
+    for(i=0;string[i]==' '||string[i]=='\t';i++); // To find first non-space character in the string
+
+    for(j=0;string[i];i++) //To remove the leading whitespaces
+    {
+       string[j++] = string[i];
+    }
+    string[j]='\0';
+
+    for(i=0;string[i]!='\0';i++)
+    {
+       if(string[i]!=' '&& string[i]!='\t') { // To remove the trailing whitespaces
+         j=i; // To get the last non-space character in the string
+       }
+    }
+
+    string[j+1]='\0';
+
+    T2Debug("%s --Out \n", __FUNCTION__);
+
+}
+
 T2ERROR encodeParamResultInJSON(cJSON *valArray, Vector *paramNameList, Vector *paramValueList)
 {
     if(valArray == NULL || paramNameList == NULL || paramValueList == NULL){
@@ -133,7 +159,10 @@ T2ERROR encodeParamResultInJSON(cJSON *valArray, Vector *paramNameList, Vector *
                         T2Error("cJSON_CreateObject failed.. arrayItem is NULL \n");
                         return T2ERROR_FAILURE;
                     }
-                    if(cJSON_AddStringToObject(arrayItem, param->name, paramValues[0]->parameterValue)  == NULL){
+                    if(param->trimParam){
+                        trimLeadingAndTrailingws(paramValues[0]->parameterValue);
+                    }
+		    if(cJSON_AddStringToObject(arrayItem, param->name, paramValues[0]->parameterValue)  == NULL){
                         T2Error("cJSON_AddStringToObject failed.\n");
                         cJSON_Delete(arrayItem);
                         return T2ERROR_FAILURE;
@@ -163,6 +192,9 @@ T2ERROR encodeParamResultInJSON(cJSON *valArray, Vector *paramNameList, Vector *
                             T2Error("cJSON_CreateObject failed.. valItem is NULL \n");
                             cJSON_Delete(arrayItem);
                             return T2ERROR_FAILURE;
+                        }
+		        if(param->trimParam){
+                               trimLeadingAndTrailingws(paramValues[valIndex]->parameterValue);
                         }
                         if(cJSON_AddStringToObject(valItem, paramValues[valIndex]->parameterName, paramValues[valIndex]->parameterValue) == NULL){
                             T2Error("cJSON_AddStringToObject failed\n");
@@ -241,6 +273,9 @@ T2ERROR encodeGrepResultInJSON(cJSON *valArray, Vector *grepResult)
                 T2Error("cJSON_CreateObject failed.. arrayItem is NULL \n");
                 return T2ERROR_FAILURE;
             }
+            if(grep->trimParameter){
+                trimLeadingAndTrailingws((char*)grep->markerValue);
+            }
             if(cJSON_AddStringToObject(arrayItem, grep->markerName, grep->markerValue)  == NULL){
                 T2Error("cJSON_AddStringToObject failed.\n");
                 cJSON_Delete(arrayItem);	
@@ -276,6 +311,9 @@ T2ERROR encodeEventMarkersInJSON(cJSON *valArray, Vector *eventMarkerList)
                     if(arrayItem == NULL){
                         T2Error("cJSON_CreateObject failed .. arrayItem is NULL\n");
                         return T2ERROR_FAILURE;
+                    }
+                    if(eventMarker->trimParam){
+                        trimLeadingAndTrailingws(stringValue);
                     }
                     if (eventMarker->alias) {
                         if(cJSON_AddStringToObject(arrayItem, eventMarker->alias, stringValue) == NULL){
@@ -318,6 +356,12 @@ T2ERROR encodeEventMarkersInJSON(cJSON *valArray, Vector *eventMarkerList)
                         cJSON_Delete(arrayItem);
                         return T2ERROR_FAILURE;
                     }
+                    if(eventMarker->trimParam){
+                        for(int i=0;i<Vector_Size(eventMarker->u.accumulatedValues);i++){
+                             char* stringValue = (char*)Vector_At(eventMarker->u.accumulatedValues, i);
+                             trimLeadingAndTrailingws(stringValue);
+                        }
+                    }
                     convertVectorToJson(vectorToarray, eventMarker->u.accumulatedValues);
                     Vector_Clear(eventMarker->u.accumulatedValues, freeAccumulatedParam);
                     T2Debug("eventMarker->reportTimestampParam type is %d \n", eventMarker->reportTimestampParam);
@@ -353,6 +397,9 @@ T2ERROR encodeEventMarkersInJSON(cJSON *valArray, Vector *eventMarkerList)
                          T2Error("cJSON_CreateObject failed.. arrayItem is NULL\n");
 			 return T2ERROR_FAILURE;
 		    }
+                    if(eventMarker->trimParam){
+                         trimLeadingAndTrailingws(eventMarker->u.markerValue);
+                    }
                     if (eventMarker->alias) {
                         if(cJSON_AddStringToObject(arrayItem, eventMarker->alias, eventMarker->u.markerValue) == NULL){
                             T2Error("cJSON_AddStringToObject failed\n");

@@ -30,6 +30,7 @@ typedef struct _GrepResult
 {
     const char* markerName;
     const char* markerValue;
+    bool trimParameter;
 }GrepResult;
 
 #if !defined(ENABLE_RDKC_SUPPORT) && !defined(ENABLE_RDKB_SUPPORT)

@@ -50,6 +50,7 @@ typedef struct _Param
     char* paramType;
     char* name;
     const char* alias;
+    bool trimParam;
 }Param;
 
 typedef struct _StaticParam
@@ -62,6 +63,7 @@ typedef struct _StaticParam
 typedef struct _EventMarker
 {
     bool reportEmptyParam;
+    bool trimParam;
     char* alias;
     char* paramType;
     char* markerName;
@@ -83,6 +85,7 @@ typedef struct _EventMarker
 typedef struct _GrepMarker
 {
     bool reportEmptyParam;
+    bool trimParam;
     char* paramType;
     char* markerName;
     char* searchString;

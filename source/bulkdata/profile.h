@@ -48,6 +48,7 @@ typedef struct _Profile
     bool deleteonTimeout;
     bool bClearSeekMap;
     bool triggerReportOnCondition;
+    bool trim;
     void (*callBackOnReportGenerationComplete)(char*);
     char* hash;
     char* name;

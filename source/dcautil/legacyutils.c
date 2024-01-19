@@ -617,6 +617,10 @@ void updateIncludeConfVal(char *logpath, char *perspath) {
             }else if((property = strstr(props, "LOG_PATH="))) {
                 if(0 == strncmp(props, "LOG_PATH=", strlen("LOG_PATH="))) {
                     property = property + strlen("LOG_PATH=");
+		    if(LOG_PATH != NULL)
+                    {
+                       free(LOG_PATH);
+                    }
                     LOG_PATH = strdup(property);
                 }
             }
@@ -674,6 +678,9 @@ void initProperties(char *logpath, char *perspath) {
             char *property = NULL;
             if((property = strstr(props, "DEVICE_TYPE="))) {
                 property = property + strlen("DEVICE_TYPE=");
+                if(DEVICE_TYPE != NULL){
+                    free(DEVICE_TYPE);
+		}
                 DEVICE_TYPE = strdup(property);
                 break;
             }

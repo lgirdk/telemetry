@@ -154,7 +154,10 @@ static void freeProfile(void *data)
         if(profile->cachedReportList){
             Vector_Destroy(profile->cachedReportList, free);
         }
-
+        if(profile->jsonReportObj){
+             cJSON_Delete(profile->jsonReportObj);
+             profile->jsonReportObj = NULL;
+        }
         free(profile);
     }
     T2Debug("%s ++out \n", __FUNCTION__);

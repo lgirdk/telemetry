@@ -2009,6 +2009,9 @@ T2ERROR processMsgPackConfiguration(msgpack_object *profiles_array_map, Profile 
             if(profile->timeRef != NULL){
                 free(profile->timeRef);
             }
+            if(profile->protocol != NULL){
+                free(profile->protocol);
+            }
             free(profile);
             T2Error("Malloc error exiting: can not allocate memory to create profile->t2HTTPDest \n");
             return T2ERROR_MEMALLOC_FAILED;
@@ -2022,6 +2025,9 @@ T2ERROR processMsgPackConfiguration(msgpack_object *profiles_array_map, Profile 
             free(profile->hash);
             if(profile->timeRef != NULL){
                 free(profile->timeRef);
+            }
+            if(profile->protocol != NULL){
+                free(profile->protocol);
             }
             free(profile);
             T2Error("Malloc error exiting: can not allocate memory to create profile->t2RBUSDest \n");
@@ -2037,6 +2043,9 @@ T2ERROR processMsgPackConfiguration(msgpack_object *profiles_array_map, Profile 
             free(profile->t2RBUSDest);
             if(profile->timeRef != NULL){
                 free(profile->timeRef);
+            }
+            if(profile->protocol != NULL){
+                free(profile->protocol);
             }
             free(profile->name);
             free(profile->hash);
@@ -2060,6 +2069,12 @@ T2ERROR processMsgPackConfiguration(msgpack_object *profiles_array_map, Profile 
             free(profile->t2HTTPDest);
             if(profile->timeRef != NULL){
                 free(profile->timeRef);
+            }
+            if(profile->protocol != NULL){
+                free(profile->protocol);
+            }
+            if(profile->encodingType != NULL){
+                free(profile->encodingType);
             }
             free(profile);
             T2Error("Malloc error exiting: can not allocate memory to create profile->jsonEncoding \n");

@@ -113,7 +113,7 @@ static void freeProfileXConf()
         }
 
         if(singleProfile->jsonReportObj) {
-            cJSON_free(singleProfile->jsonReportObj);
+            cJSON_Delete(singleProfile->jsonReportObj);
             singleProfile->jsonReportObj = NULL;
         }
 
@@ -562,6 +562,11 @@ T2ERROR ProfileXConf_delete(ProfileXConf *profile)
                 Vector_RemoveItem(singleProfile->cachedReportList, (void *) Vector_At(singleProfile->cachedReportList, 0), NULL);/*TODO why this instead of Vector_destroy*/
                 index++;
             }
+        }
+    }
+    else{
+        if(count > 0){ //Destroy the cachedReportList vector when the profile name is not equal
+            Vector_Destroy(singleProfile->cachedReportList, free);
         }
     }
     // copy max events irrespective of the profile name

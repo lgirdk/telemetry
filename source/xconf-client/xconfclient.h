@@ -32,7 +32,14 @@
 #define DEVICE_PROPERTIES                           "/etc/device.properties"
 
 #define TR181_DEVICE_MODEL                          "Device.DeviceInfo.ModelName"
+
+#if defined(WHOAMI_ENABLED)
+#define TR181_DEVICE_PARTNER_ID                     "Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Bootstrap.PartnerName"
+#define TR181_DEVICE_OSCLASS                        "Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Bootstrap.OsClass"
+#else
 #define TR181_DEVICE_PARTNER_ID                     "Device.DeviceInfo.X_RDKCENTRAL-COM_Syndication.PartnerId"
+#endif
+
 #define TR181_DEVICE_ACCOUNT_ID                     "Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.AccountInfo.AccountID"
 #define TR181_CONFIG_URL                            "Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.Telemetry.ConfigURL"
 

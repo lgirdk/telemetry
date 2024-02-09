@@ -891,6 +891,8 @@ static void* getUpdatedConfigurationThread(void *data)
     char buf[12];
     int maxAttempts = -1, attemptInterval = -1;
     int isValidUrl = 1;
+    char wan_st[16] = { 0 };
+    T2ERROR ret = T2ERROR_INTERNAL_ERROR;
 
     if (telemetry_syscfg_get("dcm_retry_maxAttempts", buf, sizeof(buf)) == 0)
     {
@@ -922,7 +924,12 @@ static void* getUpdatedConfigurationThread(void *data)
 
     while(!stopFetchRemoteConfiguration && isValidUrl)
     {
-        T2ERROR ret = fetchRemoteConfiguration(configURL, &configData);
+        _get_shell_output ("sysevent get wan-status", wan_st, sizeof(wan_st));
+
+        if(!strcmp(wan_st, "started"))
+        {
+            ret = fetchRemoteConfiguration(configURL, &configData);
+        }
 
         xConfRetryCount++;
         snprintf(buf,sizeof(buf),"%d",xConfRetryCount);

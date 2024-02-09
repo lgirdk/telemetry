@@ -24,5 +24,6 @@ int getcurrenttime (char *current_time_string, int timestampparams);
 
 int telemetry_syscfg_get (char *temp, char *buf, int buf_size);
 int telemetry_syscfg_set (char *temp, char *buf);
+void _get_shell_output (char *cmd, char *buf, size_t len);
 
 #endif

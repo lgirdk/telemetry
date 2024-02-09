@@ -325,29 +325,6 @@ static void t2DaemonHelperModeInit( ) {
     T2Info("Telemetry 2.0 Process Terminated\n");
 }
 
-/*
-   Note that there are two versions of _get_shell_output() used with RDKB.
-   This version, which accepts a char * command as the first argument, is
-   the older version. The newer version accepts a FILE pointer as created
-   by a call to v_secure_popen().
-*/
-static void _get_shell_output (char *cmd, char *buf, size_t len)
-{
-    FILE *fp;
-
-    if (len > 0)
-        buf[0] = 0;
-    fp = popen (cmd, "r");
-    if (fp == NULL)
-        return;
-    buf = fgets (buf, len, fp);
-    pclose (fp);
-    if ((len > 0) && (buf != NULL)) {
-        len = strlen (buf);
-        if ((len > 0) && (buf[len - 1] == '\n'))
-            buf[len - 1] = 0;
-    }
-}
 #endif
 
 static int getBridgeMode (void)
@@ -357,7 +334,7 @@ static int getBridgeMode (void)
     int isBridgeMode = 0;
 
 #if defined(_PUMA6_ATOM_)
-    _get_shell_output ("/usr/bin/rpcclient2 \"syscfg get bridge_mode\" | sed '/RPC/d;/^$/d'", buf, sizeof(buf));
+    telemetry_get_shell_output ("/usr/bin/rpcclient2 \"syscfg get bridge_mode\" | sed '/RPC/d;/^$/d'", buf, sizeof(buf));
     if (strcmp(buf, "0") != 0)
     {
         isBridgeMode = 1;

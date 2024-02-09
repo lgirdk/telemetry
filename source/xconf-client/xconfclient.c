@@ -922,7 +922,19 @@ static void* getUpdatedConfigurationThread(void *data)
 
     while(!stopFetchRemoteConfiguration && isValidUrl)
     {
-        T2ERROR ret = fetchRemoteConfiguration(configURL, &configData);
+        T2ERROR ret;
+        char wan_st[16];
+
+        telemetry_get_shell_output ("sysevent get wan-status", wan_st, sizeof(wan_st));
+
+        if (strcmp(wan_st, "started") == 0)
+        {
+            ret = fetchRemoteConfiguration(configURL, &configData);
+        }
+        else
+        {
+            ret = T2ERROR_INTERNAL_ERROR;
+        }
 
         xConfRetryCount++;
         snprintf(buf,sizeof(buf),"%d",xConfRetryCount);

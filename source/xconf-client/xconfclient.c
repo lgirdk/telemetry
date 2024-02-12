@@ -35,14 +35,15 @@
 #include "reportprofiles.h"
 #include "profilexconf.h"
 #include "xconfclient.h"
-
 #include "t2MtlsUtils.h"
 #include "t2parserxconf.h"
 #include "vector.h"
 #include "persistence.h"
 #include "telemetry2_0.h"
 #include "busInterface.h"
-
+#ifdef LIBRDKCONFIG_BUILD
+#include "rdkconfig.h"
+#endif
 #define RFC_RETRY_TIMEOUT 60
 #define XCONF_RETRY_TIMEOUT 180
 #define MAX_XCONF_RETRY_COUNT 5
@@ -416,6 +417,9 @@ static T2ERROR doHttpGet(char* httpsUrl, char **data) {
 
     char *pCertFile = NULL;
     char *pPasswd = NULL;
+#ifdef LIBRDKCONFIG_BUILD
+    size_t sPasswdSize = 0;
+#endif
     // char *pKeyType = "PEM" ;
     bool mtls_enable = false;
     pid_t childPid;
@@ -602,8 +606,17 @@ static T2ERROR doHttpGet(char* httpsUrl, char **data) {
                 if(NULL != pCertFile)
                     free(pCertFile);
 
-                if(NULL != pPasswd)
+                if(NULL != pPasswd){
+                  #ifdef LIBRDKCONFIG_BUILD
+                    sPasswdSize = strlen(pPasswd);
+                    if (rdkconfig_free((unsigned char**)&pPasswd, sPasswdSize)  == RDKCONFIG_FAIL) {
+           		return T2ERROR_FAILURE;
+                    }
+                  #else
                     free(pPasswd);
+                  #endif
+                }
+               
                 curl_easy_cleanup(curl);
             }else {
                 T2Error("%s:%d, T2:Telemetry XCONF communication Failed with http code : %ld Curl code : %d \n", __func__, __LINE__, http_code,
@@ -613,8 +626,16 @@ static T2ERROR doHttpGet(char* httpsUrl, char **data) {
                 free(httpResponse);
                 if(NULL != pCertFile)
                     free(pCertFile);
-                if(NULL != pPasswd)
+                if(NULL != pPasswd){
+                  #ifdef LIBRDKCONFIG_BUILD
+                    sPasswdSize = strlen(pPasswd);
+		    if (rdkconfig_free((unsigned char**)&pPasswd, sPasswdSize)  == RDKCONFIG_FAIL) {
+           		return T2ERROR_FAILURE;
+                    }
+                  #else
                     free(pPasswd);
+                  #endif
+                }
                 curl_easy_cleanup(curl);
                 if(http_code == 404)
                     ret = T2ERROR_PROFILE_NOT_SET;

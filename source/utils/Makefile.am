@@ -17,11 +17,15 @@
 # limitations under the License.
 ##########################################################################
 AM_CFLAGS = -fno-permissive
-
 lib_LTLIBRARIES = libt2utils.la
 
 libt2utils_la_SOURCES = vector.c t2collection.c t2log_wrapper.c t2MtlsUtils.c persistence.c t2common.c
 libt2utils_la_LDFLAGS = -shared -fPIC -lrdkloggers
+
+if IS_LIBRDKCONFIG_ENABLED
+libt2utils_la_CFLAGS = $(LIBRDKCONFIG_FLAG)
+libt2utils_la_LDFLAGS += -lrdkconfig
+endif
 if IS_LIBSYSWRAPPER_ENABLED
 libt2utils_la_CFLAGS = $(LIBSYSWRAPPER_FLAG)
 libt2utils_la_LDFLAGS += -lsecure_wrapper

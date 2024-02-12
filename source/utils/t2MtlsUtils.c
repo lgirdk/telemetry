@@ -30,6 +30,9 @@
 
 #include "t2log_wrapper.h"
 #include "t2common.h"
+#ifdef LIBRDKCONFIG_BUILD
+#include "rdkconfig.h"
+#endif
 
 #define MAX_DOMAIN_NAME_LEN 253
 #define XCONF_MTLS_DOMAN "secure.xconfds.coast.xcal.tv"
@@ -38,8 +41,8 @@
 #if !defined(ENABLE_RDKC_SUPPORT)
 static const char* staticMtlsCert = "/etc/ssl/certs/staticXpkiCrt.pk12";
 static const char* staticMtlsDestFile = "/tmp/.cfgStaticxpki";
-
 static const char* dynamicMtlsDestFile = "/tmp/.cfgDynamicxpki";
+
 static bool UsedynamicMtlsCert2 = false;
 #if defined(ENABLE_RDKB_SUPPORT)
 static const char* dynamicMtlsCert = "/nvram/certs/devicecert_1.pk12";
@@ -57,7 +60,6 @@ static char* dynamicPassPhrase = "";
 void initMtls() {
     T2Debug("%s ++in\n", __FUNCTION__);
     // Prepare certs required for mTls commmunication
-    // CPG doesn't support api's - will have to use v_secure_system calls
 #if !defined (MTLS_FROM_ENV)
     char UseHWBasedCert[8] = { '\0' };
     bool ret = false;
@@ -70,6 +72,7 @@ void initMtls() {
     } else {
         T2Info("getDevicePropertyData() failed for UseSEBasedCert\n");
     }
+#if !defined(LIBRDKCONFIG_BUILD)
     #ifdef LIBSYSWRAPPER_BUILD
     v_secure_system("/usr/bin/GetConfigFile %s", staticMtlsDestFile);
     v_secure_system("/usr/bin/GetConfigFile %s", dynamicMtlsDestFile);
@@ -84,6 +87,7 @@ void initMtls() {
     if(system(command) != 0) {
         T2Error("%s,%d: %s command failed\n", __FUNCTION__, __LINE__, command);
     }
+#endif
     #endif
 #endif
     T2Debug("%s --out\n", __FUNCTION__);
@@ -93,9 +97,10 @@ void initMtls() {
 void uninitMtls() {
     T2Debug("%s ++in\n", __FUNCTION__);
 #if !defined (MTLS_FROM_ENV)
+  #if !defined(LIBRDKCONFIG_BUILD)
     #ifdef LIBSYSWRAPPER_BUILD
-    v_secure_system("rm -f %s", staticMtlsDestFile);
-    v_secure_system("rm -f %s", dynamicMtlsDestFile);
+    unlink(staticMtlsDestFile);
+    unlink(dynamicMtlsDestFile);
     #else
     char command[256] = { '\0' };
     snprintf(command, sizeof(command), "rm -f %s", staticMtlsDestFile);
@@ -108,9 +113,9 @@ void uninitMtls() {
         T2Error("%s,%d: %s command failed\n", __FUNCTION__, __LINE__, command);
     }
     #endif
+  #endif
 #endif
     T2Debug("%s --out\n", __FUNCTION__);
-
 }
 
 /**
@@ -169,7 +174,6 @@ T2ERROR getMtlsCerts(char **certName, char **phrase) {
     } else {
         T2Error("Certs not found\n");
     }
-    T2Debug("Using Cert = %s Pass = %s \n", *certName, *phrase);
     T2Debug("%s --out\n", __FUNCTION__);
     return ret;
 }
@@ -182,10 +186,15 @@ T2ERROR getMtlsCerts(char **certName, char **phrase) {
     T2Debug("%s ++in\n", __FUNCTION__);
     char buf[124];
     char UseHWBasedCert[8];
+#ifdef LIBRDKCONFIG_BUILD
+    uint8_t *MtlsBuf = NULL;
+    size_t MtlsSize;
+#else
+    FILE *filePointer;
+#endif
     memset(buf, 0, sizeof(buf));
     memset(UseHWBasedCert, 0, sizeof(UseHWBasedCert));
 
-    FILE *filePointer;
     if( certName == NULL || phrase == NULL ){
         T2Error("Input args are NULL \n");
         T2Debug("%s --out\n", __FUNCTION__);
@@ -195,8 +204,17 @@ T2ERROR getMtlsCerts(char **certName, char **phrase) {
     if(access(dynamicMtlsCert, F_OK) != -1) { // Dynamic cert
         *certName = strdup(dynamicMtlsCert);
         T2Info("Using xpki Dynamic Certs connection certname: %s\n", dynamicMtlsCert);
+      #ifdef LIBRDKCONFIG_BUILD
+        
+        if(rdkconfig_get(&MtlsBuf, &MtlsSize, dynamicMtlsDestFile) == RDKCONFIG_FAIL) {
+            T2Error("%s,%d: Failed to extract cfgDynamicxpki cred\n", __FUNCTION__, __LINE__);
+            return T2ERROR_FAILURE;
+        }
+        MtlsBuf[strcspn(MtlsBuf, "\n")] = '\0';
+        *phrase = MtlsBuf;
+      #else
         FILE *fp;
-	#ifdef LIBSYSWRAPPER_BUILD
+        #ifdef LIBSYSWRAPPER_BUILD
         fp = v_secure_popen("r", "/usr/bin/rdkssacli \"{STOR=GET,SRC=kquhqtoczcbx,DST=/dev/stdout}\"");
         #else
         fp = popen("/usr/bin/rdkssacli \"{STOR=GET,SRC=kquhqtoczcbx,DST=/dev/stdout}\"", "r");
@@ -221,14 +239,25 @@ T2ERROR getMtlsCerts(char **certName, char **phrase) {
             pclose(fp);
             #endif
         }
+      #endif
+        
         ret = T2ERROR_SUCCESS;
     }else if(access(staticMtlsCert, F_OK) != -1) { // Static cert
         T2Info("Using xpki Static Certs connection certname: %s\n", staticMtlsCert);
         T2Info("xPKIStaticCert: /etc/ssl/certs/staticDeviceCert.pk12 uptime %.2lf seconds,telemetry",get_system_uptime());
         *certName = strdup(staticMtlsCert);
-
+      #ifdef LIBRDKCONFIG_BUILD
+           
 	/* CID: 189984 Time of check time of use (TOCTOU) */
-	filePointer = fopen(staticMtlsDestFile, "r");
+        if(rdkconfig_get(&MtlsBuf, &MtlsSize, staticMtlsDestFile) == RDKCONFIG_FAIL) {
+            T2Error("%s,%d: Failed to extract cfgStaticxpki cred\n", __FUNCTION__, __LINE__);
+            return T2ERROR_FAILURE;
+        }
+
+        MtlsBuf[strcspn(MtlsBuf, "\n")] = '\0';
+       *phrase = MtlsBuf;
+      #else
+        filePointer = fopen(staticMtlsDestFile, "r");
         if( !filePointer ) {
             T2Info("%s Destination file %s is not present. Generate now.\n", __FUNCTION__, *phrase);
             #ifdef LIBSYSWRAPPER_BUILD
@@ -253,12 +282,12 @@ T2ERROR getMtlsCerts(char **certName, char **phrase) {
            }
            fclose(filePointer);
         }
+      #endif
+
         ret = T2ERROR_SUCCESS;
     }else {
         T2Error("Certs not found\n");
     }
-
-    T2Debug("Using Cert = %s Pass = %s \n", *certName, *phrase);
 
     T2Debug("%s --out\n", __FUNCTION__);
     return ret;

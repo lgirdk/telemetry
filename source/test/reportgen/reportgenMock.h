@@ -8,6 +8,7 @@
 #include <curl/curl.h>
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
+#include <regex.h>
 
 class ReportgenInterface
 {
@@ -21,6 +22,9 @@ class ReportgenInterface
         virtual char* cJSON_PrintUnformatted(const cJSON *item) = 0;
 	virtual void cJSON_Delete(cJSON *root) = 0;
 	virtual CURL* curl_easy_init() = 0;
+        virtual int regcomp(regex_t *preg, const char *pattern,int cflags) = 0;
+        virtual int regexec(const regex_t *preg, const char *string, size_t nmatch, regmatch_t pmatch[], int eflags) = 0;
+        virtual void regfree(regex_t *preg) = 0;
        // virtual char* curl_easy_escape(CURL *c, const char *string, int len) = 0;
 };
 
@@ -36,6 +40,9 @@ class ReportgenMock: public ReportgenInterface
         MOCK_METHOD1(cJSON_PrintUnformatted, char*(const cJSON *));
 	MOCK_METHOD1(cJSON_Delete, void(cJSON *));
 	MOCK_METHOD0(curl_easy_init, CURL*());
+	MOCK_METHOD3(regcomp, int(regex_t*,  const char *, int));
+	MOCK_METHOD5(regexec, int(const regex_t *,  const char *, size_t, regmatch_t*, int));
+        MOCK_METHOD1(regfree, void(regex_t*));
 	//MOCK_METHOD3(curl_easy_escape, char*(CURL *, const char *, int));
 };
 

@@ -22,6 +22,7 @@
 
 #include <stdbool.h>
 #include <stdio.h>
+#include <regex.h>
 #include "vector.h"
 
 #define MAX_ACCUMULATE 20
@@ -51,6 +52,7 @@ typedef struct _Param
     char* name;
     const char* alias;
     bool trimParam;
+    char* regexParam;
 }Param;
 
 typedef struct _StaticParam
@@ -71,6 +73,7 @@ typedef struct _EventMarker
     reportTimestampFormat reportTimestampParam;
     char* timestamp;
     char* markerName_CT;
+    char* regexParam;
     MarkerType mType;
     union{
         unsigned int count;
@@ -90,6 +93,7 @@ typedef struct _GrepMarker
     char* markerName;
     char* searchString;
     char* logFile;
+    char* regexParam;
     MarkerType mType;
     union{
         unsigned int count;

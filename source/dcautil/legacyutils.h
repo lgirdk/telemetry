@@ -68,7 +68,7 @@ extern cJSON *SEARCH_RESULT_JSON;
 extern cJSON *ROOT_JSON;
 
 /* utility functions */
-int getLoadAvg(Vector* grepResultList, bool trim);
+int getLoadAvg(Vector* grepResultList, bool trim, char* regex);
 
 void removeProfileFromSeekMap(char *profileName);
 
@@ -100,7 +100,7 @@ void addToSearchResult(char *key, char *value);
 
 void clearSearchResultJson(cJSON **root);
 
-int getProcUsage(char *processName, Vector* grepResultList, bool trim );
+int getProcUsage(char *processName, Vector* grepResultList, bool trim, char* regex);
 
 bool isPropsInitialized();
 

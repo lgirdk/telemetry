@@ -226,6 +226,8 @@ TEST_F(reportgenTestFixture, encodeGrepResultInJSON)
       GrepResult* gparam = (GrepResult *) malloc(sizeof(GrepResult));
       gparam->markerName = strdup("TEST_MARKER1");
       gparam->markerValue = strdup("TEST_STRING1");
+      gparam->trimParameter = false;
+      gparam->regexParameter = NULL;
       Vector_PushBack(grepResult, gparam);
       cJSON *valArray = NULL;
       valArray = (cJSON*)malloc(320);
@@ -246,6 +248,8 @@ TEST_F(reportgenTestFixture, encodeGrepResultInJSON1)
       GrepResult* gparam = (GrepResult *) malloc(sizeof(GrepResult));
       gparam->markerName = strdup("TEST_MARKER1");
       gparam->markerValue = strdup("TEST_STRING1");
+      gparam->trimParameter = false;
+      gparam->regexParameter = NULL;
       Vector_PushBack(grepResult, gparam);
       cJSON *valArray = NULL;
       valArray = (cJSON*)malloc(320);
@@ -275,6 +279,8 @@ TEST_F(reportgenTestFixture, encodeParamResultInJSON)
     param->paramType = strdup("event");
     param->name = strdup("Event1");
     param->alias = strdup("EventMarker1");
+    param->trimParam = false;
+    param->regexParam = NULL;
     Vector_PushBack(paramNameList, param);
     profileValues *profVals = (profileValues *) malloc(sizeof(profileValues));
     profVals->paramValues = (tr181ValStruct_t**) malloc(sizeof(tr181ValStruct_t*));
@@ -307,6 +313,8 @@ TEST_F(reportgenTestFixture, encodeParamResultInJSON1)
     param->paramType = strdup("event");
     param->name = strdup("Event1");
     param->alias = strdup("EventMarker1");
+    param->trimParam = false;
+    param->regexParam = NULL;
     Vector_PushBack(paramNameList, param);
     profileValues *profVals = (profileValues *) malloc(sizeof(profileValues));
     profVals->paramValues = (tr181ValStruct_t**) malloc(sizeof(tr181ValStruct_t*));
@@ -326,7 +334,7 @@ TEST_F(reportgenTestFixture, encodeParamResultInJSON1)
     Vector_Destroy(paramValueList, freeProfileValues);
 }
 
-TEST_F(reportgenTestFixture, encodeParamResultInJSON2)
+TEST_F(reportgenTestFixture, encodeParamResultInJSON5)
 {
     Vector *paramNameList = NULL;
     Vector *paramValueList = NULL;
@@ -339,12 +347,16 @@ TEST_F(reportgenTestFixture, encodeParamResultInJSON2)
     param->paramType = strdup("event");
     param->name = strdup("Event1");
     param->alias = strdup("EventMarker1");
+    param->trimParam = false;
+    param->regexParam = NULL;
     Vector_PushBack(paramNameList, param);
     Param* param1 = (Param *) malloc(sizeof(Param));
     param1->reportEmptyParam = true;
     param1->paramType = strdup("event");
     param1->name = strdup("Event2");
     param1->alias = strdup("EventMarker2");
+    param1->trimParam = false;
+    param1->regexParam = NULL;
     Vector_PushBack(paramNameList, param1);
     profileValues *profVals = (profileValues *) malloc(sizeof(profileValues));
     profVals->paramValues = (tr181ValStruct_t**) malloc(2 * sizeof(tr181ValStruct_t*));
@@ -366,7 +378,7 @@ TEST_F(reportgenTestFixture, encodeParamResultInJSON2)
     Vector_Destroy(paramValueList, freeProfileValues);
 }
 
-TEST_F(reportgenTestFixture, encodeParamResultInJSON10)
+TEST_F(reportgenTestFixture, encodeParamResultInJSON6)
 {
     Vector *paramNameList = NULL;
     Vector *paramValueList = NULL;
@@ -379,12 +391,16 @@ TEST_F(reportgenTestFixture, encodeParamResultInJSON10)
     param->paramType = strdup("event");
     param->name = strdup("Event1");
     param->alias = strdup("EventMarker1");
+    param->trimParam = false;
+    param->regexParam = NULL;
     Vector_PushBack(paramNameList, param);
     Param* param1 = (Param *) malloc(sizeof(Param));
     param1->reportEmptyParam = true;
     param1->paramType = strdup("event");
     param1->name = strdup("Event2");
     param1->alias = strdup("EventMarker2");
+    param1->trimParam = false;
+    param1->regexParam = NULL;
     Vector_PushBack(paramNameList, param1);
     profileValues *profVals = (profileValues *) malloc(sizeof(profileValues));
     profVals->paramValues = (tr181ValStruct_t**) malloc(2 * sizeof(tr181ValStruct_t*));
@@ -411,7 +427,7 @@ TEST_F(reportgenTestFixture, encodeParamResultInJSON10)
     Vector_Destroy(paramValueList, freeProfileValues);
 }
 
-TEST_F(reportgenTestFixture, encodeParamResultInJSON3)
+TEST_F(reportgenTestFixture, encodeParamResultInJSON7)
 {
     Vector *paramNameList = NULL;
     Vector *paramValueList = NULL;
@@ -424,6 +440,8 @@ TEST_F(reportgenTestFixture, encodeParamResultInJSON3)
     param->paramType = strdup("event");
     param->name = strdup("Event1");
     param->alias = strdup("EventMarker1");
+    param->trimParam = false;
+    param->regexParam = NULL;
     Vector_PushBack(paramNameList, param);
     profileValues *profVals = (profileValues *) malloc(sizeof(profileValues));
     profVals->paramValues = (tr181ValStruct_t**) malloc(sizeof(tr181ValStruct_t*));
@@ -447,7 +465,7 @@ TEST_F(reportgenTestFixture, encodeParamResultInJSON3)
     Vector_Destroy(paramValueList, freeProfileValues);
 }
 
-TEST_F(reportgenTestFixture, encodeParamResultInJSON4)
+TEST_F(reportgenTestFixture, encodeParamResultInJSON8)
 {
     Vector *paramNameList = NULL;
     Vector *paramValueList = NULL;
@@ -460,6 +478,8 @@ TEST_F(reportgenTestFixture, encodeParamResultInJSON4)
     param->paramType = strdup("event");
     param->name = strdup("Event1");
     param->alias = strdup("EventMarker1");
+    param->trimParam = false;
+    param->regexParam = NULL;
     Vector_PushBack(paramNameList, param);
     profileValues *profVals = (profileValues *) malloc(sizeof(profileValues));
     profVals->paramValues = (tr181ValStruct_t**) malloc(sizeof(tr181ValStruct_t*));
@@ -482,7 +502,7 @@ TEST_F(reportgenTestFixture, encodeParamResultInJSON4)
     Vector_Destroy(paramValueList, freeProfileValues);
 }
 
-TEST_F(reportgenTestFixture, encodeParamResultInJSON5)
+TEST_F(reportgenTestFixture, encodeParamResultInJSON9)
 {
     Vector *paramNameList = NULL;
     Vector *paramValueList = NULL;
@@ -495,12 +515,17 @@ TEST_F(reportgenTestFixture, encodeParamResultInJSON5)
     param->paramType = strdup("event");
     param->name = strdup("Event1");
     param->alias = strdup("EventMarker1");
+    param->trimParam = false;
+    param->regexParam = NULL;
     Vector_PushBack(paramNameList, param);
     Param* param1 = (Param *) malloc(sizeof(Param));
     param1->reportEmptyParam = true;
     param1->paramType = strdup("event");
     param1->name = strdup("Event2");
     param1->alias = strdup("EventMarker2");
+    param1->trimParam = false;
+    param1->regexParam = NULL;
+
     Vector_PushBack(paramNameList, param1);
     profileValues *profVals = (profileValues *) malloc(sizeof(profileValues));
     profVals->paramValues = (tr181ValStruct_t**) malloc(2 * sizeof(tr181ValStruct_t*));
@@ -547,6 +572,8 @@ TEST_F(reportgenTestFixture,  encodeEventMarkersInJSON)
     eMarker->mType = MTYPE_COUNTER;
     eMarker->reportTimestampParam = REPORTTIMESTAMP_UNIXEPOCH;
     eMarker->u.count = 1;
+    eMarker->trimParam = false;
+    eMarker->regexParam = NULL;
     Vector_PushBack(eventMarkerList, eMarker);
     EXPECT_CALL(*m_reportgenMock,  cJSON_CreateObject())
             .Times(1)
@@ -570,6 +597,8 @@ TEST_F(reportgenTestFixture,  encodeEventMarkersInJSON1)
     eMarker->paramType = strdup("event");
     eMarker->markerName_CT = strdup("Event1_CT");
     eMarker->timestamp = strdup("162716381732");
+    eMarker->trimParam = false;
+    eMarker->regexParam = NULL;
     eMarker->mType = MTYPE_COUNTER;
     eMarker->reportTimestampParam = REPORTTIMESTAMP_UNIXEPOCH;
     eMarker->u.count = 1;
@@ -603,6 +632,8 @@ TEST_F(reportgenTestFixture,  encodeEventMarkersInJSON2)
     eMarker->mType = MTYPE_COUNTER;
     eMarker->reportTimestampParam = REPORTTIMESTAMP_UNIXEPOCH;
     eMarker->u.count = 1;
+    eMarker->trimParam = false;
+    eMarker->regexParam = NULL;
     Vector_PushBack(eventMarkerList, eMarker);
     cJSON* mockobj = (cJSON *) 0Xffffffff;
     EXPECT_CALL(*m_reportgenMock,  cJSON_CreateObject())
@@ -635,6 +666,8 @@ TEST_F(reportgenTestFixture,  encodeEventMarkersInJSON4)
     eMarker->mType = MTYPE_ABSOLUTE;
     eMarker->reportTimestampParam = REPORTTIMESTAMP_UNIXEPOCH;
     eMarker->u.markerValue = strdup("eventmissing");
+    eMarker->trimParam = false;
+    eMarker->regexParam = NULL;
     Vector_PushBack(eventMarkerList, eMarker);
     EXPECT_CALL(*m_reportgenMock,  cJSON_CreateObject())
             .Times(1)
@@ -662,6 +695,8 @@ TEST_F(reportgenTestFixture,  encodeEventMarkersInJSON5)
     eMarker->mType = MTYPE_ABSOLUTE;
     eMarker->reportTimestampParam = REPORTTIMESTAMP_UNIXEPOCH;
     eMarker->u.markerValue = strdup("eventmissing");
+    eMarker->trimParam = false;
+    eMarker->regexParam = NULL;
     Vector_PushBack(eventMarkerList, eMarker);
     cJSON* mockobj = (cJSON *) 0Xffffffff;
     EXPECT_CALL(*m_reportgenMock,  cJSON_CreateObject())
@@ -693,6 +728,8 @@ TEST_F(reportgenTestFixture,  encodeEventMarkersInJSON6)
     eMarker->mType = MTYPE_ABSOLUTE;
     eMarker->reportTimestampParam = REPORTTIMESTAMP_UNIXEPOCH;
     eMarker->u.markerValue = strdup("eventmissing");
+    eMarker->trimParam = false;
+    eMarker->regexParam = NULL;
     Vector_PushBack(eventMarkerList, eMarker);
     cJSON* mockobj = (cJSON *) 0Xffffffff;
     EXPECT_CALL(*m_reportgenMock,  cJSON_CreateObject())
@@ -723,6 +760,8 @@ TEST_F(reportgenTestFixture,  encodeEventMarkersInJSON8)
     eMarker->timestamp = NULL;
     eMarker->markerName_CT = NULL;
     eMarker->mType = MTYPE_ACCUMULATE;
+    eMarker->trimParam = false;
+    eMarker->regexParam = NULL;
     eMarker->reportTimestampParam = REPORTTIMESTAMP_UNIXEPOCH;
     Vector_Create(&eMarker->u.accumulatedValues);
     Vector_Create(&eMarker->accumulatedTimestamp);
@@ -755,6 +794,8 @@ TEST_F(reportgenTestFixture,  encodeEventMarkersInJSON9)
     eMarker->timestamp = NULL;
     eMarker->markerName_CT = NULL;
     eMarker->mType = MTYPE_ACCUMULATE;
+    eMarker->trimParam = false;
+    eMarker->regexParam = NULL;
     eMarker->reportTimestampParam = REPORTTIMESTAMP_UNIXEPOCH;
     Vector_Create(&eMarker->u.accumulatedValues);
     Vector_Create(&eMarker->accumulatedTimestamp);

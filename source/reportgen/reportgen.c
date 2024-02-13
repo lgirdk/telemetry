@@ -162,6 +162,34 @@ T2ERROR encodeParamResultInJSON(cJSON *valArray, Vector *paramNameList, Vector *
                     if(param->trimParam){
                         trimLeadingAndTrailingws(paramValues[0]->parameterValue);
                     }
+                    if(param->regexParam != NULL){
+                        regex_t regpattern;
+                        int rc = 0;
+                        size_t nmatch = 1;
+                        regmatch_t pmatch[2];
+			char string[256] = {'\0'};
+                        rc = regcomp(&regpattern, param->regexParam, REG_EXTENDED);
+                        if(rc != 0){
+                            T2Warning("regcomp() failed, returning nonzero (%d)\n", rc);
+                        }
+                        else{
+                            T2Debug("regcomp() successful, returning value (%d)\n", rc);
+                            rc = regexec(&regpattern, paramValues[0]->parameterValue, nmatch, pmatch, 0);
+                            if(rc != 0){
+                                T2Warning("regexec() failed, Failed to match '%s' with '%s',returning %d.\n", paramValues[0]->parameterValue, param->regexParam, rc);
+                                free(paramValues[0]->parameterValue);
+                                paramValues[0]->parameterValue = strdup("");
+                            }
+                            else{
+                                T2Debug("regexec successful, Match is found %.*s\n", pmatch[0].rm_eo - pmatch[0].rm_so, &paramValues[0]->parameterValue[pmatch[0].rm_so]);
+                                sprintf(string, "%.*s", pmatch[0].rm_eo - pmatch[0].rm_so, &paramValues[0]->parameterValue[pmatch[0].rm_so]);
+                                free(paramValues[0]->parameterValue);
+                                paramValues[0]->parameterValue = strdup(string);
+                            }
+                            regfree(&regpattern);
+                       }
+                    }
+
 		    if(cJSON_AddStringToObject(arrayItem, param->name, paramValues[0]->parameterValue)  == NULL){
                         T2Error("cJSON_AddStringToObject failed.\n");
                         cJSON_Delete(arrayItem);
@@ -196,6 +224,34 @@ T2ERROR encodeParamResultInJSON(cJSON *valArray, Vector *paramNameList, Vector *
 		        if(param->trimParam){
                                trimLeadingAndTrailingws(paramValues[valIndex]->parameterValue);
                         }
+                        if(param->regexParam != NULL){
+                            regex_t regpattern;
+                            int rc = 0;
+                            size_t nmatch = 1;
+                            regmatch_t pmatch[2];
+			    char string[256] = {'\0'};
+                            rc = regcomp(&regpattern, param->regexParam, REG_EXTENDED);
+                            if(rc != 0){
+                                T2Warning("regcomp() failed, returning nonzero (%d)\n", rc);
+                            }
+                            else{
+                                T2Debug("regcomp() successful, returning value (%d)\n", rc);
+                                rc = regexec(&regpattern, paramValues[valIndex]->parameterValue, nmatch, pmatch, 0);
+                                if(rc != 0){
+                                    T2Warning("regexec() failed, Failed to match '%s' with '%s',returning %d.\n", paramValues[valIndex]->parameterValue, param->regexParam, rc);
+                                    free(paramValues[valIndex]->parameterValue);
+                                    paramValues[valIndex]->parameterValue = strdup("");
+                                }
+                                else{
+                                    T2Debug("regexec successful, Match is found %.*s\n", pmatch[0].rm_eo - pmatch[0].rm_so, &paramValues[valIndex]->parameterValue[pmatch[0].rm_so]);
+                                    sprintf(string, "%.*s", pmatch[0].rm_eo - pmatch[0].rm_so, &paramValues[valIndex]->parameterValue[pmatch[0].rm_so]);
+                                    free(paramValues[valIndex]->parameterValue);
+                                    paramValues[valIndex]->parameterValue = strdup(string);
+			        }
+                                regfree(&regpattern);
+                           }
+                        }
+
                         if(cJSON_AddStringToObject(valItem, paramValues[valIndex]->parameterName, paramValues[valIndex]->parameterValue) == NULL){
                             T2Error("cJSON_AddStringToObject failed\n");
                             cJSON_Delete(arrayItem);
@@ -270,11 +326,38 @@ T2ERROR encodeGrepResultInJSON(cJSON *valArray, Vector *grepResult)
                 continue ;
             arrayItem = cJSON_CreateObject();
 	    if(arrayItem == NULL){
-                T2Error("cJSON_CreateObject failed.. arrayItem is NULL \n");
+                T2Error("cJSON_CreateObject failed..arrayItem is NULL \n");
                 return T2ERROR_FAILURE;
             }
             if(grep->trimParameter){
                 trimLeadingAndTrailingws((char*)grep->markerValue);
+            }
+            if(grep->regexParameter != NULL){
+                regex_t regpattern;
+                int rc = 0;
+                size_t nmatch = 1;
+                regmatch_t pmatch[2];
+                char string[256] = {'\0'};
+                rc = regcomp(&regpattern, grep->regexParameter, REG_EXTENDED);
+                if(rc != 0){
+                     T2Warning("regcomp() failed, returning nonzero (%d)\n", rc);
+                }
+                else{
+                     T2Debug("regcomp() successful, returning value (%d)\n", rc);
+                     rc = regexec(&regpattern, grep->markerValue, nmatch, pmatch, 0);
+                     if(rc != 0){
+                         T2Warning("regexec() failed, Failed to match '%s' with '%s',returning %d.\n", grep->markerValue, grep->regexParameter, rc);
+                         free((char*)grep->markerValue);
+                         grep->markerValue = strdup("");
+                     }
+                     else{
+                         T2Debug("regexec successful, Match is found %.*s\n", pmatch[0].rm_eo - pmatch[0].rm_so, &grep->markerValue[pmatch[0].rm_so]);
+                         sprintf(string, "%.*s", pmatch[0].rm_eo - pmatch[0].rm_so, &grep->markerValue[pmatch[0].rm_so]);
+                         free((char*)grep->markerValue);
+                         grep->markerValue = strdup(string);
+                     }
+                     regfree(&regpattern);
+                }
             }
             if(cJSON_AddStringToObject(arrayItem, grep->markerName, grep->markerValue)  == NULL){
                 T2Error("cJSON_AddStringToObject failed.\n");
@@ -315,6 +398,32 @@ T2ERROR encodeEventMarkersInJSON(cJSON *valArray, Vector *eventMarkerList)
                     if(eventMarker->trimParam){
                         trimLeadingAndTrailingws(stringValue);
                     }
+                    if(eventMarker->regexParam != NULL){
+                        regex_t regpattern;
+                        int rc = 0;
+                        size_t nmatch = 1;
+                        regmatch_t pmatch[2];
+                        char string[10] = {'\0'};
+                        rc = regcomp(&regpattern, eventMarker->regexParam, REG_EXTENDED);
+                        if(rc != 0){
+                            T2Warning("regcomp() failed, returning nonzero (%d)\n", rc);
+                        }
+                        else{
+                            T2Debug("regcomp() successful, returning value (%d)\n", rc);
+                            rc = regexec(&regpattern, stringValue, nmatch, pmatch, 0);
+                            if(rc != 0){
+                                T2Warning("regexec() failed, Failed to match '%s' with '%s',returning %d.\n", stringValue, eventMarker->regexParam, rc);
+                                strncpy(stringValue, "", 1);
+                            }
+                            else{
+                                T2Debug("regexec successful, Match is found %.*s\n", pmatch[0].rm_eo - pmatch[0].rm_so, &stringValue[pmatch[0].rm_so]);
+                                sprintf(string, "%.*s", pmatch[0].rm_eo - pmatch[0].rm_so, &stringValue[pmatch[0].rm_so]);
+                                strncpy(stringValue, string, strlen(string)+1);
+                            }
+                            regfree(&regpattern);
+                       }
+                    }
+
                     if (eventMarker->alias) {
                         if(cJSON_AddStringToObject(arrayItem, eventMarker->alias, stringValue) == NULL){
                              T2Error("cJSON_AddStringToObject failed\n");
@@ -362,7 +471,47 @@ T2ERROR encodeEventMarkersInJSON(cJSON *valArray, Vector *eventMarkerList)
                              trimLeadingAndTrailingws(stringValue);
                         }
                     }
-                    convertVectorToJson(vectorToarray, eventMarker->u.accumulatedValues);
+                    Vector* regaccumulateValues = NULL;
+                    if(eventMarker->regexParam != NULL){
+                        regex_t regpattern;
+                        int rc = 0;
+                        size_t nmatch = 1;
+                        regmatch_t pmatch[2];
+                        char string[21][256];
+                        memset(string, '\0', sizeof(char) * 21 * 256);
+                        rc = regcomp(&regpattern, eventMarker->regexParam, REG_EXTENDED);
+                        if(rc != 0){
+                            T2Warning("regcomp() failed, returning nonzero (%d)\n", rc);
+                        }
+                        else{
+                            T2Debug("regcomp() successful, returning value (%d)\n", rc);
+                            Vector_Create(&regaccumulateValues);
+                            for(int i=0;i<Vector_Size(eventMarker->u.accumulatedValues);i++){
+                                 char* stringValue = (char*)Vector_At(eventMarker->u.accumulatedValues, i);
+                                 rc = regexec(&regpattern, stringValue, nmatch, pmatch, 0);
+                                 if(strcmp(stringValue, "maximum accumulation reached") == 0){
+                                      sprintf(string[i], "%s", stringValue);
+                                 }
+                                 else if(rc != 0){
+                                     T2Warning("regexec() failed, Failed to match '%s' with '%s',returning %d.\n", stringValue, eventMarker->regexParam, rc);
+                                     sprintf(string[i], "%s", "");
+                                 }
+                                 else{
+                                     T2Debug("regexec successful, Match is found %.*s\n", pmatch[0].rm_eo - pmatch[0].rm_so, &stringValue[pmatch[0].rm_so]);
+                                     sprintf(string[i], "%.*s", pmatch[0].rm_eo - pmatch[0].rm_so, &stringValue[pmatch[0].rm_so]);
+                                 }
+                                 Vector_PushBack(regaccumulateValues, string[i]);
+                           }
+                           regfree(&regpattern);
+                        }
+                    }
+
+                    if(regaccumulateValues != NULL && Vector_Size(regaccumulateValues) > 0){
+                         convertVectorToJson(vectorToarray, regaccumulateValues);
+                    }
+                    else{
+                         convertVectorToJson(vectorToarray, eventMarker->u.accumulatedValues);
+                    }
                     Vector_Clear(eventMarker->u.accumulatedValues, freeAccumulatedParam);
                     T2Debug("eventMarker->reportTimestampParam type is %d \n", eventMarker->reportTimestampParam);
 
@@ -399,6 +548,33 @@ T2ERROR encodeEventMarkersInJSON(cJSON *valArray, Vector *eventMarkerList)
 		    }
                     if(eventMarker->trimParam){
                          trimLeadingAndTrailingws(eventMarker->u.markerValue);
+                    }
+		    if(eventMarker->regexParam != NULL){
+                        regex_t regpattern;
+                        int rc = 0;
+                        size_t nmatch = 1;
+                        regmatch_t pmatch[2];
+                        char string[256] = {'\0'};
+                        rc = regcomp(&regpattern, eventMarker->regexParam, REG_EXTENDED);
+                        if(rc != 0){
+                            T2Warning("regcomp() failed, returning nonzero (%d)\n", rc);
+                        }
+                        else{
+                            T2Debug("regcomp() successful, returning value (%d)\n", rc);
+                            rc = regexec(&regpattern, eventMarker->u.markerValue, nmatch, pmatch, 0);
+                            if(rc != 0){
+                                T2Warning("regexec() failed, Failed to match '%s' with '%s',returning %d.\n", eventMarker->u.markerValue, eventMarker->regexParam, rc);
+                                free(eventMarker->u.markerValue);
+                                eventMarker->u.markerValue = strdup("");
+                            }
+                            else{
+                                T2Debug("regexec successful, Match is found %.*s\n", pmatch[0].rm_eo - pmatch[0].rm_so, &eventMarker->u.markerValue[pmatch[0].rm_so]);
+                                sprintf(string, "%.*s", pmatch[0].rm_eo - pmatch[0].rm_so, &eventMarker->u.markerValue[pmatch[0].rm_so]);
+                                free(eventMarker->u.markerValue);
+                                eventMarker->u.markerValue = strdup(string);
+                            }
+                            regfree(&regpattern);
+                       }
                     }
                     if (eventMarker->alias) {
                         if(cJSON_AddStringToObject(arrayItem, eventMarker->alias, eventMarker->u.markerValue) == NULL){

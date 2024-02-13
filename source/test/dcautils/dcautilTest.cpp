@@ -162,22 +162,22 @@ class dcaTestFixture : public ::testing::Test {
 GList *pch = NULL;
 TEST(INSERTPCNODE, PATT_NULL)
 {
-   EXPECT_EQ(0, insertPCNode(&pch, NULL, "SYS_INFO", STR, 0, "SYS_INFO_DATA", true));
+   EXPECT_EQ(0, insertPCNode(&pch, NULL, "SYS_INFO", STR, 0, "SYS_INFO_DATA", true, NULL));
 }
 
 TEST(INSERTPCNODE, HEAD_NULL)
 {
-   EXPECT_EQ(0, insertPCNode(&pch, "info is", NULL, STR, 0, "SYS_INFO_DATA", true));
+   EXPECT_EQ(0, insertPCNode(&pch, "info is", NULL, STR, 0, "SYS_INFO_DATA", true, NULL));
 }
 
 TEST(INSERTPCNODE, DATA_NULL)
 {
-   EXPECT_EQ(0, insertPCNode(&pch, "info is", "SYS_INFO", STR, 0, NULL, false));
+   EXPECT_EQ(0, insertPCNode(&pch, "info is", "SYS_INFO", STR, 0, NULL, false, NULL));
 }
 
 TEST(INSERTPCNODE, APPEND_CHECK)
 {
-   EXPECT_EQ(0, insertPCNode(&pch,  NULL, NULL, STR, 0, NULL, false));
+   EXPECT_EQ(0, insertPCNode(&pch,  NULL, NULL, STR, 0, NULL, false, NULL));
 }
 
 TEST(COMPAREPATTERN, NP_SP_NULL_CHECK)
@@ -202,19 +202,19 @@ TEST(SEARCHPCNODE, NULL_CHECK)
 
 TEST(GETPROCUSAGE, GREPRESULTLIST_NULL)
 {
-   EXPECT_EQ(-1, getProcUsage("telemetry2_0", NULL, false));
+   EXPECT_EQ(-1, getProcUsage("telemetry2_0", NULL, false, NULL));
 }
 
 TEST(GETPROCUSAGE, GREPRESULTLIST_NULL_1)
 {
-   EXPECT_EQ(-1, getProcUsage("telemetry2_0", NULL, true));
+   EXPECT_EQ(-1, getProcUsage("telemetry2_0", NULL, true, NULL));
 }
 
 TEST(GETPROCUSAGE, PROCESS_NULL)
 {
    Vector* gresulist = NULL;
    Vector_Create(&gresulist);
-   EXPECT_EQ(-1, getProcUsage(NULL, gresulist, false));
+   EXPECT_EQ(-1, getProcUsage(NULL, gresulist, false, NULL));
    Vector_Destroy(gresulist, free);
    gresulist = NULL;
 }
@@ -223,7 +223,7 @@ TEST(GETPROCUSAGE, PROCESS_NULL_1)
 {
    Vector* gresulist = NULL;
    Vector_Create(&gresulist);
-   EXPECT_EQ(-1, getProcUsage(NULL, gresulist, true));
+   EXPECT_EQ(-1, getProcUsage(NULL, gresulist, true, NULL));
    Vector_Destroy(gresulist, free);
    gresulist = NULL;
 }
@@ -317,7 +317,7 @@ TEST(UPDATELOGSEEK, LOGSEEKMAP_NULL)
 
 TEST(GETLOADAVG, VECTOR_NULL)
 {
-    EXPECT_EQ(0, getLoadAvg(NULL, false));
+    EXPECT_EQ(0, getLoadAvg(NULL, false, NULL));
 }
 
 TEST(GETLOGLINE, NAME_NULL)
@@ -559,7 +559,7 @@ TEST_F(dcaFileTestFixture, getLoadAvg)
     EXPECT_CALL(*g_ffileIOMock, fopen(_,_))
             .Times(1)
             .WillOnce(Return(fp));
-    EXPECT_EQ(0, getLoadAvg(grepResultList, false));
+    EXPECT_EQ(0, getLoadAvg(grepResultList, false, NULL));
 }
 
 TEST_F(dcaFileTestFixture, getLoadAvg1)
@@ -576,7 +576,7 @@ TEST_F(dcaFileTestFixture, getLoadAvg1)
     EXPECT_CALL(*g_ffileIOMock, fclose(_))
             .Times(1)
             .WillOnce(Return(0));
-    EXPECT_EQ(0, getLoadAvg(grepResultList, false));
+    EXPECT_EQ(0, getLoadAvg(grepResultList, false, NULL));
 }
 
 TEST_F(dcaFileTestFixture, getLoadAvg2)
@@ -587,7 +587,7 @@ TEST_F(dcaFileTestFixture, getLoadAvg2)
     EXPECT_CALL(*g_ffileIOMock, fopen(_,_))
             .Times(1)
             .WillOnce(Return(fp));
-    EXPECT_EQ(0, getLoadAvg(grepResultList, true));
+    EXPECT_EQ(0, getLoadAvg(grepResultList, true, "[0-9]*"));
 }
 
 TEST_F(dcaFileTestFixture, getLoadAvg3)
@@ -604,7 +604,7 @@ TEST_F(dcaFileTestFixture, getLoadAvg3)
     EXPECT_CALL(*g_ffileIOMock, fclose(_))
             .Times(1)
             .WillOnce(Return(0));
-    EXPECT_EQ(0, getLoadAvg(grepResultList, true));
+    EXPECT_EQ(0, getLoadAvg(grepResultList, true, "[0-9]+"));
 }
 
 

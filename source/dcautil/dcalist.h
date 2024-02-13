@@ -57,11 +57,12 @@ typedef struct pclist {
     char *data;
   };
   bool trimparam;
+  char* regexparam;
 } pcdata_t;
 
 extern GList *pchead;
 
-int insertPCNode(GList **pch, char *pattern, char *header, DType_t dtype, int count, char *data, bool trim);
+int insertPCNode(GList **pch, char *pattern, char *header, DType_t dtype, int count, char *data, bool trim, char *regex);
 pcdata_t* searchPCNode(GList *pch, char *pattern);
 void printPCNodes(GList *pch);
 void clearPCNodes(GList **pch);

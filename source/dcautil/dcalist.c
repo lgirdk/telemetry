@@ -57,7 +57,7 @@
  *
  * @return  Returns the value of rc.
  */
-int insertPCNode(GList **pch, char *pattern, char *header, DType_t dtype, int count, char *data, bool trim)
+int insertPCNode(GList **pch, char *pattern, char *header, DType_t dtype, int count, char *data, bool trim, char* regex)
 {
   pcdata_t *new = NULL;
   int rc = -1;
@@ -85,7 +85,7 @@ int insertPCNode(GList **pch, char *pattern, char *header, DType_t dtype, int co
       }
     }
     new->trimparam = trim;
-
+    new->regexparam = regex;
     *pch = g_list_append(*pch , new);
     rc = 0;
   }

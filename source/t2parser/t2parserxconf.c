@@ -76,6 +76,7 @@ static T2ERROR addParameter(ProfileXConf *profile, const char* name, const char*
         memset(param, 0, sizeof(Param));
         param->name = strdup(name);
         param->alias = strdup(ref);
+        param->regexParam = NULL; 
 
         Vector_PushBack(profile->paramList, param);
     }
@@ -88,6 +89,7 @@ static T2ERROR addParameter(ProfileXConf *profile, const char* name, const char*
         memset(eMarker, 0, sizeof(EventMarker));
         eMarker->markerName = strdup(name);
         eMarker->compName = strdup(ref);
+        eMarker->regexParam = NULL;
         splitSuffix = strstr(name, SPLITMARKER_SUFFIX);
         accumulateSuffix = strstr(name, ACCUMULATE_MARKER_SUFFIX);
         if(splitSuffix != NULL && strcmp(splitSuffix, SPLITMARKER_SUFFIX) == 0)
@@ -119,6 +121,7 @@ static T2ERROR addParameter(ProfileXConf *profile, const char* name, const char*
         gMarker->searchString = strdup(ref);
         gMarker->logFile = strdup(fileName);
         gMarker->firstSeekFromEOF = 0;// memset will already set to 0 just a safeguard
+        gMarker->regexParam = NULL;
         splitSuffix = strstr(name, SPLITMARKER_SUFFIX);
         if(splitSuffix != NULL && strcmp(splitSuffix, SPLITMARKER_SUFFIX) == 0)
         {

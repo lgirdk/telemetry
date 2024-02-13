@@ -143,7 +143,7 @@ static T2ERROR addRbusMethodParameter(Profile *profile, const char* name, const 
 }
 
 static T2ERROR addParameter(Profile *profile, const char* name, const char* ref, const char* fileName, int skipFreq, int firstSeekFromEOF, const char* ptype,
-        const char* use, bool ReportEmpty, reportTimestampFormat reportTimestamp, bool trim) {
+        const char* use, bool ReportEmpty, reportTimestampFormat reportTimestamp, bool trim, const char* regex) {
 
     T2Debug("%s ++in\n", __FUNCTION__);
     char* value = NULL;
@@ -178,7 +178,10 @@ static T2ERROR addParameter(Profile *profile, const char* name, const char* ref,
             param->paramType = strdup(ptype);
             param->reportEmptyParam = ReportEmpty;
             param->trimParam = trim; //RDKB-53161
-
+            param->regexParam = NULL;
+            if(regex != NULL){
+                param->regexParam = strdup(regex);
+            }
             Vector_PushBack(profile->paramList, param);
         }
     }else if(!(strcmp(ptype, "event"))) {
@@ -199,6 +202,10 @@ static T2ERROR addParameter(Profile *profile, const char* name, const char* ref,
         eMarker->trimParam = trim; //RDKB-53161
         eMarker->markerName_CT = NULL;
         eMarker->timestamp = NULL;
+        eMarker->regexParam = NULL;
+        if(regex != NULL){
+            eMarker->regexParam = strdup(regex);
+        }
         eMarker->reportTimestampParam = reportTimestamp;
         if((use == NULL) || (0 == strcmp(use, "absolute"))) {
             eMarker->mType = MTYPE_ABSOLUTE;
@@ -238,7 +245,10 @@ static T2ERROR addParameter(Profile *profile, const char* name, const char* ref,
         gMarker->paramType = strdup(ptype);
         gMarker->reportEmptyParam = ReportEmpty;
         gMarker->trimParam = trim;
-
+        gMarker->regexParam = NULL;
+        if(regex != NULL){
+            gMarker->regexParam = strdup(regex);
+        }
         if((use == NULL) || (0 == strcmp(use, "absolute"))) {
             gMarker->mType = MTYPE_ABSOLUTE;
             gMarker->u.markerValue = NULL;
@@ -613,6 +623,7 @@ T2ERROR addParameter_marker_config(Profile* profile, cJSON *jprofileParameter, i
     char* header = NULL;
     char* content = NULL;
     char* logfile = NULL;
+    char* regex = NULL;
     int skipFrequency = 0;
     int firstSeekFromEOF = 0;
     size_t profileParamCount = 0;
@@ -656,6 +667,11 @@ T2ERROR addParameter_marker_config(Profile* profile, cJSON *jprofileParameter, i
                 trim =  cJSON_IsTrue(jpSubitemtrim);
             }
 	    T2Debug("trimParam: %u\n", trim);
+            cJSON *jpSubitemregex = cJSON_GetObjectItem(pSubitem, "regex");
+            if(jpSubitemregex){
+                regex = jpSubitemregex->valuestring;
+            }
+            T2Debug("regexParam: %s\n", regex);
             if(!(strcmp(paramtype, "dataModel"))) { /*Marker is TR181 param*/
                 cJSON *jpSubitemname = cJSON_GetObjectItem(pSubitem, "name");
                 if(jpSubitemname) {
@@ -747,7 +763,7 @@ T2ERROR addParameter_marker_config(Profile* profile, cJSON *jprofileParameter, i
             T2Debug("%s : reportTimestamp = %d\n", __FUNCTION__, rtformat);
             //CID 337454: Explicit null dereferenced (FORWARD_NULL) ;CID 337448: Explicit null dereferenced (FORWARD_NULL)
             if (content != NULL && header != NULL){
-                ret = addParameter(profile, header, content, logfile, skipFrequency, firstSeekFromEOF, paramtype, use, reportEmpty, rtformat, trim); //add Multiple Report Profile Parameter
+                ret = addParameter(profile, header, content, logfile, skipFrequency, firstSeekFromEOF, paramtype, use, reportEmpty, rtformat, trim, regex); //add Multiple Report Profile Parameter
             }
             else{
                 T2Error("%s Error in adding parameter to profile %s \n", __FUNCTION__, profile->name); // header and content is mandatory for adding the parameter
@@ -1468,6 +1484,7 @@ T2ERROR addParameterMsgpack_marker_config(Profile* profile, msgpack_object* valu
     msgpack_object *Parameter_method_str;
     msgpack_object *Parameter_reportEmpty_boolean;
     msgpack_object *Parameter_trim_boolean;
+    msgpack_object *Parameter_regex_str;
     msgpack_object *Parameter_reportTimestamp_str;
     msgpack_object *Parameter_firstSeekFromEOF_int;
 
@@ -1500,6 +1517,7 @@ T2ERROR addParameterMsgpack_marker_config(Profile* profile, msgpack_object* valu
         char* method;
         bool reportEmpty;
         bool trim;
+        char* regex;
         int skipFrequency;
         int firstSeekFromEOF;
         reportTimestampFormat rtformat;
@@ -1514,6 +1532,7 @@ T2ERROR addParameterMsgpack_marker_config(Profile* profile, msgpack_object* valu
         method = NULL;
         reportEmpty = false;
         trim = false;
+        regex = NULL;
         rtformat =  REPORTTIMESTAMP_NONE;
 
         Parameter_array_map = msgpack_get_array_element(Parameter_array, i);
@@ -1538,6 +1557,13 @@ T2ERROR addParameterMsgpack_marker_config(Profile* profile, msgpack_object* valu
         MSGPACK_GET_NUMBER(Parameter_trim_boolean, trim);
         T2Debug("trimParam: %u\n", trim);
 
+        Parameter_regex_str =  msgpack_get_map_value(Parameter_array_map, "regex");
+        msgpack_print(Parameter_regex_str, msgpack_get_obj_name(Parameter_regex_str));
+        if(Parameter_regex_str != NULL){
+             regex = msgpack_strdup(Parameter_regex_str);
+             T2Debug("regex param = %s\n", regex);
+        }
+
         if(0 == msgpack_strcmp(Parameter_type_str, "dataModel")) {
             Parameter_name_str = msgpack_get_map_value(Parameter_array_map, "name");
             msgpack_print(Parameter_name_str, msgpack_get_obj_name(Parameter_name_str));
@@ -1555,6 +1581,9 @@ T2ERROR addParameterMsgpack_marker_config(Profile* profile, msgpack_object* valu
                  }
                  if(use != NULL){
                       free(use);
+                 }
+                 if(regex != NULL){
+                      free(regex);
                  }
                  continue;
             }
@@ -1634,12 +1663,15 @@ T2ERROR addParameterMsgpack_marker_config(Profile* profile, msgpack_object* valu
             T2Error("%s Unknown parameter type %s \n", __FUNCTION__, paramtype);
             free(paramtype);
             free(use);
+            if(regex != NULL){
+                free(regex);
+            }
             continue;
         }
 
         T2Debug("%s : reportTimestamp = %d\n", __FUNCTION__, rtformat);
         if(header != NULL && content != NULL){
-            ret = addParameter(profile, header, content, logfile, skipFrequency, firstSeekFromEOF, paramtype, use, reportEmpty, rtformat, trim);
+            ret = addParameter(profile, header, content, logfile, skipFrequency, firstSeekFromEOF, paramtype, use, reportEmpty, rtformat, trim, regex);
         }
         else{
             T2Error("%s Error in adding parameter to profile %s \n", __FUNCTION__, profile->name); // header and content is mandatory for adding the parameter
@@ -1660,6 +1692,9 @@ T2ERROR addParameterMsgpack_marker_config(Profile* profile, msgpack_object* valu
             }
             if(method != NULL){
                 free(method);
+            }
+            if(regex != NULL){
+                free(regex);
             }
             continue;
         }

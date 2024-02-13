@@ -87,3 +87,29 @@ extern "C" void cJSON_Delete(cJSON * root)
         m_reportgenMock->cJSON_Delete(root);
 }
 
+extern "C" int regcomp(regex_t *preg, const char *pattern, int cflags)
+{
+        if(!m_reportgenMock)
+        {
+               return -1;
+        }
+        m_reportgenMock->regcomp(preg, pattern, cflags);
+}
+
+extern "C" int regexec(const regex_t *preg, const char *string, size_t nmatch, regmatch_t pmatch[], int eflags)
+{
+        if(!m_reportgenMock)
+        {
+               return -1;
+        }
+        m_reportgenMock->regexec(preg, string, nmatch, pmatch, eflags);
+}
+
+extern "C"  void regfree(regex_t *preg)
+{
+        if(!m_reportgenMock)
+        {
+               return;
+        }
+         m_reportgenMock->regfree(preg);
+}

@@ -87,7 +87,7 @@ int processTopPattern(char *logfile, GList *pchead, int pcIndex, Vector* grepRes
         tmp = tlist->data;
         if(NULL != tmp) {
             if((NULL != tmp->header) && (NULL != strstr(tmp->header, "Load_Average"))) {
-                if(0 == getLoadAvg(grepResultList, tmp->trimparam)) {
+                if(0 == getLoadAvg(grepResultList, tmp->trimparam, tmp->regexparam)) {
                     T2Debug("getLoadAvg() Failed with error");
                 }
             }else {
@@ -96,10 +96,10 @@ int processTopPattern(char *logfile, GList *pchead, int pcIndex, Vector* grepRes
                      #if !defined(ENABLE_RDKC_SUPPORT) && !defined(ENABLE_RDKB_SUPPORT)
                      pthread_mutex_lock(&topOutputMutex);
                      saveTopOutput();
-                     getProcUsage(tmp->pattern, grepResultList, tmp->trimparam);
+                     getProcUsage(tmp->pattern, grepResultList, tmp->trimparam, tmp->regexparam);
                      pthread_mutex_unlock(&topOutputMutex);
                      #else
-                     getProcUsage(tmp->pattern, grepResultList, tmp->trimparam);
+                     getProcUsage(tmp->pattern, grepResultList, tmp->trimparam, tmp->regexparam);
                      #endif
                     
                 }
@@ -309,6 +309,7 @@ static int addToVector(GList *pchead, Vector* grepResultList) {
                         grepResult->markerName = strdup(tmp->header);
                         grepResult->markerValue = strdup(tmp_str);
                         grepResult->trimParameter = tmp->trimparam;
+                        grepResult->regexParameter = tmp->regexparam;
                         if(tmp->header){
                                 free(tmp->header);
                                 tmp->header = NULL;
@@ -322,6 +323,7 @@ static int addToVector(GList *pchead, Vector* grepResultList) {
                         grepResult->markerName = strdup(tmp->header);
                         grepResult->markerValue = strdup(tmp->data);
                         grepResult->trimParameter = tmp->trimparam;
+                        grepResult->regexParameter = tmp->regexparam;
                         if(tmp->header){
                                 free(tmp->header);
                                 tmp->header = NULL;
@@ -463,8 +465,8 @@ static int handleRDKErrCodes(GList **rdkec_head, char *line) {
         if(NULL != tnode) {
             tnode->count++;
         }else {
-            /* Args:  GList **pch, char *pattern, char *header, DType_t dtype, int count, char *data */
-            insertPCNode(rdkec_head, rdkec, rdkec, OCCURENCE, 1, NULL, false);
+            /* Args:  GList **pch, char *pattern, char *header, DType_t dtype, int count, char *data bool trim char* regex */
+            insertPCNode(rdkec_head, rdkec, rdkec, OCCURENCE, 1, NULL, false, NULL);
         }
         T2Debug("%s --out\n", __FUNCTION__);
         return 0;
@@ -666,6 +668,7 @@ static int parseMarkerList(char* profileName, Vector* vMarkerList, Vector* grepR
         char *temp_pattern = markerList->searchString;
         char *temp_file = markerList->logFile;
 	bool trim = markerList->trimParam;
+        char *regex = markerList->regexParam;
         tmp_skip_interval = markerList->skipFreq;
 
         DType_t dtype;
@@ -706,7 +709,7 @@ static int parseMarkerList(char* profileName, Vector* vMarkerList, Vector* grepR
 
         // TODO optimize the list search in US
         if(is_skip_param == 0) {
-            if(0 == insertPCNode(&pchead, temp_pattern, temp_header, dtype, 0, NULL, trim)) {
+            if(0 == insertPCNode(&pchead, temp_pattern, temp_header, dtype, 0, NULL, trim, regex)) {
                 pcIndex = 1;
                 processPattern(&prevfile, filename, &rdkec_head, pchead, pcIndex, grepResultList, gsProfile->logFileSeekMap, &(markerList->firstSeekFromEOF), gsProfile->execCounter);
                 pchead = NULL;

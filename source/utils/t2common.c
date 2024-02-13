@@ -33,6 +33,8 @@ void freeParam(void *data)
             free((char*)param->alias);
         if(param->paramType)
             free(param->paramType);
+        if(param->regexParam)
+            free(param->regexParam);
         free(param);
     }
 }
@@ -74,6 +76,9 @@ void freeEMarker(void *data)
                 free(eMarker->timestamp);
             }
         }
+        if(eMarker->regexParam != NULL){
+            free(eMarker->regexParam);
+        }
         if(eMarker->mType == MTYPE_ABSOLUTE && eMarker->u.markerValue)
             free(eMarker->u.markerValue);
         if(eMarker->mType == MTYPE_ACCUMULATE && eMarker->u.accumulatedValues) {
@@ -109,6 +114,8 @@ void freeGMarker(void *data)
             free(gMarker->paramType);
         if(gMarker->mType == MTYPE_ABSOLUTE && gMarker->u.markerValue)
             free(gMarker->u.markerValue);
+        if(gMarker->regexParam != NULL)
+            free(gMarker->regexParam);
         free(gMarker);
     }
 }

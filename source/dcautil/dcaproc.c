@@ -77,7 +77,7 @@
  * @retval  0 on sucess, appropiate errorcode otherwise.
  */
 
-int getProcUsage(char *processName, Vector* grepResultList, bool trim) {
+int getProcUsage(char *processName, Vector* grepResultList, bool trim, char* regex) {
     T2Debug("%s ++in \n", __FUNCTION__);
     if(grepResultList == NULL || processName == NULL){
         T2Error("Invalid arguments for getProcUsage\n");
@@ -233,6 +233,7 @@ int getProcUsage(char *processName, Vector* grepResultList, bool trim) {
                     cpuInfo->markerName = strdup(cpu_key);
                     cpuInfo->markerValue = strdup(pInfo.cpuUse);
                     cpuInfo->trimParameter = trim;
+                    cpuInfo->regexParameter = regex;
                     Vector_PushBack(grepResultList, cpuInfo);
                 }
 
@@ -241,6 +242,7 @@ int getProcUsage(char *processName, Vector* grepResultList, bool trim) {
                     memInfo->markerName = strdup(mem_key);
                     memInfo->markerValue = strdup(pInfo.memUse);
 		    memInfo->trimParameter = trim;
+		    memInfo->regexParameter = regex;
                     Vector_PushBack(grepResultList, memInfo);
                 }
 

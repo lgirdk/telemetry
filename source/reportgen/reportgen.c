@@ -485,9 +485,10 @@ T2ERROR encodeEventMarkersInJSON(cJSON *valArray, Vector *eventMarkerList)
                             T2Warning("regcomp() failed, returning nonzero (%d)\n", rc);
                         }
                         else{
+                            int i;
                             T2Debug("regcomp() successful, returning value (%d)\n", rc);
                             Vector_Create(&regaccumulateValues);
-                            for(int i=0;i<Vector_Size(eventMarker->u.accumulatedValues);i++){
+                            for(i = 0; i < Vector_Size(eventMarker->u.accumulatedValues); i++) {
                                  char* stringValue = (char*)Vector_At(eventMarker->u.accumulatedValues, i);
                                  rc = regexec(&regpattern, stringValue, nmatch, pmatch, 0);
                                  if(strcmp(stringValue, "maximum accumulation reached") == 0){

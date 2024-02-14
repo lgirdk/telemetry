@@ -357,7 +357,8 @@ T2ERROR encodeEventMarkersInJSON(cJSON *valArray, Vector *eventMarkerList)
                         return T2ERROR_FAILURE;
                     }
                     if(eventMarker->trimParam){
-                        for(int i=0;i<Vector_Size(eventMarker->u.accumulatedValues);i++){
+                        int i;
+                        for(i = 0; i < Vector_Size(eventMarker->u.accumulatedValues); i++) {
                              char* stringValue = (char*)Vector_At(eventMarker->u.accumulatedValues, i);
                              trimLeadingAndTrailingws(stringValue);
                         }

@@ -43,7 +43,7 @@
 #include "telemetry2_0.h"
 #include "busInterface.h"
 #include "curlinterface.h"
-#include "t2commonutils.h"
+#include "t2common.h"
 
 #define RFC_RETRY_TIMEOUT 60
 #define XCONF_RETRY_TIMEOUT 180

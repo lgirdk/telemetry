@@ -27,7 +27,6 @@
 #include "reportprofiles.h"
 #include "t2log_wrapper.h"
 #include "t2common.h"
-#include "t2commonutils.h"
 
 #define MT_EVENT_PATTERN   "<event>"
 #define MT_EVENT_PATTERN_LENGTH 7

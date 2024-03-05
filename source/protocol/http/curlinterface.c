@@ -36,7 +36,7 @@
 #include "reportprofiles.h"
 #include "t2MtlsUtils.h"
 #include "t2log_wrapper.h"
-#include "t2commonutils.h"
+#include "t2common.h"
 #include "busInterface.h"
 
 extern sigset_t blocking_signal;

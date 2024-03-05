@@ -35,7 +35,7 @@
 #include "vector.h"
 #include "dcautil.h"
 #include "t2parserxconf.h"
-#include "t2commonutils.h"
+#include "t2common.h"
 
 #define T2REPORT_HEADER "T2"
 #define T2REPORT_HEADERVAL  "1.0"

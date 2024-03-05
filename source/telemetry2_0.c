@@ -58,7 +58,7 @@
 #include "breakpadwrap.h"
 #endif
 #endif
-#include "t2commonutils.h"
+#include "t2common.h"
 
 #define MAX_PARAMETERNAME_LEN    512
 /*Define signals properly to make sure they don't get overide anywhere*/

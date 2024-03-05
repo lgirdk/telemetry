@@ -57,7 +57,7 @@ static bool isRFCT2Enable = false ;
 static bool isT2Ready = false;
 static bool getParamStatus = false;
 static bool isRbusEnabled = false ;
-static bool cachestart = false;
+static int count = 0;
 static pthread_mutex_t initMtx = PTHREAD_MUTEX_INITIALIZER;
 static bool isMutexInitialized = false ;
 
@@ -285,7 +285,6 @@ void *cacheEventToFile(void *arg)
         fl.l_pid = 0;
         FILE *fs = NULL;
         char path[100];
-        int count = 0;
         pthread_detach(pthread_self());
         EVENT_ERROR("%s:%d, Caching the event to File\n", __func__, __LINE__);
 	if(telemetry_data == NULL)
@@ -320,19 +319,16 @@ void *cacheEventToFile(void *arg)
                EVENT_ERROR("%s: File open error %s\n", __FUNCTION__, T2_CACHE_FILE);
                goto unlock;
         }
-        if(cachestart){
-              fs = popen ("cat /tmp/t2_caching_file | wc -l","r");
-	      if(fs != NULL){
-                   fgets(path,100,fs);
-                   count = atoi ( path );
-                   pclose(fs);
-              }
+        fs = popen ("cat /tmp/t2_caching_file | wc -l","r");
+        if(fs != NULL){
+            fgets(path,100,fs);
+            count = atoi ( path );
+            pclose(fs);
         }
         if(count < MAX_EVENT_CACHE){
-             fprintf(fp, "%s\n", telemetry_data);
-             cachestart = true;
+            fprintf(fp, "%s\n", telemetry_data);
         }else{
-             EVENT_ERROR("Reached Max cache limit of 200, dropping\n");
+            EVENT_DEBUG("Reached Max cache limit of 200, Caching is not done\n");
         }
         fclose(fp);
 

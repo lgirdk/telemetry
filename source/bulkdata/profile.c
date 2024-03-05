@@ -1354,9 +1354,14 @@ T2ERROR appendTriggerCondition (Profile *tempProfile, const char *referenceName,
 
             T2Debug("%s : Unlock on triggerConditionQueMutex\n", __FUNCTION__);
             pthread_mutex_unlock(&triggerConditionQueMutex);
+            
+            /* ref CMXB7-5973 Commenting following code as this is causing crash, we can't free triggerCond here as this 
+            has been added to the queue, this is freed in the reportGenerationCompleteReceiver function after queue pop 
+            
             if(triggerCond != NULL) {
             free(triggerCond);//CID 335291: Resource leak (RESOURCE_LEAK)
-          }
+            }
+            */
 
         } else {
             T2Warning("%s : Failed to get a lock on triggerConditionQueMutex for condition %s \n ", __FUNCTION__, referenceName);

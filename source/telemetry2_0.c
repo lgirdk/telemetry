@@ -113,15 +113,15 @@ static void terminate()
     }
 
     if(remove("/tmp/.t2ReadyToReceiveEvents") != 0) {
-        T2Error("removing the file /tmp/.t2ReadyToReceiveEvents failed!\n");
+        printf("removing the file /tmp/.t2ReadyToReceiveEvents failed!\n");
     }
 
     if(remove("/tmp/telemetry_initialized_bootup") != 0) {
-        T2Error("removing the file /tmp/telemetry_initialized_bootup failed!\n");
+        printf("removing the file /tmp/telemetry_initialized_bootup failed!\n");
     }
 
     if(remove(T2_CONFIG_READY) != 0) {
-        T2Error("removing the file T2_CONFIG_READY failed!\n");
+        printf("removing the file T2_CONFIG_READY failed!\n");
     }
 }
 static void _print_stack_backtrace(void)

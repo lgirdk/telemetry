@@ -174,6 +174,8 @@ static T2ERROR initJSONReportXconf(cJSON** jsonObj, cJSON **valArray)
 
 static void* CollectAndReportXconf(void* data)
 {
+    static int upload_attemptCount;
+
     pthread_mutex_lock(&plMutex);
     ProfileXConf* profile = singleProfile;
     if(profile == NULL){
@@ -318,11 +320,11 @@ static void* CollectAndReportXconf(void* data)
               // Save messages from cache to a file in persistent location.
               saveCachedReportToPersistenceFolder(profile->name, profile->cachedReportList);
 
-              snprintf(buf,sizeof(buf),"%d",Vector_Size(profile->cachedReportList));
+              upload_attemptCount++;
            }
            else
            {
-               snprintf(buf,sizeof(buf),"%d",Vector_Size(profile->cachedReportList)+1);
+               upload_attemptCount = 0;
 
                if (profile->cachedReportList != NULL && Vector_Size(profile->cachedReportList) > 0)
                {
@@ -335,6 +337,7 @@ static void* CollectAndReportXconf(void* data)
                }
            }
 
+           snprintf(buf, sizeof(buf), "%d", upload_attemptCount);
            telemetry_syscfg_set("upload_attemptCount", buf);
         }
         else

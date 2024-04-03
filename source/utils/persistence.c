@@ -358,3 +358,84 @@ T2ERROR populateCachedReportList(const char *profileName, Vector *outReportList)
     T2Debug("%s --out\n", __FUNCTION__);
     return ret;
 }
+
+//Privacy mode functions
+T2ERROR setPrivacyMode(char* data)
+{
+    T2Info("Privacy Mode is %s\n", data);
+    if(savePrivacyModeToPersistentFolder(data) != T2ERROR_FAILURE){
+        T2Info("savePrivacyModeToPersistentFolder is successful\n");
+        return T2ERROR_SUCCESS;
+    }
+    return T2ERROR_FAILURE;
+}
+
+T2ERROR savePrivacyModeToPersistentFolder(char *data)
+{
+    T2Debug("%s ++in\n", __FUNCTION__);
+    clearPersistenceFolder(PRIVACYMODE_PATH);
+    DIR *dir = opendir(PRIVACYMODE_PATH);
+    FILE *fp = NULL;
+    char filePath[256] = {'\0'};
+    if(dir == NULL){
+        T2Info("Persistence folder %s not present, creating folder\n", PRIVACYMODE_PATH);
+        if(mkdir(PRIVACYMODE_PATH, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH) != 0) {
+            T2Error("%s,%d: Failed to make directory : %s  \n", __FUNCTION__, __LINE__, PRIVACYMODE_PATH);
+            return T2ERROR_FAILURE;
+        }
+    }else {
+        closedir(dir);
+    }
+    #if defined(DROP_ROOT_PRIV)
+      #ifdef LIBSYSWRAPPER_BUILD
+       v_secure_system("chmod 777 %s", PRIVACYMODE_PATH);
+      #else
+       char cmd[512];
+       snprintf(cmd,sizeof(cmd),"chmod 777 %s", PRIVACYMODE_PATH);
+       system(cmd);
+      #endif
+    #endif
+    
+    snprintf(filePath, sizeof(filePath), "%s/%s", PRIVACYMODE_PATH, "privacymodes.txt");
+    fp = fopen(filePath, "w+");
+    if(fp == NULL)
+    {
+        T2Error("Unable to write to file : %s\n", filePath);
+        return T2ERROR_FAILURE;
+    }
+    fprintf(fp, "%s", data);
+    if(fclose(fp) != 0){
+          T2Error("Unable to close file : %s\n", filePath);
+          return T2ERROR_FAILURE;
+    }
+
+    T2Debug("%s --out\n", __FUNCTION__);
+    return T2ERROR_SUCCESS;
+}
+
+void getPrivacyMode(char **privMode)
+{
+    T2Debug("%s ++in\n", __FUNCTION__);
+    FILE *fp = NULL;
+    char filePath[256] = {'\0'};
+    char data[20] = {'\0'};
+    struct stat filestat;
+    snprintf(filePath, sizeof(filePath), "%s/%s", PRIVACYMODE_PATH, "privacymodes.txt");
+    fp = fopen(filePath, "r+");
+    if(fp == NULL)
+    {
+        T2Error("Unable to open the file : %s\n", filePath);
+        *privMode = strdup("SHARE");
+	T2Info("privacy mode is %s\n", *privMode);
+        return;
+    }
+    stat(filePath, &filestat);
+    fread(data, sizeof(char), filestat.st_size, fp);
+    *privMode = strdup(data);
+    if(fclose(fp) != 0){
+          T2Error("Unable to close file : %s\n", filePath);
+          return;
+    }
+    T2Debug("%s --out\n", __FUNCTION__);
+    return;
+}

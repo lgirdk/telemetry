@@ -65,7 +65,6 @@ static const int MAX_URL_ARG_LEN = 128;
 static int xConfRetryCount = 0;
 static bool stopFetchRemoteConfiguration = false;
 static bool isXconfInit = false ;
-
 static pthread_t xcrThread;
 static pthread_mutex_t xcMutex;
 static pthread_mutex_t xcThreadMutex;
@@ -257,6 +256,7 @@ static T2ERROR appendRequestParams(char *buf, const int maxArgLen) {
         return T2ERROR_FAILURE;
     }
 
+ 
     if(T2ERROR_SUCCESS == getParameterValue(TR181_DEVICE_WAN_MAC, &paramVal)) {
         memset(tempBuf, 0, MAX_URL_ARG_LEN);
         write_size = snprintf(tempBuf, MAX_URL_ARG_LEN, "estbMacAddress=%s&", paramVal);
@@ -376,9 +376,27 @@ static T2ERROR appendRequestParams(char *buf, const int maxArgLen) {
 	     goto error;
      }
 #endif
-     strncat(buf,"version=2", avaBufSize);
+    strncat(buf,"version=2", avaBufSize);
+    slen = strlen("version=2");
+    avaBufSize = avaBufSize - slen;
     T2Debug("%s:%d Final http get URL if size %d is : \n %s \n", __func__,
             __LINE__, avaBufSize, buf);
+#if defined(PRIVACYMODES_CONTROL)
+    if(T2ERROR_SUCCESS == getParameterValue(PRIVACYMODES_RFC, &paramVal)) {
+        memset(tempBuf, 0, MAX_URL_ARG_LEN);
+        write_size = snprintf(tempBuf, MAX_URL_ARG_LEN, "&privacyModes=%s", paramVal);
+        strncat(buf, tempBuf, avaBufSize);
+        avaBufSize = avaBufSize - write_size;
+        free(paramVal);
+        paramVal = NULL;
+    } else {
+          T2Error("Failed to get Value for %s\n", PRIVACYMODES_RFC);
+          ret = T2ERROR_FAILURE;
+          goto error;
+    }
+    T2Debug("%s:%d Final http get URL when privacymode is enabled of size %d is : \n %s \n", __func__,
+            __LINE__, avaBufSize, buf);
+#endif
 error:
     if (NULL != tempBuf) {
         free(tempBuf);

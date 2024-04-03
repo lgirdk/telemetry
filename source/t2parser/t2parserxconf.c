@@ -23,6 +23,7 @@
 
 #include "t2parserxconf.h"
 #include "xconfclient.h"
+#include "rbusInterface.h"
 #include "busInterface.h"
 #include "reportprofiles.h"
 #include "t2log_wrapper.h"
@@ -34,7 +35,7 @@
 #define MT_TR181PATAM_PATTERN_LENGTH 13
 #define SPLITMARKER_SUFFIX  "_split"
 #define ACCUMULATE_MARKER_SUFFIX  "_accum"
-
+#define MAX_PARAM_LEN 15
 #define XCONF_END_POINT_PARAMETER "Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.TelemetryEndpoint.URL"
 #define MAX_END_POINT_LEN 128
 
@@ -202,6 +203,22 @@ T2ERROR processConfigurationXConf(char* configData, ProfileXConf **localProfile)
     Vector_Create(&profile->gMarkerList);
     Vector_Create(&profile->cachedReportList);
 
+#if defined(PRIVACYMODES_CONTROL)
+    char* paramValue = NULL;
+    getParameterValue(PRIVACYMODES_RFC, &paramValue);
+    if(strncmp(paramValue, "DO_NOT_SHARE", MAX_PARAM_LEN) == 0){
+        addParameter(profile, "PrivacyMode", PRIVACYMODES_RFC, NULL, -1);
+    }
+    else{
+        addParameter(profile, "mac", TR181_DEVICE_WAN_MAC, NULL, -1);
+        addParameter(profile, "StbIp", TR181_DEVICE_WAN_IPv6, NULL, -1);
+        addParameter(profile, "PartnerId", TR181_DEVICE_PARTNER_ID, NULL, -1);
+        addParameter(profile, "Version", TR181_DEVICE_FW_VERSION, NULL, -1);
+        addParameter(profile, "AccountId", TR181_DEVICE_ACCOUNT_ID, NULL, -1);
+    }
+    free(paramValue);
+    paramValue = NULL;
+#else
     addParameter(profile, "mac", TR181_DEVICE_WAN_MAC, NULL, -1);
 #if defined(ENABLE_RDKB_SUPPORT)
     addParameter(profile, "erouterIpv4", TR181_DEVICE_WAN_IPv4, NULL, -1);
@@ -215,7 +232,7 @@ T2ERROR processConfigurationXConf(char* configData, ProfileXConf **localProfile)
     addParameter(profile, "PartnerId", TR181_DEVICE_PARTNER_ID, NULL, -1);
     addParameter(profile, "Version", TR181_DEVICE_FW_VERSION, NULL, -1);
     addParameter(profile, "AccountId", TR181_DEVICE_ACCOUNT_ID, NULL, -1);
-
+#endif
     int markerIndex = 0;
     char* header = NULL;
     char* content = NULL;

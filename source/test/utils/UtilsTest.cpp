@@ -790,3 +790,105 @@ TEST_F(UtilsTestFixture, POPULATECACHE)
         Vector_Destroy(outReportlist, free);
 }
 
+#if defined(PRIVACYMODES_CONTROL)
+char* privacymode = "SHARE";
+
+#if defined(DROP_ROOT_PRIV)
+#ifdef LIBSYSWRAPPER_BUILD
+TEST_F(UtilsTestFixture, SETPRIVACYMODE1)
+{
+    DIR* dir = (DIR *)0xffffffff;
+    EXPECT_CALL(*g_fileIOMock, opendir(_))
+                .Times(1)
+                .WillOnce(Return(dir));
+    EXPECT_CALL(*g_SystemMock, v_secure_system(_))
+                .Times(1)
+                .WillOnce(Return(-1));
+    EXPECT_CALL(*g_fileIOMock, fopen(_,_))
+                .Times(1)
+                .WillOnce(testing::ReturnNull());
+    ASSERT_EQ(T2ERROR_FAILURE, setPrivacyMode(privacymode));
+}
+#else
+TEST_F(UtilsTestFixture, SETPRIVACYMODE1)
+{
+    DIR* dir = (DIR *)0xffffffff;
+    EXPECT_CALL(*g_fileIOMock, opendir(_))
+                .Times(1)
+                .WillOnce(Return(dir));
+    EXPECT_CALL(*g_SystemMock, system(_))
+                .Times(1)
+                .WillOnce(Return(-1));
+    EXPECT_CALL(*g_fileIOMock, fopen(_,_))
+                .Times(1)
+                .WillOnce(testing::ReturnNull());
+    ASSERT_EQ(T2ERROR_FAILURE, setPrivacyMode(privacymode));
+}
+#endif
+#endif
+
+
+TEST_F(UtilsFileTestFixture, SETPRIVACYMODE2)
+{
+    EXPECT_CALL(*g_fileIOMock, opendir(_))
+                .Times(1)
+                .WillOnce(testing::ReturnNull());
+    EXPECT_CALL(*g_fileIOMock, mkdir(_,_))
+                .Times(1)
+                .WillOnce(Return(-1));
+
+     ASSERT_EQ(T2ERROR_FAILURE, setPrivacyMode(privacymode));
+}
+
+#if defined(DROP_ROOT_PRIV)
+#ifdef LIBSYSWRAPPER_BUILD
+TEST_F(UtilsTestFixture, SETPRIVACYMODE3)
+{
+    DIR* dir = (DIR *)0xffffffff;
+    FILE *fp = (FILE *) 0xffffffff;
+    EXPECT_CALL(*g_fileIOMock, opendir(_))
+                .Times(1)
+                .WillOnce(Return(dir));
+    EXPECT_CALL(*g_SystemMock, v_secure_system(_))
+                .Times(1)
+                .WillOnce(Return(-1));
+    EXPECT_CALL(*g_fileIOMock, fopen(_,_))
+                .Times(1)
+                .WillOnce(Return(fp));
+    EXPECT_CALL(*g_fileIOMock, fclose(_))
+                .Times(1)
+                .WillOnce(Return(-1));
+    ASSERT_EQ(T2ERROR_FAILURE, setPrivacyMode(privacymode));
+}
+#else
+TEST_F(UtilsTestFixture, SETPRIVACYMODE3)
+{
+    DIR* dir = (DIR *)0xffffffff;
+    EXPECT_CALL(*g_fileIOMock, opendir(_))
+                .Times(1)
+                .WillOnce(Return(dir));
+    EXPECT_CALL(*g_SystemMock, system(_))
+                .Times(1)
+                .WillOnce(Return(-1));
+    EXPECT_CALL(*g_fileIOMock, fopen(_,_))
+                .Times(1)
+                .WillOnce(Return(fp));
+    EXPECT_CALL(*g_fileIOMock, fclose(_))
+                .Times(1)
+                .WillOnce(Return(-1));
+    ASSERT_EQ(T2ERROR_FAILURE, setPrivacyMode(privacymode));
+}
+#endif
+#endif
+
+char* privMode = NULL;
+TEST_F(UtilsFileTestFixture, GETPRIVACYMODE1)
+{
+    EXPECT_CALL(*g_fileIOMock, fopen(_,_))
+                .Times(1)
+                .WillOnce(testing::ReturnNull());
+    getPrivacyMode(&privMode);
+    EXPECT_NE(*privMode, NULL);
+}
+
+#endif

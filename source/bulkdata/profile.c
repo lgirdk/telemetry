@@ -46,7 +46,9 @@ static pthread_mutex_t reportLock;
 
 static pthread_mutex_t triggerConditionQueMutex = PTHREAD_MUTEX_INITIALIZER;
 static queue_t *triggerConditionQueue = NULL;
-
+#if defined(PRIVACYMODES_CONTROL)
+static char* paramValue = NULL;
+#endif
 
 typedef struct __triggerConditionObj__ {
     char referenceName[MAX_LEN];
@@ -1127,6 +1129,15 @@ static void loadReportProfilesFromDisk()
     }
     T2Info("JSON: loadReportProfilesFromDisk \n");
 #endif
+#if defined(PRIVACYMODES_CONTROL)
+    getParameterValue(PRIVACYMODES_RFC, &paramValue);
+    if(strcmp(paramValue, "DO_NOT_SHARE") == 0){
+        T2Warning("PrivacyModes is DO_NOT_SHARE. Reportprofiles is not supported\n");
+        free(paramValue);
+        paramValue = NULL;
+        return;
+    }
+#endif
 
     int configIndex = 0;
     Vector *configList = NULL;
@@ -1136,12 +1147,13 @@ static void loadReportProfilesFromDisk()
     Vector_Create(&configList);
     fetchLocalConfigs(REPORTPROFILES_PERSISTENCE_PATH, configList);
 
-     for(; configIndex < Vector_Size(configList); configIndex++)
-     {
+    for(; configIndex < Vector_Size(configList); configIndex++)
+    {
          config = Vector_At(configList, configIndex);
          Profile *profile = 0;
          T2Debug("Processing config with name : %s\n", config->name);
          T2Debug("Config Size = %lu\n", (unsigned long)strlen(config->configData));
+
          if(T2ERROR_SUCCESS == processConfiguration(&config->configData, config->name, NULL, &profile))
          {
              if(T2ERROR_SUCCESS == addProfile(profile))
@@ -1160,11 +1172,11 @@ static void loadReportProfilesFromDisk()
                  T2Error("Unable to create and add new profile for name : %s\n", config->name);
              }
          }
-     }
-     T2Info("Completed processing %lu profiles on the disk,trying to fetch new/updated profiles\n", (unsigned long)Vector_Size(configList));
-     T2totalmem_calculate();
-     Vector_Destroy(configList, freeReportProfileConfig);
-     clearPersistenceFolder(CACHED_MESSAGE_PATH);
+    }
+    T2Info("Completed processing %lu profiles on the disk,trying to fetch new/updated profiles\n", (unsigned long)Vector_Size(configList));
+    T2totalmem_calculate();
+    Vector_Destroy(configList, freeReportProfileConfig);
+    clearPersistenceFolder(CACHED_MESSAGE_PATH);
 
     T2Debug("%s --out\n", __FUNCTION__);
 }

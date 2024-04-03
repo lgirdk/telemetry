@@ -36,7 +36,7 @@
 #define buffLen 1024
 #define maxParamLen 128
 
-#define NUM_PROFILE_ELEMENTS 6
+#define NUM_PROFILE_ELEMENTS 7
 
 #define RBUS_METHOD_TIMEOUT 10
 #define MAX_REPORT_TIMEOUT 50
@@ -52,7 +52,13 @@ static hash_map_t *compTr181ParamMap = NULL;
 static profilememCallBack profilememUsedCallBack;
 static dataModelReportOnDemandCallBack reportOnDemandCallBack;
 static triggerReportOnCondtionCallBack reportOnConditionCallBack;
-
+static xconfPrivacyModesDoNotShareCallBack privacyModesDoNotShareCallBack;
+static t2PrivacyModesCallBack pmPrivacyModesCallBack;
+static t2SavedPrivacyModesCallBack pmSavedPrivacyModesCallBack;
+static ReportProfilesDeleteDNDCallBack mprofilesDeleteCallBack;
+#if defined(PRIVACYMODES_CONTROL)
+static char* privacyModeVal = NULL;
+#endif
 static char* reportProfileVal = NULL ;
 static char* tmpReportProfileVal = NULL ;
 static char* reportProfilemsgPckVal = NULL ;
@@ -321,7 +327,7 @@ rbusError_t t2PropertyDataSetHandler(rbusHandle_t handle, rbusProperty_t prop, r
     char const* paramName = rbusProperty_GetName(prop);
     if((strncmp(paramName, T2_EVENT_PARAM, maxParamLen) != 0) && (strncmp(paramName, T2_REPORT_PROFILE_PARAM, maxParamLen) != 0)
             && (strncmp(paramName, T2_REPORT_PROFILE_PARAM_MSG_PCK, maxParamLen) != 0)
-            && (strncmp(paramName, T2_TEMP_REPORT_PROFILE_PARAM, maxParamLen) != 0) && (strncmp(paramName, T2_TOTAL_MEM_USAGE, maxParamLen) != 0)) {
+            && (strncmp(paramName, T2_TEMP_REPORT_PROFILE_PARAM, maxParamLen) != 0) && (strncmp(paramName, T2_TOTAL_MEM_USAGE, maxParamLen) != 0) && (strncmp(paramName, PRIVACYMODES_RFC, maxParamLen) != 0)) {
         T2Debug("Unexpected parameter = %s \n", paramName);
         T2Debug("%s --out\n", __FUNCTION__);
         return RBUS_ERROR_ELEMENT_DOES_NOT_EXIST;
@@ -456,6 +462,40 @@ rbusError_t t2PropertyDataSetHandler(rbusHandle_t handle, rbusProperty_t prop, r
             T2Debug("Unexpected value type for property %s \n", paramName);
         }
     }
+#if defined(PRIVACYMODES_CONTROL)
+    else if(strncmp(paramName, PRIVACYMODES_RFC, maxParamLen) == 0) {
+        if(type_t == RBUS_STRING) {
+            T2Debug("Inside datamodel handler for privacymodes profile \n");
+            char* data = rbusValue_ToString(paramValue_t, NULL, 0);
+            if(privacyModeVal != NULL){
+                free(privacyModeVal);
+                privacyModeVal = NULL;
+	    }
+            if((strcmp(data, "SHARE") != 0) && (strcmp(data, "DO_NOT_SHARE") != 0)){
+                  T2Info("Unexpected privacy Mode value %s\n", data);
+                  free(data);
+                  return RBUS_ERROR_INVALID_INPUT;
+	    }
+	    privacyModeVal = strdup(data);
+	    free(data);
+	    T2Debug("PrivacyMode data is %s\n", privacyModeVal);
+            if(T2ERROR_SUCCESS != pmPrivacyModesCallBack(privacyModeVal))
+            {
+                  return RBUS_ERROR_INVALID_INPUT;
+	    }
+            if(strcmp(privacyModeVal, "DO_NOT_SHARE") == 0){
+                 if(mprofilesDeleteCallBack(privacyModeVal)  != T2ERROR_SUCCESS){
+                     return RBUS_ERROR_INVALID_INPUT;
+                 }
+            }
+            if(privacyModesDoNotShareCallBack(privacyModeVal) != T2ERROR_SUCCESS){
+                 return RBUS_ERROR_INVALID_INPUT;
+	    }
+        } else {
+            T2Debug("Unexpected value type for property %s \n", paramName);
+        }
+    }
+#endif
     T2Debug("%s --out\n", __FUNCTION__);
     return RBUS_ERROR_SUCCESS;
 }
@@ -548,7 +588,26 @@ rbusError_t t2PropertyDataGetHandler(rbusHandle_t handle, rbusProperty_t propert
         rbusValue_SetUInt32(value, t2MemUsage);
         rbusProperty_SetValue(property, value);
         rbusValue_Release(value);
-    }else {
+    }
+#if defined(PRIVACYMODES_CONTROL)
+    else if(strncmp(propertyName, PRIVACYMODES_RFC, maxParamLen) == 0) {
+        rbusValue_t value;
+        rbusValue_Init(&value);
+        if(privacyModeVal != NULL){
+            rbusValue_SetString(value, privacyModeVal);
+	}else{
+            char *data = NULL;
+            (*pmSavedPrivacyModesCallBack)(&data);
+            if(data != NULL){
+                T2Debug("Privacy mode fetched  from the persistent folder is %s\n", data);
+                rbusValue_SetString(value, data);
+            }
+	}
+        rbusProperty_SetValue(property, value);
+        rbusValue_Release(value);
+    }
+#endif
+    else {
         // START : Extract component name requesting for event marker list
         if(compTr181ParamMap != NULL)
             componentName = (char*) hash_map_get(compTr181ParamMap, propertyName);
@@ -922,6 +981,7 @@ T2ERROR regDEforProfileDataModel(callBackHandlers* cbHandlers) {
     char deTotalMemUsage[125] = { '\0' };
     char deReportonDemand[125] = { '\0' };
     char deAbortReportonDemand[125] = { '\0' };
+    char dePrivacyModesnotshare[125] = { '\0' };
 
     rbusError_t ret = RBUS_ERROR_SUCCESS;
     T2ERROR status = T2ERROR_SUCCESS;
@@ -948,6 +1008,18 @@ T2ERROR regDEforProfileDataModel(callBackHandlers* cbHandlers) {
 
     if(cbHandlers->dmMsgPckCallBackHandler)
         dmMsgPckProcessingCallBack = cbHandlers->dmMsgPckCallBackHandler;
+    
+    if(cbHandlers->privacyModesDoNotShare)
+        privacyModesDoNotShareCallBack = cbHandlers->privacyModesDoNotShare;
+
+    if(cbHandlers->privacymode)
+        pmPrivacyModesCallBack = cbHandlers->privacymode;
+
+    if(cbHandlers->privacymodeSaved)
+        pmSavedPrivacyModesCallBack = cbHandlers->privacymodeSaved;
+
+    if(cbHandlers->mprofilesdeleteDoNotShare)
+        mprofilesDeleteCallBack = cbHandlers->mprofilesdeleteDoNotShare;
 
     snprintf(deNameSpace, 124 , "%s", T2_REPORT_PROFILE_PARAM);
     snprintf(deMsgPck, 124 , "%s", T2_REPORT_PROFILE_PARAM_MSG_PCK);
@@ -955,6 +1027,7 @@ T2ERROR regDEforProfileDataModel(callBackHandlers* cbHandlers) {
     snprintf(deTotalMemUsage, 124 , "%s", T2_TOTAL_MEM_USAGE);
     snprintf(deReportonDemand, 124 , "%s", T2_ON_DEMAND_REPORT);
     snprintf(deAbortReportonDemand, 124 , "%s", T2_ABORT_ON_DEMAND_REPORT);
+    snprintf(dePrivacyModesnotshare, 124 , "%s", PRIVACYMODES_RFC);
 
     if(!t2bus_handle && T2ERROR_SUCCESS != rBusInterface_Init()) {
         T2Error("%s Failed in getting bus handles \n", __FUNCTION__);
@@ -968,7 +1041,8 @@ T2ERROR regDEforProfileDataModel(callBackHandlers* cbHandlers) {
         {deTmpNameSpace, RBUS_ELEMENT_TYPE_PROPERTY, {t2PropertyDataGetHandler, t2PropertyDataSetHandler, NULL, NULL, NULL, NULL}},
         {deTotalMemUsage, RBUS_ELEMENT_TYPE_PROPERTY, {t2PropertyDataGetHandler, NULL, NULL, NULL, NULL, NULL}},
         {deReportonDemand, RBUS_ELEMENT_TYPE_METHOD, {NULL, NULL, NULL, NULL, NULL, dcmOnDemandMethodHandler}},
-        {deAbortReportonDemand, RBUS_ELEMENT_TYPE_METHOD, {NULL, NULL, NULL, NULL, NULL, dcmOnDemandMethodHandler}}
+        {deAbortReportonDemand, RBUS_ELEMENT_TYPE_METHOD, {NULL, NULL, NULL, NULL, NULL, dcmOnDemandMethodHandler}},
+        {dePrivacyModesnotshare, RBUS_ELEMENT_TYPE_PROPERTY, {t2PropertyDataGetHandler, t2PropertyDataSetHandler, NULL, NULL, NULL, NULL}}
     };
     ret = rbus_regDataElements(t2bus_handle, NUM_PROFILE_ELEMENTS, dataElements);
     if(ret == RBUS_ERROR_SUCCESS) {
@@ -1310,6 +1384,7 @@ rbusError_t t2TriggerConditionGetHandler(rbusHandle_t handle, rbusProperty_t pro
     rbusValue_Release(value);
     return RBUS_ERROR_SUCCESS;
 }
+
 
 T2ERROR rbusMethodCaller(char *methodName, rbusObject_t* inputParams, char* payload, rbusMethodCallBackPtr rbusMethodCallBack ) {
     T2Debug("%s ++in\n", __FUNCTION__);

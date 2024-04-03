@@ -28,6 +28,8 @@
 #include <unistd.h>
 #include <sys/time.h>
 #include <sys/resource.h>
+#include <fcntl.h>
+#include <sys/stat.h>
 #include "reportprofiles.h"
 
 #include "xconfclient.h"
@@ -83,7 +85,9 @@ pthread_mutex_t rpMutex = PTHREAD_MUTEX_INITIALIZER;
 T2ERROR RemovePreRPfromDisk(const char* path , hash_map_t *map);
 static bool isT2MtlsEnable = false;
 static bool initT2MtlsEnable = false;
-
+#if defined(PRIVACYMODES_CONTROL)
+static char* paramValue = NULL;
+#endif
 struct rusage pusage;
 unsigned int profilemem=0;
 
@@ -403,6 +407,23 @@ static void* reportOnDemand(void *input) {
     T2Debug("%s --out\n", __FUNCTION__);
 }
 
+T2ERROR privacymode_do_not_share (void* input)
+{
+      T2Debug("%s ++in\n", __FUNCTION__);
+     #ifndef DEVICE_EXTENDER
+     stopXConfClient();
+     if(T2ERROR_SUCCESS == startXConfClient()) {
+         T2Info("XCONF Fetch with privacymode is enabled \n");
+     }else {
+         T2Info("XCONF Fetch - IN PROGRESS ... Ignore current reload request \n");
+        return T2ERROR_FAILURE;
+     }
+     return T2ERROR_SUCCESS;
+     #endif
+     T2Debug("%s --out\n", __FUNCTION__);
+     return T2ERROR_SUCCESS;
+}
+
 T2ERROR initReportProfiles()
 {
     T2Debug("%s ++in\n", __FUNCTION__);
@@ -413,6 +434,18 @@ T2ERROR initReportProfiles()
     if(isMtlsEnabled() == true){
         initMtls();
     }
+#if defined (PRIVACYMODES_CONTROL)
+    DIR *dir = opendir(PRIVACYMODE_PATH);
+    if(dir == NULL){
+        T2Info("Persistence folder %s not present, creating folder\n", PRIVACYMODE_PATH);
+        if(mkdir(PRIVACYMODE_PATH, S_IRWXU | S_IRWXG | S_IRWXO) != 0) {
+            T2Error("%s,%d: Failed to make directory : %s  \n", __FUNCTION__, __LINE__, PRIVACYMODE_PATH);
+        }
+    }else {
+        closedir(dir);
+    }
+#endif
+
     rpInitialized = true;
 
     bulkdata.enable = false;
@@ -432,13 +465,10 @@ T2ERROR initReportProfiles()
     drop_root();
     #endif
 
-    #ifndef DEVICE_EXTENDER
-    ProfileXConf_init();
-    #endif
     t2Version = strdup("2.0.1"); // Setting the version to 2.0.1
     {
         T2Debug("T2 Version = %s\n", t2Version);
-        initProfileList();
+        //initProfileList();
         free(t2Version);
         // Init datamodel processing thread
         if (T2ERROR_SUCCESS == datamodel_init())
@@ -457,7 +487,10 @@ T2ERROR initReportProfiles()
                     interfaceListForBus->dmSavedMsgPackCallBack = datamodel_getSavedMsgpackProfilesasString;
                     interfaceListForBus->pmCallBack = profilemem_usage;
                     interfaceListForBus->reportonDemand = reportOnDemand;
-
+                    interfaceListForBus->privacyModesDoNotShare = privacymode_do_not_share;
+		    interfaceListForBus->privacymode = setPrivacyMode;
+                    interfaceListForBus->privacymodeSaved = getPrivacyMode;
+                    interfaceListForBus->mprofilesdeleteDoNotShare =  deleteAllReportProfiles;
                     regDEforProfileDataModel(interfaceListForBus);
 
                     free(interfaceListForBus);
@@ -501,9 +534,11 @@ T2ERROR initReportProfiles()
         {
             T2Error("Unable to start message processing thread!!! \n");
         }
-
+        initProfileList();
     }
-
+    #ifndef DEVICE_EXTENDER
+    ProfileXConf_init();
+    #endif
     if(ProfileXConf_isSet() || getProfileCount() > 0) {
 
         if(isRbusEnabled()){
@@ -537,6 +572,7 @@ void generateDcaReport(bool isDelayed, bool isOnDemand) {
         ProfileXConf_notifyTimeout(false, isOnDemand);
     }
 }
+
 
 T2ERROR ReportProfiles_uninit( ) {
     T2Debug("%s ++in\n", __FUNCTION__);
@@ -653,7 +689,7 @@ static void freeReportProfileHashMap(void *data) {
     T2Debug("%s --out\n", __FUNCTION__);
 }
 
-static T2ERROR deleteAllReportProfiles() {
+T2ERROR deleteAllReportProfiles() {
     T2Debug("%s ++in\n", __FUNCTION__);
 
     if (T2ERROR_SUCCESS != deleteAllProfiles(true)) {
@@ -686,7 +722,15 @@ void ReportProfiles_ProcessReportProfilesBlob(cJSON *profiles_root , bool rprofi
         T2Debug("%s --out\n", __FUNCTION__);
         return;
     }
-
+#if defined(PRIVACYMODES_CONTROL)
+    getParameterValue(PRIVACYMODES_RFC, &paramValue);
+    if(strcmp(paramValue, "DO_NOT_SHARE") == 0){
+        T2Warning("Privacy Mode is DO_NOT_SHARE. Reportprofiles is not supported\n");
+        free(paramValue);
+        paramValue = NULL;
+        return;
+    }
+#endif
     cJSON *profilesArray = cJSON_GetObjectItem(profiles_root, "profiles");
     int profiles_count = cJSON_GetArraySize(profilesArray);
 
@@ -991,6 +1035,15 @@ void ReportProfiles_ProcessReportProfilesMsgPackBlob(char *msgpack_blob , int ms
 
 int __ReportProfiles_ProcessReportProfilesMsgPackBlob(void *msgpack)
 {
+#if defined(PRIVACYMODES_CONTROL)
+    getParameterValue(PRIVACYMODES_RFC, &paramValue);
+    if(strcmp(paramValue, "DO_NOT_SHARE") == 0){
+        T2Warning("Privacy Mode is DO_NOT_SHARE. Reportprofiles is not supported\n");
+        free(paramValue);
+        paramValue = NULL;
+        return T2ERROR_SUCCESS;
+    }
+#endif
     char *msgpack_blob = ((struct __msgpack__ *)msgpack)->msgpack_blob;
     int msgpack_blob_size = ((struct __msgpack__ *)msgpack)->msgpack_blob_size;
 

@@ -62,6 +62,14 @@ typedef void (*profilememCallBack) (unsigned int *value);
 
 typedef void* (*dataModelReportOnDemandCallBack) (void* input);
 
+typedef T2ERROR (*xconfPrivacyModesDoNotShareCallBack) (void* input);
+
+typedef T2ERROR (*t2PrivacyModesCallBack)(char* privmodestr);
+
+typedef void (*t2SavedPrivacyModesCallBack)(char **privmodestr);
+
+typedef T2ERROR (*ReportProfilesDeleteDNDCallBack) (void* input);
+
 typedef T2ERROR (*triggerReportOnCondtionCallBack)(const char *referenceName, const char *referenceValue);
 
 typedef struct _callbackhandler {
@@ -72,6 +80,10 @@ typedef struct _callbackhandler {
     dataModelSavedMsgPackCallBack dmSavedMsgPackCallBack;
     profilememCallBack pmCallBack;
     dataModelReportOnDemandCallBack reportonDemand;
+    xconfPrivacyModesDoNotShareCallBack privacyModesDoNotShare;
+    t2PrivacyModesCallBack privacymode;
+    t2SavedPrivacyModesCallBack privacymodeSaved;
+    ReportProfilesDeleteDNDCallBack mprofilesdeleteDoNotShare;
 } callBackHandlers;
 
 

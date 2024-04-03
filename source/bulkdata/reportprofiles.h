@@ -84,6 +84,8 @@ T2ERROR initReportProfiles();
 
 T2ERROR ReportProfiles_uninit();
 
+T2ERROR deleteAllReportProfiles();
+
 void ReportProfiles_ProcessReportProfilesBlob(cJSON *profiles_root , bool rprofiletypes);
 
 void ReportProfiles_Interrupt();
@@ -107,6 +109,9 @@ bool isMtlsEnabled(void);
 void profilemem_usage(unsigned int *value);
 
 void T2totalmem_calculate();
+#if defined(PRIVACYMODES_CONTROL)
+void createPrivacyModepath();
+#endif
 
 #define msgpack_get_obj_name(obj) #obj
 

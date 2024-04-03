@@ -18,7 +18,6 @@
  */
 
 #include "t2parser.h"
-#include "t2common.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <limits.h>

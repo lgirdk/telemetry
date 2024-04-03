@@ -26,7 +26,6 @@ SUBDIRS += test
 endif
 
 AM_CFLAGS =
-AM_CFLAGS += -DCCSP_INC_no_asm_sigcontext_h
 
 ACLOCAL_AMFLAGS = -I m4
 
@@ -53,7 +52,7 @@ telemetry2_0_CPPFLAGS = -fPIC -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/dbus-1.0 
                                 -I${top_srcdir}/source/interChipHelper
 telemetry2_0_LDFLAGS = -lrdkloggers -lcjson -lwebconfig_framework
 if ENABLE_CCSP_SUPPORT
-telemetry2_0_LDFLAGS+=-lccsp_common 
+telemetry2_0_LDFLAGS += -lccsp_common
 telemetry2_0_SOURCES += t2ssp/ssp_main.c t2ssp/ssp_action.c t2ssp/ssp_messagebus_interface.c t2ssp/dm_pack_datamodel.c
 telemetry2_0_CPPFLAGS += -I${top_srcdir}/source/t2ssp \
                                 -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/ccsp

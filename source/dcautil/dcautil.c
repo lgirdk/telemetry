@@ -88,6 +88,7 @@ static T2ERROR getInterChipDCAResult(char* profileName, cJSON** pdcaResultObj, b
         struct stat filestat;
         int status;
         char* line;
+        char* dcaResultObjText = NULL;
         status = stat(TELEMTERY_LOG_GREP_RESULT, &filestat);
         if(status == 0) {
 
@@ -101,8 +102,10 @@ static T2ERROR getInterChipDCAResult(char* profileName, cJSON** pdcaResultObj, b
                 fread(line, sizeof(char), filestat.st_size, grepResultFp);
                 line[filestat.st_size] = '\0';
                 *pdcaResultObj = cJSON_Parse(line);
-                T2Debug("DCA result from ATOM is : \n %s \n", cJSON_PrintUnformatted(*pdcaResultObj));
+                dcaResultObjText = cJSON_PrintUnformatted(*pdcaResultObj);
+                T2Debug("DCA result from ATOM is : \n %s \n", dcaResultObjText);
                 free(line);
+                cJSON_free(dcaResultObjText);
             } else {
                 T2Info("Unable to allocate memory to read data from %s \n", TELEMTERY_LOG_GREP_RESULT );
             }
@@ -213,9 +216,9 @@ getGrepResults (char *profileName, Vector *markerList, Vector **grepResultList, 
                 Vector_Create(&vgrepResult);
 
             for (count = 0; count < dataCount; count++) {
-                GrepResult* grepResult = (GrepResult*) malloc(sizeof(GrepResult));
                 cJSON* pSubitem = cJSON_GetArrayItem(dcaMsgArray, count);
                 if (NULL != pSubitem && NULL != pSubitem->child) {
+                    GrepResult* grepResult = (GrepResult*) malloc(sizeof(GrepResult));
                     grepResult->markerName = strdup(pSubitem->child->string);
                     grepResult->markerValue = strdup(pSubitem->child->valuestring);
                     grepResult->trimParameter = false;

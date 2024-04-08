@@ -203,6 +203,7 @@ static T2ERROR saveDcaGrepResults() {
     char *profileName = NULL;
     bool isClearSeekMap = false;
     cJSON* dcaResultObj = NULL;
+    char *resultObjText = NULL;
     FILE *profileFp = fopen(TELEMETRY_GREP_PROFILE_NAME, "r");
     if (profileFp) {
         if (NULL != fgets(line, MAX_LINE_LEN, profileFp)) {
@@ -236,12 +237,14 @@ static T2ERROR saveDcaGrepResults() {
     }
 
     if(NULL != dcaResultObj) {
-        T2Debug("ATOM Data from dca : \n %s \n", cJSON_PrintUnformatted(dcaResultObj));
+        resultObjText = cJSON_PrintUnformatted(dcaResultObj);
+        T2Debug("ATOM Data from dca : \n %s \n", resultObjText);
     }else {
         dcaResultObj = cJSON_CreateObject();
         if(NULL != dcaResultObj)
             cJSON_AddItemToObject(dcaResultObj, "searchResult", cJSON_CreateArray());
         T2Info("No data from dcaUtils getDCAResults \n");
+        resultObjText = cJSON_PrintUnformatted(dcaResultObj);
     }
 
     if(remove(TELEMTERY_LOG_GREP_RESULT) != 0){
@@ -250,7 +253,7 @@ static T2ERROR saveDcaGrepResults() {
     FILE* dcaLogGrepResult = NULL;
     dcaLogGrepResult = fopen(TELEMTERY_LOG_GREP_RESULT, "w+");
     if(dcaLogGrepResult != NULL) {
-        fprintf(dcaLogGrepResult, "%s", cJSON_PrintUnformatted(dcaResultObj));
+        fprintf(dcaLogGrepResult, "%s", resultObjText);
         usleep(LOOP_SLEEP);
         fclose(dcaLogGrepResult);
         T2Debug("Saved grepsult file %s for interchip \n", TELEMTERY_LOG_GREP_RESULT);
@@ -258,6 +261,7 @@ static T2ERROR saveDcaGrepResults() {
     execNotifier("copyJsonResultToArm");
     T2Info("Notified interchip to pick results \n");
     cJSON_Delete(dcaResultObj);
+    cJSON_free(resultObjText);
     dcaResultObj = NULL;
 
     if (isClearSeekMap)

@@ -60,7 +60,7 @@ static char *getTimeStamp (void)
     if (timeStamp)
     {
         time_t timeObj = time(NULL);
-        struct tm *tmInfo = gmtime(&timeObj);
+        struct tm *tmInfo = localtime(&timeObj);
         // Format -  yyyy-mm-dd hh:mm:ss
         if (strftime(timeStamp, MAX_TIME_INFO_LEN, "%F %H:%M:%S" , tmInfo) == 0)
         {

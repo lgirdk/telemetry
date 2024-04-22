@@ -68,7 +68,9 @@ static bool isXconfInit = false ;
 
 static pthread_t xcrThread;
 static pthread_mutex_t xcMutex;
+static pthread_mutex_t xcThreadMutex;
 static pthread_cond_t xcCond;
+static pthread_cond_t xcThreadCond;
 
 T2ERROR ReportProfiles_deleteProfileXConf(ProfileXConf *profile);
 
@@ -109,6 +111,7 @@ static T2ERROR getBuildType(char* buildType) {
     FILE *deviceFilePtr;
     char *pBldTypeStr = NULL;
     int offsetValue = 0;
+	    
 
     if (NULL == buildType) {
        return T2ERROR_FAILURE;
@@ -804,116 +807,23 @@ static void* getUpdatedConfigurationThread(void *data)
     int n;
     char *configURL = NULL;
     char *configData = NULL;
+    pthread_mutex_lock(&xcThreadMutex);
     stopFetchRemoteConfiguration = false ;
-
-    while(!stopFetchRemoteConfiguration && T2ERROR_SUCCESS != getRemoteConfigURL(&configURL))
-    {
-        pthread_mutex_lock(&xcMutex);
-
-        memset(&_ts, 0, sizeof(struct timespec));
-        memset(&_now, 0, sizeof(struct timespec));
-        clock_gettime(CLOCK_REALTIME, &_now);
-        _ts.tv_sec = _now.tv_sec + RFC_RETRY_TIMEOUT;
-
-        T2Info("Waiting for %d sec before trying getRemoteConfigURL\n", RFC_RETRY_TIMEOUT);
-        n = pthread_cond_timedwait(&xcCond, &xcMutex, &_ts);
-        if(n == ETIMEDOUT)
+    do{
+        T2Debug("%s while Loop -- START \n", __FUNCTION__);
+        while(!stopFetchRemoteConfiguration && T2ERROR_SUCCESS != getRemoteConfigURL(&configURL))
         {
-            T2Info("TIMEDOUT -- trying fetchConfigURLs again\n");
-        }
-        else if (n == 0)
-        {
-            T2Error("XConfClient Interrupted\n");
-        }
-        else
-        {
-            T2Error("ERROR inside startXConfClientThread for timedwait");
-        }
-        pthread_mutex_unlock(&xcMutex);
-    }
-
-    while(!stopFetchRemoteConfiguration)
-    {
-        T2ERROR ret = fetchRemoteConfiguration(configURL, &configData);
-        if(ret == T2ERROR_SUCCESS)
-        {
-            ProfileXConf *profile = 0;
-            T2Debug("Config received successfully from URL : %s\n", configURL);
-            T2Debug("Config received = %s\n", configData);
-
-            if(T2ERROR_SUCCESS == processConfigurationXConf(configData, &profile))
-            {
-                
-                clearPersistenceFolder(XCONFPROFILE_PERSISTENCE_PATH);
-                if(T2ERROR_SUCCESS != saveConfigToFile(XCONFPROFILE_PERSISTENCE_PATH, XCONF_CONFIG_FILE, configData)) // Should be removed once XCONF sends new UUID for each update.
-                {
-                    T2Error("Unable to update an existing config file : %s\n", profile->name);
-                }
-                T2Debug("Disable and Delete old profile %s\n", profile->name);
-                if(T2ERROR_SUCCESS != ReportProfiles_deleteProfileXConf(profile))
-                {
-                    T2Error("Unable to delete old profile of : %s\n", profile->name);
-                }
-
-                T2Debug("Set new profile : %s\n", profile->name);
-                if(T2ERROR_SUCCESS != ReportProfiles_setProfileXConf(profile))
-                {
-                    T2Error("Failed to set profile : %s\n", profile->name);
-                }
-                else
-                {
-                    T2Info("Successfully set new profile : %s\n", profile->name);
-                    configFetch = T2ERROR_SUCCESS;
-                }
-
-                // Touch a file to indicate script based supplementary services to proceed with configuration
-                FILE *fp = NULL ;
-                fp = fopen(PROCESS_CONFIG_COMPLETE_FLAG, "w+");
-                if(fp)
-                    fclose(fp);
-
-            }
-            if(configData != NULL) {
-                free(configData);
-                configData = NULL ;
-            }
-            break;
-        }
-        else if(ret == T2ERROR_PROFILE_NOT_SET)
-        {
-            T2Warning("XConf Telemetry profile not set for this device, uninitProfileList.\n");
-            if(configData != NULL) {
-                free(configData);
-                configData = NULL ;
-            }
-            break;
-        }
-        else
-        {
-            if(configData != NULL) {
-                free(configData);
-                configData = NULL ;
-            }
-            xConfRetryCount++;
-            if(xConfRetryCount >= MAX_XCONF_RETRY_COUNT)
-            {
-                T2Error("Reached max xconf retry counts : %d, Using saved profile if exists until next reboot\n", MAX_XCONF_RETRY_COUNT);
-                xConfRetryCount = 0;
-                break;
-            }
-            T2Info("Waiting for %d sec before trying fetchRemoteConfiguration, No.of tries : %d\n", XCONF_RETRY_TIMEOUT, xConfRetryCount);
-
             pthread_mutex_lock(&xcMutex);
-
             memset(&_ts, 0, sizeof(struct timespec));
             memset(&_now, 0, sizeof(struct timespec));
             clock_gettime(CLOCK_REALTIME, &_now);
-            _ts.tv_sec = _now.tv_sec + XCONF_RETRY_TIMEOUT;
+            _ts.tv_sec = _now.tv_sec + RFC_RETRY_TIMEOUT;
 
+            T2Info("Waiting for %d sec before trying getRemoteConfigURL\n", RFC_RETRY_TIMEOUT);
             n = pthread_cond_timedwait(&xcCond, &xcMutex, &_ts);
             if(n == ETIMEDOUT)
             {
-                T2Info("TIMEDOUT -- trying fetchConfigurations again\n");
+                T2Info("TIMEDOUT -- trying fetchConfigURLs again\n");
             }
             else if (n == 0)
             {
@@ -921,19 +831,119 @@ static void* getUpdatedConfigurationThread(void *data)
             }
             else
             {
-                T2Error("ERROR inside startXConfClientThread for timedwait, error code : %d\n", n);
+                T2Error("ERROR inside startXConfClientThread for timedwait");
             }
             pthread_mutex_unlock(&xcMutex);
         }
-    }  // End of config fetch while
-    if(configFetch == T2ERROR_FAILURE && !ProfileXConf_isSet())
-    {
-        T2Error("Failed to fetch updated configuration and no saved configurations on disk for XCONF, uninitializing  the process\n");
-    }
 
-    if(configURL)
-        free(configURL);
-    stopFetchRemoteConfiguration = true;
+        while(!stopFetchRemoteConfiguration)
+        {
+            T2ERROR ret = fetchRemoteConfiguration(configURL, &configData);
+            if(ret == T2ERROR_SUCCESS)
+            {
+                ProfileXConf *profile = 0;
+                T2Debug("Config received successfully from URL : %s\n", configURL);
+                T2Debug("Config received = %s\n", configData);
+
+                if(T2ERROR_SUCCESS == processConfigurationXConf(configData, &profile))
+                {
+                    clearPersistenceFolder(XCONFPROFILE_PERSISTENCE_PATH);
+                    if(T2ERROR_SUCCESS != saveConfigToFile(XCONFPROFILE_PERSISTENCE_PATH, XCONF_CONFIG_FILE, configData)) // Should be removed once XCONF sends new UUID for each update.
+                    {
+                        T2Error("Unable to update an existing config file : %s\n", profile->name);
+                    }
+                    T2Debug("Disable and Delete old profile %s\n", profile->name);
+                    if(T2ERROR_SUCCESS != ReportProfiles_deleteProfileXConf(profile))
+                    {
+                        T2Error("Unable to delete old profile of : %s\n", profile->name);
+                    }
+
+                    T2Debug("Set new profile : %s\n", profile->name);
+                    if(T2ERROR_SUCCESS != ReportProfiles_setProfileXConf(profile))
+                    {
+                        T2Error("Failed to set profile : %s\n", profile->name);
+                    }
+                    else
+                    {
+                        T2Info("Successfully set new profile : %s\n", profile->name);
+                        configFetch = T2ERROR_SUCCESS;
+                    }
+
+                    // Touch a file to indicate script based supplementary services to proceed with configuration
+                    FILE *fp = NULL ;
+                    fp = fopen(PROCESS_CONFIG_COMPLETE_FLAG, "w+");
+                    if(fp)
+                        fclose(fp);
+
+                }
+                if(configData != NULL) {
+                    free(configData);
+                    configData = NULL ;
+                }
+                break;
+            }
+            else if(ret == T2ERROR_PROFILE_NOT_SET)
+            {
+                T2Warning("XConf Telemetry profile not set for this device, uninitProfileList.\n");
+                if(configData != NULL) {
+                    free(configData);
+                    configData = NULL ;
+                }
+                break;
+            }
+            else
+            {
+                if(configData != NULL) {
+                    free(configData);
+                    configData = NULL ;
+                }
+                xConfRetryCount++;
+                if(xConfRetryCount >= MAX_XCONF_RETRY_COUNT)
+                {
+                    T2Error("Reached max xconf retry counts : %d, Using saved profile if exists until next reboot\n", MAX_XCONF_RETRY_COUNT);
+                    xConfRetryCount = 0;
+                    break;
+                }
+                T2Info("Waiting for %d sec before trying fetchRemoteConfiguration, No.of tries : %d\n", XCONF_RETRY_TIMEOUT, xConfRetryCount);
+
+                pthread_mutex_lock(&xcMutex);
+
+                memset(&_ts, 0, sizeof(struct timespec));
+                memset(&_now, 0, sizeof(struct timespec));
+                clock_gettime(CLOCK_REALTIME, &_now);
+                _ts.tv_sec = _now.tv_sec + XCONF_RETRY_TIMEOUT;
+
+                n = pthread_cond_timedwait(&xcCond, &xcMutex, &_ts);
+                if(n == ETIMEDOUT)
+                {
+                    T2Info("TIMEDOUT -- trying fetchConfigurations again\n");
+                }
+                else if (n == 0)
+                {
+                    T2Error("XConfClient Interrupted\n");
+                }
+                else
+                {
+                    T2Error("ERROR inside startXConfClientThread for timedwait, error code : %d\n", n);
+                }
+                pthread_mutex_unlock(&xcMutex);
+            }
+        }  // End of config fetch while
+        if(configFetch == T2ERROR_FAILURE && !ProfileXConf_isSet())
+        {
+            T2Error("Failed to fetch updated configuration and no saved configurations on disk for XCONF, uninitializing  the process\n");
+        }
+
+        if(configURL){
+            free(configURL);
+            configURL = NULL;
+        }
+        stopFetchRemoteConfiguration = true;
+        T2Debug("%s while Loop -- END; wait for restart event\n", __FUNCTION__);
+        pthread_cond_wait(&xcThreadCond,&xcThreadMutex);
+    }while(isXconfInit); //End of do while loop
+
+    pthread_mutex_unlock(&xcThreadMutex);
     // pthread_detach(pthread_self()); commenting this line as thread will detached by stopXConfClient
     T2Debug("%s --out\n", __FUNCTION__);
     return NULL;
@@ -942,7 +952,6 @@ static void* getUpdatedConfigurationThread(void *data)
 void uninitXConfClient()
 {
     T2Debug("%s ++in\n", __FUNCTION__);
-
     if(!stopFetchRemoteConfiguration)
     {
         stopFetchRemoteConfiguration = true;
@@ -951,16 +960,20 @@ void uninitXConfClient()
         pthread_cond_signal(&xcCond);
         pthread_mutex_unlock(&xcMutex);
 
-        pthread_join(xcrThread, NULL);
-
     }
     else
     {
         T2Debug("XConfClientThread is stopped already\n");
     }
-
+    pthread_mutex_lock(&xcThreadMutex);
+    isXconfInit = false;
+    pthread_cond_signal(&xcThreadCond);
+    pthread_mutex_unlock(&xcThreadMutex);
+    pthread_join(xcrThread, NULL);
     pthread_mutex_destroy(&xcMutex);
+    pthread_mutex_destroy(&xcThreadMutex);
     pthread_cond_destroy(&xcCond);
+    pthread_cond_destroy(&xcThreadCond);
     T2Debug("%s --out\n", __FUNCTION__);
     T2Info("Uninit XConf Client Successful\n");
 }
@@ -969,9 +982,12 @@ T2ERROR initXConfClient()
 {
     T2Debug("%s ++in\n", __FUNCTION__);
     pthread_mutex_init(&xcMutex, NULL);
+    pthread_mutex_init(&xcThreadMutex, NULL);
     pthread_cond_init(&xcCond, NULL);
+    pthread_cond_init(&xcThreadCond, NULL);
     isXconfInit = true ;
-    startXConfClient();
+    pthread_create(&xcrThread, NULL, getUpdatedConfigurationThread, NULL);
+    //startXConfClient(); // Removing startXConfClient as getUpdatedConfigurationThread is created in this function itself
     T2Debug("%s --out\n", __FUNCTION__);
     T2Info("Init Xconf Client Success\n");
     return T2ERROR_SUCCESS;
@@ -980,7 +996,11 @@ T2ERROR initXConfClient()
 T2ERROR stopXConfClient()
 {
     T2Debug("%s ++in\n", __FUNCTION__);
-    pthread_detach(xcrThread);
+    //pthread_detach(xcrThread);
+    pthread_mutex_lock(&xcMutex);
+    stopFetchRemoteConfiguration = true;
+    pthread_cond_signal(&xcCond);
+    pthread_mutex_unlock(&xcMutex);
     T2Debug("%s --out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;
 }
@@ -989,7 +1009,14 @@ T2ERROR startXConfClient()
 {
     T2Debug("%s ++in\n", __FUNCTION__);
     if (isXconfInit) {
-        pthread_create(&xcrThread, NULL, getUpdatedConfigurationThread, NULL);
+        //pthread_create(&xcrThread, NULL, getUpdatedConfigurationThread, NULL);
+	pthread_mutex_lock(&xcMutex);
+	pthread_cond_signal(&xcCond);
+        pthread_mutex_unlock(&xcMutex);
+	pthread_mutex_lock(&xcThreadMutex);
+        stopFetchRemoteConfiguration = false;
+        pthread_cond_signal(&xcThreadCond);
+        pthread_mutex_unlock(&xcThreadMutex);
     } else {
     	T2Info("getUpdatedConfigurationThread is still active ... Ignore xconf reload \n");
     }

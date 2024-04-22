@@ -79,6 +79,9 @@ typedef struct _Profile
     pthread_mutex_t triggerCondMutex;
     pthread_mutex_t eventMutex;
     Vector *triggerConditionList;
+    pthread_cond_t reuseThread;
+    pthread_mutex_t reuseThreadMutex;
+    bool threadExists;
 }Profile;
 
 T2ERROR initProfileList();

@@ -266,340 +266,363 @@ void getMarkerCompRbusSub(bool subscription){
 
 static void* CollectAndReport(void* data)
 {
+    T2Debug("%s ++in\n", __FUNCTION__);
     if(data == NULL)
-    {
-        T2Error("data passed is NULL can't identify the profile, existing from CollectAndReport\n");
-        return NULL;
-    }
+        {
+            T2Error("data passed is NULL can't identify the profile, existing from CollectAndReport\n");
+            return NULL;
+        }
     Profile* profile = (Profile *)data;
+    pthread_mutex_init(&profile->reuseThreadMutex, NULL);
+    pthread_cond_init(&profile->reuseThread, NULL);
+    pthread_mutex_lock(&profile->reuseThreadMutex);
+    profile->threadExists = true;
+    do{
+        T2Info("%s while Loop -- START \n", __FUNCTION__);
+        profile->reportInProgress = true;
 
-    profile->reportInProgress = true;
-
-    Vector *profileParamVals = NULL;
-    Vector *grepResultList = NULL;
-    cJSON *valArray = NULL;
-    char* jsonReport = NULL;
-    cJSON *triggercondition = NULL;
-    time_t maxuploadinSec = 0;
-    time_t maxuploadinmilliSec = 0;
-    int n = 0;
-    struct timespec startTime;
-    struct timespec endTime;
-    struct timespec elapsedTime;
-    struct timespec _ts;
-    struct timespec _now;
-
-
-    T2ERROR ret = T2ERROR_FAILURE;
-    if( profile->name == NULL || profile->encodingType == NULL || profile->protocol == NULL ){
-        T2Error("Incomplete profile parameters\n");
-        if(profile->triggerReportOnCondition) {
-                T2Info(" Unlock trigger condition mutex and set report on condition to false \n");
-                profile->triggerReportOnCondition = false ;
-                pthread_mutex_unlock(&profile->triggerCondMutex);
-        } else {
-                T2Debug(" profile->triggerReportOnCondition is not set \n");
-        }
-        profile->reportInProgress = false;
-        return NULL;
-    }
-
-    T2Info("%s ++in profileName : %s\n", __FUNCTION__, profile->name);
+        Vector *profileParamVals = NULL;
+        Vector *grepResultList = NULL;
+        cJSON *valArray = NULL;
+        char* jsonReport = NULL;
+        cJSON *triggercondition = NULL;
+        time_t maxuploadinSec = 0;
+        time_t maxuploadinmilliSec = 0;
+        int n = 0;
+        struct timespec startTime;
+        struct timespec endTime;
+        struct timespec elapsedTime;
+        struct timespec _ts;
+        struct timespec _now;
 
 
-    clock_gettime(CLOCK_REALTIME, &startTime);
-    if( !strcmp(profile->encodingType, "JSON") || !strcmp(profile->encodingType, "MessagePack"))
-    {
-        JSONEncoding *jsonEncoding = profile->jsonEncoding;
-        if (jsonEncoding->reportFormat != JSONRF_KEYVALUEPAIR)
-        {
-            //TODO: Support 'ObjectHierarchy' format in RDKB-26154.
-            T2Error("Only JSON name-value pair format is supported \n");
+        T2ERROR ret = T2ERROR_FAILURE;
+        if( profile->name == NULL || profile->encodingType == NULL || profile->protocol == NULL ){
+            T2Error("Incomplete profile parameters\n");
             if(profile->triggerReportOnCondition) {
-                T2Info(" Unlock trigger condition mutex and set report on condition to false \n");
-                profile->triggerReportOnCondition = false ;
-                pthread_mutex_unlock(&profile->triggerCondMutex);
-            } else {
-                T2Debug(" profile->triggerReportOnCondition is not set \n");
-            }
-            profile->reportInProgress = false;
-            return NULL;
-        }
-
-        // pthread_mutex_lock(&profile->triggerCondMutex);
-        if(profile->triggerReportOnCondition && (profile->jsonReportObj != NULL)) {
-            triggercondition = profile->jsonReportObj;
-            profile->jsonReportObj = NULL;
-        }
-        if(T2ERROR_SUCCESS != initJSONReportProfile(&profile->jsonReportObj, &valArray, profile->RootName))
-        {
-            T2Error("Failed to initialize JSON Report\n");
-            profile->reportInProgress = false;
-            //pthread_mutex_unlock(&profile->triggerCondMutex);
-            if(profile->triggerReportOnCondition) {
-                T2Info(" Unlock trigger condition mutex and set report on condition to false \n");
-                profile->triggerReportOnCondition = false;
-                pthread_mutex_unlock(&profile->triggerCondMutex);
-                if(profile->callBackOnReportGenerationComplete)
-                    profile->callBackOnReportGenerationComplete(profile->name);
-            }
-            return NULL;
-        }
-        else
-        {
-            if(profile->staticParamList != NULL && Vector_Size(profile->staticParamList) > 0)
-            {
-                T2Debug(" Adding static Parameter Values to Json report\n");
-                encodeStaticParamsInJSON(valArray, profile->staticParamList);
-            }
-            if(profile->paramList != NULL && Vector_Size(profile->paramList) > 0)
-            {
-                T2Debug("Fetching TR-181 Object/Parameter Values\n");
-                profileParamVals = getProfileParameterValues(profile->paramList);
-                if(profileParamVals != NULL)
-                {
-                    encodeParamResultInJSON(valArray, profile->paramList, profileParamVals);
-                }
-                Vector_Destroy(profileParamVals, freeProfileValues);
-            }
-            if(profile->gMarkerList != NULL && Vector_Size(profile->gMarkerList) > 0)
-            {
-                getGrepResults(profile->name, profile->gMarkerList, &grepResultList, profile->bClearSeekMap, false); // Passing 5th argument as false so that it doesn't check rotated logs for the first reporting after bootup for multiprofiles.
-                encodeGrepResultInJSON(valArray, grepResultList);
-                Vector_Destroy(grepResultList, freeGResult);
-            }
-            if(profile->eMarkerList != NULL && Vector_Size(profile->eMarkerList) > 0)
-            {
-                pthread_mutex_lock(&profile->eventMutex);
-                encodeEventMarkersInJSON(valArray, profile->eMarkerList);
-                pthread_mutex_unlock(&profile->eventMutex);
-            }
-            if(profile->triggerReportOnCondition && (triggercondition != NULL)){
-                cJSON_AddItemToArray(valArray, triggercondition);
-            }
-            ret = prepareJSONReport(profile->jsonReportObj, &jsonReport);
-	        destroyJSONReport(profile->jsonReportObj);
-            profile->jsonReportObj = NULL;
-            if(ret != T2ERROR_SUCCESS)
-            {
-                T2Error("Unable to generate report for : %s\n", profile->name);
-                profile->reportInProgress = false;
-                if(profile->triggerReportOnCondition) {
+                    T2Info(" Unlock trigger condition mutex and set report on condition to false \n");
                     profile->triggerReportOnCondition = false ;
                     pthread_mutex_unlock(&profile->triggerCondMutex);
+            } else {
+                    T2Debug(" profile->triggerReportOnCondition is not set \n");
+            }
+            profile->reportInProgress = false;
+            //return NULL;
+            goto reportThreadEnd;
+        }
 
-                    if(profile->callBackOnReportGenerationComplete)
-                        profile->callBackOnReportGenerationComplete(profile->name);
+        T2Info("%s ++in profileName : %s\n", __FUNCTION__, profile->name);
+
+
+        clock_gettime(CLOCK_REALTIME, &startTime);
+        if( !strcmp(profile->encodingType, "JSON") || !strcmp(profile->encodingType, "MessagePack"))
+        {
+            JSONEncoding *jsonEncoding = profile->jsonEncoding;
+            if (jsonEncoding->reportFormat != JSONRF_KEYVALUEPAIR)
+            {
+                //TODO: Support 'ObjectHierarchy' format in RDKB-26154.
+                T2Error("Only JSON name-value pair format is supported \n");
+                if(profile->triggerReportOnCondition) {
+                    T2Info(" Unlock trigger condition mutex and set report on condition to false \n");
+                    profile->triggerReportOnCondition = false ;
+                    pthread_mutex_unlock(&profile->triggerCondMutex);
                 } else {
                     T2Debug(" profile->triggerReportOnCondition is not set \n");
                 }
-                return NULL;
+                 profile->reportInProgress = false;
+                //return NULL;
+                goto reportThreadEnd;
+	    }
+            // pthread_mutex_lock(&profile->triggerCondMutex);
+            if(profile->triggerReportOnCondition && (profile->jsonReportObj != NULL)) {
+                triggercondition = profile->jsonReportObj;
+                profile->jsonReportObj = NULL;
             }
-            long size = strlen(jsonReport);
-            T2Info("cJSON Report = %s\n", jsonReport);
-            cJSON *root = cJSON_Parse(jsonReport);
-            if(root != NULL) {
-                cJSON *array = cJSON_GetObjectItem(root, profile->RootName);
-                if(cJSON_GetArraySize(array) == 0) {
-                    T2Warning("Array size of Report is %d. Report is empty. Cannot send empty report\n", cJSON_GetArraySize(array));
+            if(T2ERROR_SUCCESS != initJSONReportProfile(&profile->jsonReportObj, &valArray, profile->RootName))
+            {
+                T2Error("Failed to initialize JSON Report\n");
+                profile->reportInProgress = false;
+                //pthread_mutex_unlock(&profile->triggerCondMutex);
+                if(profile->triggerReportOnCondition) {
+                    T2Info(" Unlock trigger condition mutex and set report on condition to false \n");
+                    profile->triggerReportOnCondition = false;
+                    pthread_mutex_unlock(&profile->triggerCondMutex);
+                    if(profile->callBackOnReportGenerationComplete)
+                        profile->callBackOnReportGenerationComplete(profile->name);
+                }
+                //return NULL;
+                goto reportThreadEnd;
+            }
+            else
+            {
+                if(profile->staticParamList != NULL && Vector_Size(profile->staticParamList) > 0)
+                {
+                    T2Debug(" Adding static Parameter Values to Json report\n");
+                    encodeStaticParamsInJSON(valArray, profile->staticParamList);
+                }
+                if(profile->paramList != NULL && Vector_Size(profile->paramList) > 0)
+                {
+                    T2Debug("Fetching TR-181 Object/Parameter Values\n");
+                    profileParamVals = getProfileParameterValues(profile->paramList);
+                    if(profileParamVals != NULL)
+                    {
+                        encodeParamResultInJSON(valArray, profile->paramList, profileParamVals);
+                    }
+                    Vector_Destroy(profileParamVals, freeProfileValues);
+                }
+                if(profile->gMarkerList != NULL && Vector_Size(profile->gMarkerList) > 0)
+                {
+                    getGrepResults(profile->name, profile->gMarkerList, &grepResultList, profile->bClearSeekMap, false); // Passing 5th argument as false so that it doesn't check rotated logs for the first reporting after bootup for multiprofiles.
+                    encodeGrepResultInJSON(valArray, grepResultList);
+                    Vector_Destroy(grepResultList, freeGResult);
+                }
+                if(profile->eMarkerList != NULL && Vector_Size(profile->eMarkerList) > 0)
+                {
+                    pthread_mutex_lock(&profile->eventMutex);
+                    encodeEventMarkersInJSON(valArray, profile->eMarkerList);
+                    pthread_mutex_unlock(&profile->eventMutex);
+                }
+                if(profile->triggerReportOnCondition && (triggercondition != NULL)){
+                    cJSON_AddItemToArray(valArray, triggercondition);
+                }
+                ret = prepareJSONReport(profile->jsonReportObj, &jsonReport);
+                destroyJSONReport(profile->jsonReportObj);
+                profile->jsonReportObj = NULL;
+                if(ret != T2ERROR_SUCCESS)
+                {
+                    T2Error("Unable to generate report for : %s\n", profile->name);
                     profile->reportInProgress = false;
                     if(profile->triggerReportOnCondition) {
-                        T2Info(" Unlock trigger condition mutex and set report on condition to false \n");
                         profile->triggerReportOnCondition = false ;
                         pthread_mutex_unlock(&profile->triggerCondMutex);
+
                         if(profile->callBackOnReportGenerationComplete)
                             profile->callBackOnReportGenerationComplete(profile->name);
                     } else {
                         T2Debug(" profile->triggerReportOnCondition is not set \n");
                     }
-                    cJSON_Delete(root);
-                    return NULL;
+                    //return NULL;
+                    goto reportThreadEnd;
                 }
-                cJSON_Delete(root);
-            }
+                long size = strlen(jsonReport);
+                T2Info("cJSON Report = %s\n", jsonReport);
+                cJSON *root = cJSON_Parse(jsonReport);
+                if(root != NULL) {
+                    cJSON *array = cJSON_GetObjectItem(root, profile->RootName);
+                    if(cJSON_GetArraySize(array) == 0) {
+                        T2Warning("Array size of Report is %d. Report is empty. Cannot send empty report\n", cJSON_GetArraySize(array));
+                        profile->reportInProgress = false;
+                        if(profile->triggerReportOnCondition) {
+                            T2Info(" Unlock trigger condition mutex and set report on condition to false \n");
+                            profile->triggerReportOnCondition = false ;
+                            pthread_mutex_unlock(&profile->triggerCondMutex);
+                            if(profile->callBackOnReportGenerationComplete)
+                                profile->callBackOnReportGenerationComplete(profile->name);
+                        } else {
+                            T2Debug(" profile->triggerReportOnCondition is not set \n");
+                        }
+                        cJSON_Delete(root);
+                        //return NULL;
+                        goto reportThreadEnd;
+                    }
+                    cJSON_Delete(root);
+                }
 
-            T2Info("Report Size = %ld\n", size);
-            if(size > DEFAULT_MAX_REPORT_SIZE) {
-                T2Warning("Report size is exceeding the max limit : %d\n", DEFAULT_MAX_REPORT_SIZE);
-            }
-            if(profile->maxUploadLatency > 0){
-                memset(&_ts, 0, sizeof(struct timespec));
-                memset(&_now, 0, sizeof(struct timespec));
-                pthread_cond_init(&reportcond, NULL);
-                clock_gettime(CLOCK_REALTIME, &_now);
-                _ts.tv_sec = _now.tv_sec;
-                srand(time(0)); // Initialise the random number generator
-                maxuploadinmilliSec = rand()%(profile->maxUploadLatency - 1);
-                maxuploadinSec =  (maxuploadinmilliSec + 1) / 1000;
-            }
-            if( strcmp(profile->protocol, "HTTP") == 0 || strcmp(profile->protocol, "RBUS_METHOD") == 0 ){
-                char *httpUrl = NULL ;
-                if ( strcmp(profile->protocol, "HTTP") == 0 ) {
-                    httpUrl = prepareHttpUrl(profile->t2HTTPDest); /* Append URL with http properties */
-                    if(profile->maxUploadLatency > 0){
-                        pthread_mutex_lock(&reportMutex);
-                        T2Info("waiting for %ld sec of macUploadLatency\n",(long) maxuploadinSec);
-                        _ts.tv_sec += maxuploadinSec;
-                        n = pthread_cond_timedwait(&reportcond, &reportMutex, &_ts);
-                        if(n == ETIMEDOUT) {
-                            T2Info("TIMEOUT for maxUploadLatency of profile %s\n", profile->name);
-                            ret = sendReportOverHTTP(httpUrl, jsonReport, NULL);
-                        }else {
-                            T2Error("Profile : %s pthread_cond_timedwait ERROR!!!\n", profile->name);
+                T2Info("Report Size = %ld\n", size);
+                if(size > DEFAULT_MAX_REPORT_SIZE) {
+                    T2Warning("Report size is exceeding the max limit : %d\n", DEFAULT_MAX_REPORT_SIZE);
+                }
+                if(profile->maxUploadLatency > 0){
+                    memset(&_ts, 0, sizeof(struct timespec));
+                    memset(&_now, 0, sizeof(struct timespec));
+                    pthread_cond_init(&reportcond, NULL);
+                    clock_gettime(CLOCK_REALTIME, &_now);
+                    _ts.tv_sec = _now.tv_sec;
+                    srand(time(0)); // Initialise the random number generator
+                    maxuploadinmilliSec = rand()%(profile->maxUploadLatency - 1);
+                    maxuploadinSec =  (maxuploadinmilliSec + 1) / 1000;
+                }
+                if( strcmp(profile->protocol, "HTTP") == 0 || strcmp(profile->protocol, "RBUS_METHOD") == 0 ){
+                    char *httpUrl = NULL ;
+                    if ( strcmp(profile->protocol, "HTTP") == 0 ) {
+                        httpUrl = prepareHttpUrl(profile->t2HTTPDest); /* Append URL with http properties */
+                        if(profile->maxUploadLatency > 0){
+                            pthread_mutex_lock(&reportMutex);
+                            T2Info("waiting for %ld sec of macUploadLatency\n",(long) maxuploadinSec);
+                            _ts.tv_sec += maxuploadinSec;
+                            n = pthread_cond_timedwait(&reportcond, &reportMutex, &_ts);
+                            if(n == ETIMEDOUT) {
+                                T2Info("TIMEOUT for maxUploadLatency of profile %s\n", profile->name);
+                                ret = sendReportOverHTTP(httpUrl, jsonReport, NULL);
+                            }else {
+                                T2Error("Profile : %s pthread_cond_timedwait ERROR!!!\n", profile->name);
+                                pthread_mutex_unlock(&reportMutex);
+                                pthread_cond_destroy(&reportcond);
+                                if(httpUrl){
+                                    free(httpUrl);
+                                    httpUrl = NULL;
+                                }
+                                profile->reportInProgress = false;
+                                if(profile->triggerReportOnCondition) {
+                                    T2Info(" Unlock trigger condition mutex and set report on condition to false \n");
+                                    profile->triggerReportOnCondition = false ;
+                                    pthread_mutex_unlock(&profile->triggerCondMutex);
+
+                                    if(profile->callBackOnReportGenerationComplete != NULL){
+                                        T2Debug("Calling callback function profile->callBackOnReportGenerationComplete \n");
+                                        profile->callBackOnReportGenerationComplete(profile->name);
+                                    }
+                                } else {
+                                        T2Debug(" profile->triggerReportOnCondition is not set \n");
+                                }
+                                //return NULL;
+                                goto reportThreadEnd;
+                            }
                             pthread_mutex_unlock(&reportMutex);
                             pthread_cond_destroy(&reportcond);
-                            if(httpUrl){
-                                free(httpUrl);
-                                httpUrl = NULL;
-                            }
-                            profile->reportInProgress = false;
-                            if(profile->triggerReportOnCondition) {
-                                T2Info(" Unlock trigger condition mutex and set report on condition to false \n");
-                                profile->triggerReportOnCondition = false ;
-                                pthread_mutex_unlock(&profile->triggerCondMutex);
-
-                                if(profile->callBackOnReportGenerationComplete){
-                                    T2Debug("Calling callback function profile->callBackOnReportGenerationComplete \n");
-                                    profile->callBackOnReportGenerationComplete(profile->name);
-                                }
-                            } else {
-                                    T2Debug(" profile->triggerReportOnCondition is not set \n");
-                            }
-                            return NULL;
+                        }else {
+                            ret = sendReportOverHTTP(httpUrl, jsonReport, NULL);
                         }
-                        pthread_mutex_unlock(&reportMutex);
-                        pthread_cond_destroy(&reportcond);
-                    }else {
-                        ret = sendReportOverHTTP(httpUrl, jsonReport, NULL);
-                    }
-                } else {
-                    if(profile->maxUploadLatency > 0 ){
-                        pthread_mutex_lock(&reportMutex);
-                        T2Info("waiting for %ld sec of macUploadLatency\n",(long) maxuploadinSec);
-                        _ts.tv_sec += maxuploadinSec;
-                        n = pthread_cond_timedwait(&reportcond, &reportMutex, &_ts);
-                        if(n == ETIMEDOUT)
-                        {
-                           T2Info("TIMEOUT for maxUploadLatency of profile %s\n",profile->name);
-                           ret = sendReportsOverRBUSMethod(profile->t2RBUSDest->rbusMethodName, profile->t2RBUSDest->rbusMethodParamList, jsonReport);
+                    } else {
+                        if(profile->maxUploadLatency > 0 ){
+                            pthread_mutex_lock(&reportMutex);
+                            T2Info("waiting for %ld sec of macUploadLatency\n",(long) maxuploadinSec);
+                            _ts.tv_sec += maxuploadinSec;
+                            n = pthread_cond_timedwait(&reportcond, &reportMutex, &_ts);
+                            if(n == ETIMEDOUT)
+                            {
+                            T2Info("TIMEOUT for maxUploadLatency of profile %s\n",profile->name);
+                            ret = sendReportsOverRBUSMethod(profile->t2RBUSDest->rbusMethodName, profile->t2RBUSDest->rbusMethodParamList, jsonReport);
+                            }
+                            else{
+                                T2Error("Profile : %s pthread_cond_timedwait ERROR!!!\n", profile->name);
+                                pthread_mutex_unlock(&reportMutex);
+                                pthread_cond_destroy(&reportcond);
+                                profile->reportInProgress = false;
+                                if(profile->triggerReportOnCondition) {
+                                    T2Info(" Unlock trigger condition mutex and set report on condition to false \n");
+                                    profile->triggerReportOnCondition = false ;
+                                    pthread_mutex_unlock(&profile->triggerCondMutex);
+
+                                    if(profile->callBackOnReportGenerationComplete){
+                                        T2Debug("Calling callback function profile->callBackOnReportGenerationComplete \n");
+                                        profile->callBackOnReportGenerationComplete(profile->name);
+                                    }
+                                } else {
+                                        T2Debug(" profile->triggerReportOnCondition is not set \n");
+                                }
+                                //return NULL;
+                                goto reportThreadEnd;
+                            }
+                            pthread_mutex_unlock(&reportMutex);
+                            pthread_cond_destroy(&reportcond);
                         }
                         else{
-                            T2Error("Profile : %s pthread_cond_timedwait ERROR!!!\n", profile->name);
-                            pthread_mutex_unlock(&reportMutex);
-                            pthread_cond_destroy(&reportcond);
-                            profile->reportInProgress = false;
-                            if(profile->triggerReportOnCondition) {
-                                T2Info(" Unlock trigger condition mutex and set report on condition to false \n");
-                                profile->triggerReportOnCondition = false ;
-                                pthread_mutex_unlock(&profile->triggerCondMutex);
+                            ret = sendReportsOverRBUSMethod(profile->t2RBUSDest->rbusMethodName, profile->t2RBUSDest->rbusMethodParamList, jsonReport);
+                        }
+                    }
+                    if((ret == T2ERROR_FAILURE && strcmp(profile->protocol, "HTTP") == 0) || ret == T2ERROR_NO_RBUS_METHOD_PROVIDER) {
+                        T2Debug("Vector list size = %lu\n",  (unsigned long) Vector_Size(profile->cachedReportList));
+                        if(profile->cachedReportList != NULL && Vector_Size(profile->cachedReportList) >= MAX_CACHED_REPORTS) {
+                            while(Vector_Size(profile->cachedReportList) > MAX_CACHED_REPORTS){
+                                int pos = Vector_Size(profile->cachedReportList);
+                                T2Info("Max Cached Reports Limit Exceeded, Removing the extra reports\n");
+                                char *extraCachedreport =  (char*) Vector_At(profile->cachedReportList, (pos - 1));
+                                Vector_RemoveItem(profile->cachedReportList,(void*) extraCachedreport, NULL);
+                                free(extraCachedreport);
+                            }
+                            T2Info("Max Cached Reports Limit Reached, Overwriting third recent report\n");
+                            char *thirdCachedReport = (char*) Vector_At(profile->cachedReportList, MAX_CACHED_REPORTS - 3);
+                            Vector_RemoveItem(profile->cachedReportList,(void*) thirdCachedReport, NULL);
+                            free(thirdCachedReport);
+                        }
+                        Vector_PushBack(profile->cachedReportList, jsonReport);
 
-                                if(profile->callBackOnReportGenerationComplete){
-                                    T2Debug("Calling callback function profile->callBackOnReportGenerationComplete \n");
-                                    profile->callBackOnReportGenerationComplete(profile->name);
-                                }
-                            } else {
+                        T2Info("Report Cached, No. of reportes cached = %lu\n", (unsigned long )Vector_Size(profile->cachedReportList));
+                        // Save messages from profile->cachedReportList to a file in persistent location .
+                        saveCachedReportToPersistenceFolder(profile->name, profile->cachedReportList);
+
+                        if(strcmp(profile->protocol, "RBUS_METHOD") == 0) {
+                            profile->SendErr++;
+                            if(profile->SendErr > 3 && !(rbusCheckMethodExists(profile->t2RBUSDest->rbusMethodName))) { //to delete the profile in the next CollectAndReport or triggercondition
+                                T2Debug("RBUS_METHOD doesn't exists after 3 retries\n");
+                                profile->reportInProgress = false;
+                                if(profile->triggerReportOnCondition) {
+                                    profile->triggerReportOnCondition = false ;
+                                    pthread_mutex_unlock(&profile->triggerCondMutex);
+                                    if(profile->callBackOnReportGenerationComplete)
+                                        profile->callBackOnReportGenerationComplete(profile->name);
+                                } else {
                                     T2Debug(" profile->triggerReportOnCondition is not set \n");
-                            }
-                            return NULL;
-                        }
-                        pthread_mutex_unlock(&reportMutex);
-                        pthread_cond_destroy(&reportcond);
-                    }
-                    else{
-                        ret = sendReportsOverRBUSMethod(profile->t2RBUSDest->rbusMethodName, profile->t2RBUSDest->rbusMethodParamList, jsonReport);
-                    }
-                }
-                if((ret == T2ERROR_FAILURE && strcmp(profile->protocol, "HTTP") == 0) || ret == T2ERROR_NO_RBUS_METHOD_PROVIDER) {
-                    T2Debug("Vector list size = %lu\n",  (unsigned long) Vector_Size(profile->cachedReportList));
-                    if(profile->cachedReportList != NULL && Vector_Size(profile->cachedReportList) >= MAX_CACHED_REPORTS) {
-                        while(Vector_Size(profile->cachedReportList) > MAX_CACHED_REPORTS){
-                            int pos = Vector_Size(profile->cachedReportList);
-                            T2Info("Max Cached Reports Limit Exceeded, Removing the extra reports\n");
-                            char *extraCachedreport =  (char*) Vector_At(profile->cachedReportList, (pos - 1));
-                            Vector_RemoveItem(profile->cachedReportList,(void*) extraCachedreport, NULL);
-                            free(extraCachedreport);
-                        }
-                        T2Info("Max Cached Reports Limit Reached, Overwriting third recent report\n");
-                        char *thirdCachedReport = (char*) Vector_At(profile->cachedReportList, MAX_CACHED_REPORTS - 3);
-                        Vector_RemoveItem(profile->cachedReportList,(void*) thirdCachedReport, NULL);
-                        free(thirdCachedReport);
-                    }
-                    Vector_PushBack(profile->cachedReportList, jsonReport);
-
-                    T2Info("Report Cached, No. of reportes cached = %lu\n", (unsigned long )Vector_Size(profile->cachedReportList));
-                    // Save messages from profile->cachedReportList to a file in persistent location .
-                    saveCachedReportToPersistenceFolder(profile->name, profile->cachedReportList);
-
-                    if(strcmp(profile->protocol, "RBUS_METHOD") == 0) {
-                        profile->SendErr++;
-                        if(profile->SendErr > 3 && !(rbusCheckMethodExists(profile->t2RBUSDest->rbusMethodName))) { //to delete the profile in the next CollectAndReport or triggercondition
-                            T2Debug("RBUS_METHOD doesn't exists after 3 retries\n");
-                            profile->reportInProgress = false;
-                            if(profile->triggerReportOnCondition) {
-                                profile->triggerReportOnCondition = false ;
-                                pthread_mutex_unlock(&profile->triggerCondMutex);
-                                if(profile->callBackOnReportGenerationComplete)
-                                    profile->callBackOnReportGenerationComplete(profile->name);
-                            } else {
-                                T2Debug(" profile->triggerReportOnCondition is not set \n");
-                            }
-                            T2Error("ERROR: no method provider; profile will be deleted: %s %s\n", profile->name,
-                                    profile->t2RBUSDest->rbusMethodName);
-                            if(T2ERROR_SUCCESS != deleteProfile(profile->name)) {
-                                T2Error("Failed to delete profile after RBUS_METHOD failures: %s\n", profile->name);
+                                }
+                                T2Error("ERROR: no method provider; profile will be deleted: %s %s\n", profile->name,
+                                        profile->t2RBUSDest->rbusMethodName);
+                                if(T2ERROR_SUCCESS != deleteProfile(profile->name)) {
+                                    T2Error("Failed to delete profile after RBUS_METHOD failures: %s\n", profile->name);
+                                    T2Info("%s --out\n", __FUNCTION__);
+                                    //return NULL;
+                                    goto reportThreadEnd;
+                                }
                                 T2Info("%s --out\n", __FUNCTION__);
-                                return NULL;
+                                //return NULL;
+                                goto reportThreadEnd;
                             }
-                            T2Info("%s --out\n", __FUNCTION__);
-                            return NULL;
+                        }
+                    }else if(profile->cachedReportList != NULL && Vector_Size(profile->cachedReportList) > 0) {
+                        T2Info("Trying to send  %lu cached reports\n", (unsigned long )Vector_Size(profile->cachedReportList));
+                        if(strcmp(profile->protocol, "HTTP") == 0) {
+                            ret = sendCachedReportsOverHTTP(httpUrl, profile->cachedReportList);
+                        }else {
+                            ret = sendCachedReportsOverRBUSMethod(profile->t2RBUSDest->rbusMethodName, profile->t2RBUSDest->rbusMethodParamList,
+                                    profile->cachedReportList);
+                        }
+
+                        if(ret == T2ERROR_SUCCESS) {
+                            removeProfileFromDisk(CACHED_MESSAGE_PATH, profile->name);
                         }
                     }
-                }else if(profile->cachedReportList != NULL && Vector_Size(profile->cachedReportList) > 0) {
-                    T2Info("Trying to send  %lu cached reports\n", (unsigned long )Vector_Size(profile->cachedReportList));
-                    if(strcmp(profile->protocol, "HTTP") == 0) {
-                        ret = sendCachedReportsOverHTTP(httpUrl, profile->cachedReportList);
-                    }else {
-                        ret = sendCachedReportsOverRBUSMethod(profile->t2RBUSDest->rbusMethodName, profile->t2RBUSDest->rbusMethodParamList,
-                                profile->cachedReportList);
+                    if(httpUrl) {
+                        free(httpUrl);
+                        httpUrl = NULL;
                     }
-
-                    if(ret == T2ERROR_SUCCESS) {
-                        removeProfileFromDisk(CACHED_MESSAGE_PATH, profile->name);
-                    }
+                }else {
+                    T2Error("Unsupported report send protocol : %s\n", profile->protocol);
                 }
-                if(httpUrl) {
-                    free(httpUrl);
-                    httpUrl = NULL;
-                }
-            }else {
-                T2Error("Unsupported report send protocol : %s\n", profile->protocol);
             }
+        }else {
+            T2Error("Unsupported encoding format : %s\n", profile->encodingType);
         }
-    }else {
-        T2Error("Unsupported encoding format : %s\n", profile->encodingType);
-    }
-    clock_gettime(CLOCK_REALTIME, &endTime);
-    getLapsedTime(&elapsedTime, &endTime, &startTime);
-    T2Info("Elapsed Time for : %s = %lu.%lu (Sec.NanoSec)\n", profile->name, (unsigned long )elapsedTime.tv_sec, elapsedTime.tv_nsec);
-    if(ret == T2ERROR_SUCCESS && jsonReport) {
-        free(jsonReport);
-        jsonReport = NULL;
-    }
-
-    profile->reportInProgress = false;
-    if(profile->triggerReportOnCondition) {
-        T2Info(" Unlock trigger condition mutex and set report on condition to false \n");
-        profile->triggerReportOnCondition = false ;
-        pthread_mutex_unlock(&profile->triggerCondMutex);
-
-        if(profile->callBackOnReportGenerationComplete){
-            T2Debug("Calling callback function profile->callBackOnReportGenerationComplete \n");
-            profile->callBackOnReportGenerationComplete(profile->name);
+        clock_gettime(CLOCK_REALTIME, &endTime);
+        getLapsedTime(&elapsedTime, &endTime, &startTime);
+        T2Info("Elapsed Time for : %s = %lu.%lu (Sec.NanoSec)\n", profile->name, (unsigned long )elapsedTime.tv_sec, elapsedTime.tv_nsec);
+        if(ret == T2ERROR_SUCCESS && jsonReport) {
+            free(jsonReport);
+            jsonReport = NULL;
         }
-    } else {
-        T2Debug(" profile->triggerReportOnCondition is not set \n");
-    }
-    T2Info("%s --out\n", __FUNCTION__);
+
+        profile->reportInProgress = false;
+        if(profile->triggerReportOnCondition) {
+            T2Info(" Unlock trigger condition mutex and set report on condition to false \n");
+            profile->triggerReportOnCondition = false ;
+            pthread_mutex_unlock(&profile->triggerCondMutex);
+
+            if(profile->callBackOnReportGenerationComplete){
+                T2Debug("Calling callback function profile->callBackOnReportGenerationComplete \n");
+                profile->callBackOnReportGenerationComplete(profile->name);
+            }
+        } else {
+            T2Debug(" profile->triggerReportOnCondition is not set \n");
+        }
+        reportThreadEnd :
+        T2Info("%s while Loop -- END; wait for restart event\n", __FUNCTION__);
+	T2Info("%s --out\n", __FUNCTION__);
+        pthread_cond_wait(&profile->reuseThread, &profile->reuseThreadMutex);
+    }while(profile->enable);
+    T2Info("%s --out Exiting collect and report Thread\n", __FUNCTION__);
+    profile->threadExists = false;
+    pthread_mutex_unlock(&profile->reuseThreadMutex);
+    pthread_mutex_destroy(&profile->reuseThreadMutex);
+    pthread_cond_destroy(&profile->reuseThread);
     return NULL;
 }
 
@@ -620,12 +643,16 @@ void NotifyTimeout(const char* profileName, bool isClearSeekMap)
     T2Info("%s: profile %s is in %s state\n", __FUNCTION__, profileName, profile->enable ? "Enabled" : "Disabled");
     if(profile->enable && !profile->reportInProgress)
     {
-        /* To avoid previous report thread to go into zombie state, mark it detached. */
-        if (profile->reportThread)
-            pthread_detach(profile->reportThread);
-
         profile->bClearSeekMap = isClearSeekMap;
-        pthread_create(&profile->reportThread, NULL, CollectAndReport, (void*)profile);
+        /* To avoid previous report thread to go into zombie state, mark it detached. */
+        if (profile->threadExists){
+            T2Info("Signal Thread To restart\n");
+            pthread_mutex_lock(&profile->reuseThreadMutex);
+            pthread_cond_signal(&profile->reuseThread);
+            pthread_mutex_unlock(&profile->reuseThreadMutex);
+        }
+        else
+            pthread_create(&profile->reportThread, NULL, CollectAndReport, (void*)profile);
     }
     else
     {
@@ -939,9 +966,13 @@ T2ERROR deleteAllProfiles(bool delFromDisk) {
         }
 
         pthread_mutex_lock(&plMutex);
-        if (tempProfile->reportThread)
+        if (tempProfile->threadExists){
+            pthread_mutex_lock(&tempProfile->reuseThreadMutex);
+            pthread_cond_signal(&tempProfile->reuseThread);
+            pthread_mutex_unlock(&tempProfile->reuseThreadMutex);
             pthread_join(tempProfile->reportThread, NULL);
-
+            tempProfile->threadExists=false;
+        }
         if (Vector_Size(tempProfile->gMarkerList) > 0)
             removeGrepConfig(tempProfile->name, true, true);
         pthread_mutex_unlock(&plMutex);
@@ -1014,8 +1045,12 @@ T2ERROR deleteProfile(const char *profileName)
 
     T2Info("Waiting for CollectAndReport to be complete : %s\n", profileName);
     pthread_mutex_lock(&plMutex);
-    if (profile->reportThread) {
+    if (profile->threadExists) {
+        pthread_mutex_lock(&profile->reuseThreadMutex);
+        pthread_cond_signal(&profile->reuseThread);
+        pthread_mutex_unlock(&profile->reuseThreadMutex);
         pthread_join(profile->reportThread, NULL);
+        profile->threadExists=false;
     }
 
     if(Vector_Size(profile->triggerConditionList) > 0){

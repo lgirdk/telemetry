@@ -48,13 +48,7 @@ export RDK_FSROOT_PATH=$RDK_PROJECT_ROOT_PATH/sdk/fsroot/ramdisk
 # To enable rtMessage
 export RTMESSAGE=yes
 
-if [ "$XCAM_MODEL" != "XHB1" ];then
-  export RDK_DUMP_SYMS=${RDK_PROJECT_ROOT_PATH}/utility/prebuilts/breakpad-prebuilts/x86/dump_syms
-  export STRIP=${RDK_TOOLCHAIN_PATH}/arm-linux-gnueabihf/bin/arm-linux-gnueabihf-strip
-else
-  export RDK_DUMP_SYMS=${RDK_PROJECT_ROOT_PATH}/utility/prebuilts/breakpad-prebuilts/x64/dump_syms
-fi
-
+export STRIP=${RDK_TOOLCHAIN_PATH}/arm-linux-gnueabihf/bin/arm-linux-gnueabihf-strip
 
 if [ "$XCAM_MODEL" == "SCHC2" ]; then
  echo "Configuring for XCAM2"

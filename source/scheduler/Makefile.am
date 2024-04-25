@@ -26,8 +26,6 @@ if ENABLE_CCSP_SUPPORT
 libscheduler_la_LDFLAGS += -lccsp_common
 endif
 libscheduler_la_CPPFLAGS = -fPIC \
-                           -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/dbus-1.0 \
-                           -I${PKG_CONFIG_SYSROOT_DIR}$(libdir)/dbus-1.0/include \
                            -I${top_srcdir}/include \
                            -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/ccsp \
                            -I${top_srcdir}/source/ccspinterface \

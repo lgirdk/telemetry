@@ -29,8 +29,6 @@ libccspinterface_la_SOURCES += ccspinterface.c
 endif
 
 libccspinterface_la_CPPFLAGS = -fPIC \
-                               -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/dbus-1.0 \
-                               -I${PKG_CONFIG_SYSROOT_DIR}$(libdir)/dbus-1.0/include \
                                -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/ \
                                -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/ccsp \
                                -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/rbus \

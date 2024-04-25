@@ -19,14 +19,12 @@
 lib_LTLIBRARIES = libdcautil.la
 
 libdcautil_la_SOURCES = dcautil.c dca.c dcalist.c legacyutils.c dcaproc.c dcajson.c rdk_linkedlist.c
-libdcautil_la_CFLAGS = $(DBUS_CFLAGS) -DUSE_TR181_CCSP_MESSAGEBUS
-libdcautil_la_LDFLAGS = -shared -fPIC -lcjson $(DBUS_LIBS)
+libdcautil_la_CFLAGS = -DUSE_TR181_CCSP_MESSAGEBUS
+libdcautil_la_LDFLAGS = -shared -fPIC -lcjson
 
 libdcautil_la_LIBADD = ${top_builddir}/source/ccspinterface/libccspinterface.la ${top_builddir}/source/utils/libt2utils.la
 
 libdcautil_la_CPPFLAGS = -fPIC \
-                         -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/dbus-1.0 \
-                         -I${PKG_CONFIG_SYSROOT_DIR}$(libdir)/dbus-1.0/include \
                          -I${PKG_CONFIG_SYSROOT_DIR}$(includedir) \
                          -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/rbus \
                          -I${top_srcdir}/include \

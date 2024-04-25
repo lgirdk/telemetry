@@ -33,9 +33,7 @@ bin_PROGRAMS = telemetry2_0
 
 telemetry2_0_SOURCES = telemetry2_0.c
 telemetry2_0_CFLAGS = -DFEATURE_SUPPORT_RDKLOG
-telemetry2_0_CPPFLAGS = -fPIC -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/dbus-1.0 \
-                                -I${PKG_CONFIG_SYSROOT_DIR}$(libdir)/dbus-1.0/include \
-                                -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/ \
+telemetry2_0_CPPFLAGS = -fPIC -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/ \
                                 -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/rbus \
                                 -I${top_srcdir}/include \
                                 -I${top_srcdir}/source/utils \

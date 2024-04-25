@@ -23,9 +23,7 @@ lib_LTLIBRARIES = libxconfclient.la
 libxconfclient_la_SOURCES = xconfclient.c
 libxconfclient_la_LDFLAGS = -shared -fPIC -lcjson -lcurl
 libxconfclient_la_LIBADD = ${top_builddir}/source/t2parser/libt2parser.la ${top_builddir}/source/ccspinterface/libccspinterface.la
-libxconfclient_la_CPPFLAGS = -fPIC -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/dbus-1.0 \
-                                -I${PKG_CONFIG_SYSROOT_DIR}$(libdir)/dbus-1.0/include \
-                                -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/ccsp \
+libxconfclient_la_CPPFLAGS = -fPIC -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/ccsp \
                                 -I${top_srcdir}/include \
                                 -I${top_srcdir}/source \
                                 -I${top_srcdir}/source/bulkdata \

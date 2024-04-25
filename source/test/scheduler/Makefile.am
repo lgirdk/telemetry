@@ -37,8 +37,6 @@ scheduler_gtest_bin_CPPFLAGS = -I$(PKG_CONFIG_SYSROOT_DIR)$(includedir)/gtest \
                                -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/rbus \
                                -I${top_srcdir}/source/bulkdata \
                                -I${top_srcdir}/source/ccspinterface \
-                               -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/dbus-1.0 \
-                               -I${PKG_CONFIG_SYSROOT_DIR}$(libdir)/dbus-1.0/include \
                                -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/ccsp \
                                -I${top_srcdir}/source/reportgen \
                                -I${PKG_CONFIG_SYSROOT_DIR}$(includedir) \

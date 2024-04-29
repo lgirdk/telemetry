@@ -78,6 +78,7 @@ MAX_SSH_RETRY=3
 
 TELEMETRY_ER_READY="/tmp/.t2ReadyToReceiveEvents"
 TELEMETRY_GREP_PROFILE_NAME="/tmp/t2ProfileName"
+TELEMETRY_CFG_READY="/tmp/.t2ConfigReady"
 
 VAR_SAM_PATH="/var/sam"
 
@@ -376,6 +377,19 @@ copyT2CacheFileToArm(){
     sshCmdOnAtom 't2DeleteCacheFile'
 }
 
+notifyCfgReadyToAtom() {
+    if [ -f $TELEMETRY_CFG_READY ]; then
+        if [ ! -f $PEER_COMM_ID ]; then
+            GetConfigFile $PEER_COMM_ID
+        fi
+        icucp -i $PEER_COMM_ID -r $TELEMETRY_CFG_READY $ATOM_INTERFACE_IP:$TELEMETRY_CFG_READY
+        echo "Notified ATOM about Config ready" >> $T2_0_LOGFILE
+    else
+        #BUG: we shouldn't be here
+        echo "Error: $TELEMETRY_CFG_READY not available" >> $T2_0_LOGFILE
+    fi
+}
+
 ############ End functions ############
 
 
@@ -459,6 +473,10 @@ case "$eventType" in
     *copyT2CacheFileToArm* )
         # Will run on ATOM to copy cached file to ARM
         copyT2CacheFileToArm 
+        ;;
+    *notifyConfigReady* )
+        # will run on ARM to notify ATOM when config is ready
+        notifyCfgReadyToAtom
         ;;
 
 esac

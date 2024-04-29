@@ -358,6 +358,9 @@ void createComponentDataElements() {
     cfgReadyFlag = fopen(T2_CONFIG_READY, "w+");
     if(cfgReadyFlag){
         fclose(cfgReadyFlag);
+#if defined(_PUMA6_ARM_)
+        execNotifier("notifyConfigReady");
+#endif
     }
 
     T2Debug("%s --out\n", __FUNCTION__);

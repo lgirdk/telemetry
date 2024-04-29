@@ -533,8 +533,12 @@ T2ERROR initReportProfiles()
             createComponentDataElements();
             FILE* cfgReadyFlag = NULL ;
             cfgReadyFlag = fopen(T2_CONFIG_READY, "w+");
-            if(cfgReadyFlag)
+            if(cfgReadyFlag) {
                 fclose(cfgReadyFlag);
+#if defined(_PUMA6_ARM_)
+                execNotifier("notifyConfigReady");
+#endif
+            }
             getMarkerCompRbusSub(true);
         }
         T2ER_StartDispatchThread();

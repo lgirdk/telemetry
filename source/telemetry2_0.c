@@ -234,7 +234,7 @@ static void t2DaemonMainModeInit( ) {
     struct sigaction act;
     memset (&act, 0, sizeof(act));
     act.sa_sigaction = sig_handler;
-    act.sa_flags = SA_ONSTACK | SA_SIGINFO | SA_NODEFER;
+    act.sa_flags = SA_ONSTACK | SA_SIGINFO ;
 
     sigaddset(&blocking_signal, SIGUSR2);
     sigaddset(&blocking_signal, SIGUSR1);

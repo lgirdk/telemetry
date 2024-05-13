@@ -1164,6 +1164,7 @@ bool isMtlsEnabled(void)
               T2Error("getParameterValue failed\n");
        }
     }
+#if !defined(_LG_OFW_)
     if(isT2MtlsEnable != true)
     {
        if(T2ERROR_SUCCESS == getParameterValue(TR181_DEVICE_PARTNER_ID, &paramValue))
@@ -1186,6 +1187,7 @@ bool isMtlsEnabled(void)
       }
     }
     return isT2MtlsEnable;
+#endif
 #else
     /* Enabling Mtls by default for RDKC */
     return true;

@@ -365,7 +365,7 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid) {
     }
 #if defined(ENABLE_RDKB_SUPPORT) && !defined(_WNXL11BWL_PRODUCT_REQ_)
 
-#if defined(WAN_FAILOVER_SUPPORTED) || defined(FEATURE_RDKB_CONFIGURABLE_WAN_INTERFACE)
+#if defined(WAN_FAILOVER_SUPPORTED) || defined(FEATURE_RDKB_CONFIGURABLE_WAN_INTERFACE) && !defined(_LG_OFW_)
     char *paramVal = NULL;
     memset(waninterface, 0, sizeof(waninterface));
     snprintf(waninterface, sizeof(waninterface), "%s", INTERFACE); 

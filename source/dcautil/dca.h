@@ -20,13 +20,14 @@
 #define SRC_DCA_H_
 #include <cjson/cJSON.h>
 #include "vector.h"
+#include <stdbool.h>
 
 /**
  * Caller should be freeing vectorMarkerList and grepResultList
  */
 int getDCAResultsInJson(char* profileName, void* vectorMarkerList, cJSON** grepResultList);
 
-int getDCAResultsInVector(char* profileName, Vector* vectorMarkerList, Vector** grepResultList);
+int getDCAResultsInVector(char* profileName, Vector* vectorMarkerList, Vector** grepResultList, bool check_rotated);
 
 char *strSplit(char *str, char *delim);
 

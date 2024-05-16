@@ -42,7 +42,7 @@ void removeTopOutput();
 void removeGrepConfig(char* profileName, bool clearSeek, bool clearExec);
 void freeGResult(void *data);
 T2ERROR saveGrepConfig(char *name, Vector* grepMarkerList);
-T2ERROR getGrepResults(char* profileName, Vector *markerList, Vector **grepResultList, bool isClearSeekMap);
+T2ERROR getGrepResults(char* profileName, Vector *markerList, Vector **grepResultList, bool isClearSeekMap, bool check_rotated);
 #define PREFIX_SIZE 5
 #define BUF_LEN 16
 

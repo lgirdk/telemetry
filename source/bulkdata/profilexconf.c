@@ -216,7 +216,7 @@ static void* CollectAndReportXconf(void* data)
         }
         if(profile->gMarkerList != NULL && Vector_Size(profile->gMarkerList) > 0)
         {
-           getGrepResults(profile->name, profile->gMarkerList, &grepResultList, profile->bClearSeekMap);
+           getGrepResults(profile->name, profile->gMarkerList, &grepResultList, profile->bClearSeekMap, true); // Passing 5th argument as true to check rotated logs only in case of single profile
            T2Info("Grep complete for %lu markers \n", (unsigned long)Vector_Size(profile->gMarkerList));
            encodeGrepResultInJSON(valArray, grepResultList);
            Vector_Destroy(grepResultList, freeGResult);

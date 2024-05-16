@@ -424,7 +424,7 @@ void updateLastSeekval(hash_map_t *logSeekMap, char **prev_file, char* filename)
  *
  *  @return Returns Seek Log file. 
  */
-char *getLogLine(hash_map_t *logSeekMap, char *buf, int buflen, char *name,int *firstSeekFromEOF, int exec_count) {
+char *getLogLine(hash_map_t *logSeekMap, char *buf, int buflen, char *name,int *firstSeekFromEOF, int exec_count, bool check_rotated_logs) {
     static FILE *pcurrentLogFile = NULL;
     static int is_rotated_log = 0;
     char *rval = NULL;
@@ -478,7 +478,7 @@ char *getLogLine(hash_map_t *logSeekMap, char *buf, int buflen, char *name,int *
                     *firstSeekFromEOF = 0; // update this to zero as this initial seek update should only run for the first time
                 }
                 if(seek_value <= fileSize) {
-                     if(exec_count == 1){ // considering the rotated log file  within few minutes after bootup
+                     if(check_rotated_logs){ // considering the rotated log file  within few minutes after bootup, it should check only for the first time
                          char * rotatedLog = malloc(fileExtn_len);
                          if(NULL != rotatedLog) {
                             snprintf(rotatedLog, fileExtn_len, "%s%s%s", logpath, name, fileExtn);

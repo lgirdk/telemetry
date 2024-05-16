@@ -39,7 +39,8 @@
 #include "t2log_wrapper.h"
 #include "t2common.h"
 #include "busInterface.h"
-
+static bool check_rotated_logs = false; // using this variable to indicate whether it needs to check the rotated logs or not . Initialising it with false.
+static bool firstreport_after_bootup= false; // the rotated logs check should run only for the first time.
 // Using same error code used by safeclib for buffer overflow for easy metrics collection
 // safeclib is not compleately introduced in T2 but to be in sync with legacy
 #define INVALID_COUNT -406
@@ -486,11 +487,11 @@ static int handleRDKErrCodes(GList **rdkec_head, char *line) {
  * @return Returns status of operation.
  * @retval Return 0 upon success, -1 on failure.
  */
-static int processCountPattern(hash_map_t *logSeekMap, char *logfile, GList *pchead, int pcIndex, GList **rdkec_head, int *firstSeekFromEOF, int exec_count) {
+static int processCountPattern(hash_map_t *logSeekMap, char *logfile, GList *pchead, int pcIndex, GList **rdkec_head, int *firstSeekFromEOF, int exec_count, bool check_rotated_logs) {
     T2Debug("%s ++in\n", __FUNCTION__);
     char temp[MAXLINE];
     T2Debug("Read from log file %s \n", logfile);
-    while(getLogLine(logSeekMap,temp, MAXLINE, logfile, firstSeekFromEOF, exec_count) != NULL) {
+    while(getLogLine(logSeekMap,temp, MAXLINE, logfile, firstSeekFromEOF, exec_count, check_rotated_logs) != NULL) {
 
         int len = strlen(temp);
         if(len > 0 && temp[len - 1] == '\n')
@@ -528,7 +529,7 @@ static int processCountPattern(hash_map_t *logSeekMap, char *logfile, GList *pch
  * @return Returns status on operation.
  * @retval Returns 0 upon success.
  */
-static int processPattern(char **prev_file, char *logfile, GList **rdkec_head, GList *pchead, int pcIndex, Vector *grepResultList, hash_map_t* logSeekMap,int *firstSeekFromEOF, int exec_count) {
+static int processPattern(char **prev_file, char *logfile, GList **rdkec_head, GList *pchead, int pcIndex, Vector *grepResultList, hash_map_t* logSeekMap,int *firstSeekFromEOF, int exec_count, bool check_rotated_logs) {
 
     T2Debug("%s ++in\n", __FUNCTION__);
     if(NULL != logfile) {
@@ -563,7 +564,7 @@ static int processPattern(char **prev_file, char *logfile, GList **rdkec_head, G
                     addToJson(pchead);
                 }
             }else {
-                processCountPattern(logSeekMap, logfile, pchead, pcIndex, rdkec_head, firstSeekFromEOF, exec_count);
+                processCountPattern(logSeekMap, logfile, pchead, pcIndex, rdkec_head, firstSeekFromEOF, exec_count, check_rotated_logs);
                 if (grepResultList != NULL) {
                     addToVector(pchead, grepResultList);
                 } else {
@@ -632,7 +633,7 @@ void getDType(char *filename, MarkerType mType, DType_t *dtype) {
  *  @param filename
  *  @return -1 on failure, 0 on success
  */
-static int parseMarkerList(char* profileName, Vector* vMarkerList, Vector* grepResultList) {
+static int parseMarkerList(char* profileName, Vector* vMarkerList, Vector* grepResultList, bool check_rotated) {
     T2Debug("%s ++in \n", __FUNCTION__);
 
     char *filename = NULL, *prevfile = NULL;
@@ -657,6 +658,13 @@ static int parseMarkerList(char* profileName, Vector* vMarkerList, Vector* grepR
     }
 
     int profileExecCounter = gsProfile->execCounter;
+    if((gsProfile->execCounter == 1) && (firstreport_after_bootup == false)){ //checking the execution count and first report after bootup because after config reload again execution count will get initialised and again reaches 1. check_rotated logs flag is to check the rotated log files even when seekvalue is less than filesize for the first time.
+        check_rotated_logs = check_rotated;
+        firstreport_after_bootup = true;
+    }
+    else{
+        check_rotated_logs = false;
+    }
 
     // Traverse through marker list
     for( var = 0; var < vCount; ++var ) {
@@ -711,7 +719,7 @@ static int parseMarkerList(char* profileName, Vector* vMarkerList, Vector* grepR
         if(is_skip_param == 0) {
             if(0 == insertPCNode(&pchead, temp_pattern, temp_header, dtype, 0, NULL, trim, regex)) {
                 pcIndex = 1;
-                processPattern(&prevfile, filename, &rdkec_head, pchead, pcIndex, grepResultList, gsProfile->logFileSeekMap, &(markerList->firstSeekFromEOF), gsProfile->execCounter);
+                processPattern(&prevfile, filename, &rdkec_head, pchead, pcIndex, grepResultList, gsProfile->logFileSeekMap, &(markerList->firstSeekFromEOF), gsProfile->execCounter, check_rotated_logs);
                 pchead = NULL;
             }
         }else {
@@ -772,7 +780,7 @@ int getDCAResultsInJson(char* profileName, void* markerList, cJSON** grepResultL
 
         initSearchResultJson(&ROOT_JSON, &SEARCH_RESULT_JSON);
 
-        rc = parseMarkerList(profileName, markerList, NULL);
+        rc = parseMarkerList(profileName, markerList, NULL, false);
         *grepResultList = ROOT_JSON;
     }
     pthread_mutex_unlock(&dcaMutex);
@@ -782,7 +790,7 @@ int getDCAResultsInJson(char* profileName, void* markerList, cJSON** grepResultL
 }
 
 
-int getDCAResultsInVector(char* profileName, Vector* vecMarkerList, Vector** grepResultList) {
+int getDCAResultsInVector(char* profileName, Vector* vecMarkerList, Vector** grepResultList, bool check_rotated) {
 
     T2Debug("%s ++in \n", __FUNCTION__);
     int rc = -1;
@@ -799,7 +807,7 @@ int getDCAResultsInVector(char* profileName, Vector* vecMarkerList, Vector** gre
             initProperties(logPath, persistentPath);
 
         Vector_Create(grepResultList);
-        if( (rc = parseMarkerList(profileName, vecMarkerList, *grepResultList)) == -1 ) {
+        if( (rc = parseMarkerList(profileName, vecMarkerList, *grepResultList, check_rotated)) == -1 ) {
             T2Debug("Error in fetching grep results\n");
         }
     }

@@ -191,7 +191,7 @@ T2ERROR saveGrepConfig(char *name, Vector* grepMarkerList) {
 #endif
 
 T2ERROR
-getGrepResults (char *profileName, Vector *markerList, Vector **grepResultList, bool isClearSeekMap) {
+getGrepResults (char *profileName, Vector *markerList, Vector **grepResultList, bool isClearSeekMap, bool check_rotated) {
     T2Debug("%s ++in\n", __FUNCTION__);
     if(profileName == NULL || markerList == NULL || grepResultList == NULL){
         T2Error("Invalid Args or Args are NULL\n");
@@ -227,7 +227,7 @@ getGrepResults (char *profileName, Vector *markerList, Vector **grepResultList, 
         }
         *grepResultList = vgrepResult;
 	#else
-        getDCAResultsInVector(profileName, markerList, grepResultList);
+        getDCAResultsInVector(profileName, markerList, grepResultList, check_rotated);
         if (isClearSeekMap) {
             removeProfileFromSeekMap(profileName);
         }

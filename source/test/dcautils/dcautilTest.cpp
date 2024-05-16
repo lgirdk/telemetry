@@ -274,9 +274,12 @@ TEST(GETGREPRESULTS, PROFILENAME_NULL)
    Vector_PushBack(markerlist, (void*) strdup(dcamarker2));
    Vector* grepResultlist = NULL;
    Vector_Create(&grepResultlist);
-   EXPECT_EQ(T2ERROR_FAILURE, getGrepResults(NULL, markerlist, &grepResultlist, false));
-   EXPECT_EQ(T2ERROR_FAILURE, getGrepResults("RDKB_Profile1", NULL, &grepResultlist, false));
-   EXPECT_EQ(T2ERROR_FAILURE, getGrepResults("RDKB_Profile1", markerlist, NULL, false));
+   EXPECT_EQ(T2ERROR_FAILURE, getGrepResults(NULL, markerlist, &grepResultlist, false, false));
+   EXPECT_EQ(T2ERROR_FAILURE, getGrepResults("RDKB_Profile1", NULL, &grepResultlist, false, false));
+   EXPECT_EQ(T2ERROR_FAILURE, getGrepResults("RDKB_Profile1", markerlist, NULL, false, false));
+   EXPECT_EQ(T2ERROR_FAILURE, getGrepResults(NULL, markerlist, &grepResultlist, false, true));
+   EXPECT_EQ(T2ERROR_FAILURE, getGrepResults("RDKB_Profile1", NULL, &grepResultlist, false, true));
+   EXPECT_EQ(T2ERROR_FAILURE, getGrepResults("RDKB_Profile1", markerlist, NULL, false, true));
    Vector_Destroy(markerlist, free);
    Vector_Destroy(grepResultlist, free);
    grepResultlist = NULL;
@@ -326,9 +329,13 @@ TEST(GETLOGLINE, NAME_NULL)
     char* buf = (char *)malloc(512);
     char* name = "Consolelog.txt.0";
     int seekFromEOF = 0;
-    EXPECT_EQ(NULL, getLogLine(NULL, buf, 512, name, &seekFromEOF, 0));
-    EXPECT_EQ(NULL, getLogLine(logSeekMap, NULL, 512, name, &seekFromEOF, 1));
-    EXPECT_EQ(NULL, getLogLine(logSeekMap, buf, 512, NULL, &seekFromEOF, 2));
+    EXPECT_EQ(NULL, getLogLine(NULL, buf, 512, name, &seekFromEOF, 0, false));
+    EXPECT_EQ(NULL, getLogLine(logSeekMap, NULL, 512, name, &seekFromEOF, 1, false));
+    EXPECT_EQ(NULL, getLogLine(logSeekMap, buf, 512, NULL, &seekFromEOF, 2, false));
+    EXPECT_EQ(NULL, getLogLine(NULL, buf, 512, name, &seekFromEOF, 0, true));
+    EXPECT_EQ(NULL, getLogLine(logSeekMap, NULL, 512, name, &seekFromEOF, 1, true));
+    EXPECT_EQ(NULL, getLogLine(logSeekMap, buf, 512, NULL, &seekFromEOF, 2, true));
+
     free(buf);
     buf = NULL;
     free(logSeekMap);
@@ -618,8 +625,22 @@ TEST_F(dcaFileTestFixture, getLogLine)
     EXPECT_CALL(*g_ffileIOMock, fopen(_,_))
             .Times(1)
             .WillOnce(Return(fp));
-    EXPECT_EQ(NULL, getLogLine(logSeekMap, buf, 10, name, &seekFromEOF, 1));
+    EXPECT_EQ(NULL, getLogLine(logSeekMap, buf, 10, name, &seekFromEOF, 1, false));
 }
+
+TEST_F(dcaFileTestFixture, getLogLine2)
+{
+    hash_map_t* logSeekMap = (hash_map_t *)malloc(512);
+    char* buf = (char *)malloc(512);
+    char* name = "Consolelog.txt.0";
+    FILE* fp = (FILE*)NULL;
+    int seekFromEOF =0;
+    EXPECT_CALL(*g_ffileIOMock, fopen(_,_))
+            .Times(1)
+            .WillOnce(Return(fp));
+    EXPECT_EQ(NULL, getLogLine(logSeekMap, buf, 10, name, &seekFromEOF, 1, true));
+}
+
 
 TEST_F(dcaFileTestFixture, updateLastSeekval)
 {
@@ -661,7 +682,7 @@ TEST_F(dcaFileTestFixture, getLogLine1)
     EXPECT_CALL(*g_ffileIOMock, fseek(_,_,_))
             .Times(1)
             .WillOnce(Return(-1));
-     EXPECT_EQ(NULL, getLogLine(logSeekMap, buf, 10, name, &seekFromEOF, 1));
+     EXPECT_EQ(NULL, getLogLine(logSeekMap, buf, 10, name, &seekFromEOF, 1, false));
 
 }
 

@@ -65,6 +65,7 @@ static char* reportProfilemsgPckVal = NULL ;
 uint32_t t2MemUsage = 0;
 
 static pthread_mutex_t asyncMutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t compParamMap = PTHREAD_MUTEX_INITIALIZER;
 static rbusMethodAsyncHandle_t onDemandReportCallBackHandler = NULL ;
 
 typedef struct MethodData {
@@ -871,30 +872,43 @@ T2ERROR regDEforCompEventList(const char* componentName, T2EventMarkerListCallba
 
     if(!componentName)
         return status;
-
-    if(compTr181ParamMap == NULL)
-        compTr181ParamMap = hash_map_create();
-
-    snprintf(deNameSpace, 124, "%s%s%s", T2_ROOT_PARAMETER, componentName, T2_EVENT_LIST_PARAM_SUFFIX);
+ 
     if(!t2bus_handle && T2ERROR_SUCCESS != rBusInterface_Init()) {
         T2Error("%s Failed in getting bus handles \n", __FUNCTION__);
         T2Debug("%s --out\n", __FUNCTION__);
         return T2ERROR_FAILURE;
     }
+  
+    pthread_mutex_lock(&compParamMap);
+  
+    if(compTr181ParamMap == NULL)
+        compTr181ParamMap = hash_map_create();
+    else{
+        char *existingProperty = (char*) hash_map_get(compTr181ParamMap, componentName);
+        if (existingProperty != NULL){
+            T2Warning("The paramenter exist with compName : %s, the registered paramenter is %s, skipping registration to avoid duplicate registration... \n",componentName,existingProperty );
+            pthread_mutex_unlock(&compParamMap);
+            return status;
+        }
+    }
 
+    snprintf(deNameSpace, 124, "%s%s%s", T2_ROOT_PARAMETER, componentName, T2_EVENT_LIST_PARAM_SUFFIX);
+  
     rbusDataElement_t dataElements[1] = {
       { deNameSpace, RBUS_ELEMENT_TYPE_PROPERTY, { t2PropertyDataGetHandler, NULL, NULL, NULL,NULL, NULL } }
     };
     ret = rbus_regDataElements(t2bus_handle, 1, dataElements);
     if(ret == RBUS_ERROR_SUCCESS) {
         T2Debug("Registered data element %s with bus \n ", deNameSpace);
-        hash_map_put(compTr181ParamMap, (void*) strdup(deNameSpace), (void*) strdup(componentName), free);
+        hash_map_put(compTr181ParamMap, (void*) strdup(deNameSpace), (void*) strdup(componentName), free);       
         T2Debug("Save dataelement mapping, %s with component name %s \n ", deNameSpace, componentName);
     }else {
         T2Error("Failed in registering data element %s \n", deNameSpace);
         status = T2ERROR_FAILURE;
     }
-
+  
+    pthread_mutex_unlock(&compParamMap);
+  
     if(!getMarkerListCallBack)
         getMarkerListCallBack = callBackHandler;
 
@@ -940,6 +954,8 @@ void unregisterDEforCompEventList(){
         T2Debug("%s --out\n", __FUNCTION__);
         return;
     }
+    
+    pthread_mutex_lock(&compParamMap);
 
     count = hash_map_count(compTr181ParamMap);
     T2Debug("compTr181ParamMap has %d components registered \n", count);
@@ -964,6 +980,8 @@ void unregisterDEforCompEventList(){
     T2Debug("Freeing compTr181ParamMap \n");
     hash_map_destroy(compTr181ParamMap, freeComponentEventList);
     compTr181ParamMap = NULL;
+    pthread_mutex_unlock(&compParamMap);
+  
     T2Debug("%s --out\n", __FUNCTION__);
 }
 
@@ -1439,3 +1457,4 @@ bool rbusCheckMethodExists(const char* rbusMethodName) {
      rbusObject_Release(outParams);
      return true ;
 }
+

@@ -277,6 +277,13 @@ T2ERROR ReportProfiles_setProfileXConf(ProfileXConf *profile) {
     }
 
     T2ER_StopDispatchThread();
+    // un-register and re-register Component Event List
+    // This is done to support any new components added for events
+    if(isRbusEnabled()){
+        unregisterDEforCompEventList();
+        createComponentDataElements();
+	publishEventsProfileUpdates();
+    }
     T2ER_StartDispatchThread();
 
     T2Debug("%s --out\n", __FUNCTION__);
@@ -344,27 +351,6 @@ T2ERROR ReportProfiles_deleteProfile(const char* profileName) {
 
     T2Debug("%s --out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;
-}
-
-static void createComponentDataElements() {
-    T2Debug("%s ++in\n", __FUNCTION__);
-    Vector* componentList = NULL ;
-    FILE* cfgReadyFlag = NULL ;
-    int i = 0;
-    int length = 0 ;
-    getComponentsWithEventMarkers(&componentList);
-    length = Vector_Size(componentList);
-    for (i = 0; i < length; ++i) {
-        char *compName = (char*) Vector_At(componentList,i);
-        if(compName)
-            regDEforCompEventList(compName, getComponentMarkerList);
-    }
-    cfgReadyFlag = fopen(T2_CONFIG_READY, "w+");
-    if(cfgReadyFlag){
-        fclose(cfgReadyFlag);
-    }
-
-    T2Debug("%s --out\n", __FUNCTION__);
 }
 
 void profilemem_usage(unsigned int *value) {
@@ -542,7 +528,12 @@ T2ERROR initReportProfiles()
     if(ProfileXConf_isSet() || getProfileCount() > 0) {
 
         if(isRbusEnabled()){
+            unregisterDEforCompEventList();
             createComponentDataElements();
+            FILE* cfgReadyFlag = NULL ;
+            cfgReadyFlag = fopen(T2_CONFIG_READY, "w+");
+            if(cfgReadyFlag)
+                fclose(cfgReadyFlag);
             getMarkerCompRbusSub(true);
         }
         T2ER_StartDispatchThread();

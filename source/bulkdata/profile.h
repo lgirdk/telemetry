@@ -78,6 +78,10 @@ typedef struct _Profile
     pthread_t reportThread;
     pthread_mutex_t triggerCondMutex;
     pthread_mutex_t eventMutex;
+    pthread_mutex_t reportMutex;
+    pthread_cond_t reportcond;
+    struct timespec currentTime;
+    struct timespec maxlatencyTime;
     Vector *triggerConditionList;
     pthread_cond_t reuseThread;
     pthread_mutex_t reuseThreadMutex;

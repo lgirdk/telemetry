@@ -43,8 +43,6 @@ static bool initialized = false;
 static Vector *profileList;
 static pthread_mutex_t plMutex;
 static pthread_mutex_t reportLock;
-static pthread_mutex_t reportMutex = PTHREAD_MUTEX_INITIALIZER;
-static pthread_cond_t reportcond;
 
 static pthread_mutex_t triggerConditionQueMutex = PTHREAD_MUTEX_INITIALIZER;
 static queue_t *triggerConditionQueue = NULL;
@@ -292,8 +290,6 @@ static void* CollectAndReport(void* data)
         struct timespec startTime;
         struct timespec endTime;
         struct timespec elapsedTime;
-        struct timespec _ts;
-        struct timespec _now;
 
 
         T2ERROR ret = T2ERROR_FAILURE;
@@ -433,11 +429,11 @@ static void* CollectAndReport(void* data)
                     T2Warning("Report size is exceeding the max limit : %d\n", DEFAULT_MAX_REPORT_SIZE);
                 }
                 if(profile->maxUploadLatency > 0){
-                    memset(&_ts, 0, sizeof(struct timespec));
-                    memset(&_now, 0, sizeof(struct timespec));
-                    pthread_cond_init(&reportcond, NULL);
-                    clock_gettime(CLOCK_REALTIME, &_now);
-                    _ts.tv_sec = _now.tv_sec;
+                    memset(&profile->maxlatencyTime, 0, sizeof(struct timespec));
+                    memset(&profile->currentTime, 0, sizeof(struct timespec));
+                    pthread_cond_init(&profile->reportcond, NULL);
+                    clock_gettime(CLOCK_REALTIME, &profile->currentTime);
+                    profile->maxlatencyTime.tv_sec = profile->currentTime.tv_sec;
                     srand(time(0)); // Initialise the random number generator
                     maxuploadinmilliSec = rand()%(profile->maxUploadLatency - 1);
                     maxuploadinSec =  (maxuploadinmilliSec + 1) / 1000;
@@ -447,17 +443,17 @@ static void* CollectAndReport(void* data)
                     if ( strcmp(profile->protocol, "HTTP") == 0 ) {
                         httpUrl = prepareHttpUrl(profile->t2HTTPDest); /* Append URL with http properties */
                         if(profile->maxUploadLatency > 0){
-                            pthread_mutex_lock(&reportMutex);
+                            pthread_mutex_lock(&profile->reportMutex);
                             T2Info("waiting for %ld sec of macUploadLatency\n",(long) maxuploadinSec);
-                            _ts.tv_sec += maxuploadinSec;
-                            n = pthread_cond_timedwait(&reportcond, &reportMutex, &_ts);
+                            profile->maxlatencyTime.tv_sec += maxuploadinSec;
+                            n = pthread_cond_timedwait(&profile->reportcond, &profile->reportMutex, &profile->maxlatencyTime);
                             if(n == ETIMEDOUT) {
                                 T2Info("TIMEOUT for maxUploadLatency of profile %s\n", profile->name);
                                 ret = sendReportOverHTTP(httpUrl, jsonReport, NULL);
                             }else {
                                 T2Error("Profile : %s pthread_cond_timedwait ERROR!!!\n", profile->name);
-                                pthread_mutex_unlock(&reportMutex);
-                                pthread_cond_destroy(&reportcond);
+                                pthread_mutex_unlock(&profile->reportMutex);
+                                pthread_cond_destroy(&profile->reportcond);
                                 if(httpUrl){
                                     free(httpUrl);
                                     httpUrl = NULL;
@@ -476,19 +472,19 @@ static void* CollectAndReport(void* data)
                                         T2Debug(" profile->triggerReportOnCondition is not set \n");
                                 }
                                 //return NULL;
-                                goto reportThreadEnd;
+				goto reportThreadEnd;
                             }
-                            pthread_mutex_unlock(&reportMutex);
-                            pthread_cond_destroy(&reportcond);
+                            pthread_mutex_unlock(&profile->reportMutex);
+                            pthread_cond_destroy(&profile->reportcond);
                         }else {
                             ret = sendReportOverHTTP(httpUrl, jsonReport, NULL);
                         }
                     } else {
                         if(profile->maxUploadLatency > 0 ){
-                            pthread_mutex_lock(&reportMutex);
+                            pthread_mutex_lock(&profile->reportMutex);
                             T2Info("waiting for %ld sec of macUploadLatency\n",(long) maxuploadinSec);
-                            _ts.tv_sec += maxuploadinSec;
-                            n = pthread_cond_timedwait(&reportcond, &reportMutex, &_ts);
+                            profile->maxlatencyTime.tv_sec += maxuploadinSec;
+                            n = pthread_cond_timedwait(&profile->reportcond, &profile->reportMutex, &profile->maxlatencyTime);
                             if(n == ETIMEDOUT)
                             {
                             T2Info("TIMEOUT for maxUploadLatency of profile %s\n",profile->name);
@@ -496,8 +492,8 @@ static void* CollectAndReport(void* data)
                             }
                             else{
                                 T2Error("Profile : %s pthread_cond_timedwait ERROR!!!\n", profile->name);
-                                pthread_mutex_unlock(&reportMutex);
-                                pthread_cond_destroy(&reportcond);
+                                pthread_mutex_unlock(&profile->reportMutex);
+                                pthread_cond_destroy(&profile->reportcond);
                                 profile->reportInProgress = false;
                                 if(profile->triggerReportOnCondition) {
                                     T2Info(" Unlock trigger condition mutex and set report on condition to false \n");
@@ -514,8 +510,8 @@ static void* CollectAndReport(void* data)
                                 //return NULL;
                                 goto reportThreadEnd;
                             }
-                            pthread_mutex_unlock(&reportMutex);
-                            pthread_cond_destroy(&reportcond);
+                            pthread_mutex_unlock(&profile->reportMutex);
+                            pthread_cond_destroy(&profile->reportcond);
                         }
                         else{
                             ret = sendReportsOverRBUSMethod(profile->t2RBUSDest->rbusMethodName, profile->t2RBUSDest->rbusMethodParamList, jsonReport);

@@ -170,7 +170,7 @@ T2ERROR saveGrepConfig(char *name, Vector* grepMarkerList) {
 
             totalDataLen = strlen(grepMarker->markerName) + strlen(grepMarker->searchString) + strlen(grepMarker->logFile) + delimiterLen + strlen(USE_ABSOLUTE);
             if ( totalDataLen < MAX_LINE_LEN ) {
-                fprintf(dcaLogGrepConf, "%s%s%s%s%s%s%s%s%d\n", grepMarker->markerName, DELIMITER, grepMarker->searchString, DELIMITER, grepMarker->logFile, DELIMITER, ((grepMarker->mType == MTYPE_COUNTER) ? USE_COUNTER : USE_ABSOLUTE), DELIMITER, grepMarker->skipFreq);
+                fprintf(dcaLogGrepConf, "%s%s%s%s%s%s%s%s%d%s%d\n", grepMarker->markerName, DELIMITER, grepMarker->searchString, DELIMITER, grepMarker->logFile, DELIMITER, ((grepMarker->mType == MTYPE_COUNTER) ? USE_COUNTER : USE_ABSOLUTE), DELIMITER, grepMarker->skipFreq,DELIMITER, grepMarker->firstSeekFromEOF);
             } else {
                 T2Info("Total marker info length %d is greater than %d . Ignore adding marker to grep list . \n", totalDataLen, MAX_LINE_LEN );
             }

@@ -141,6 +141,7 @@ static T2ERROR addGrepMarkersToMap () {
         char *grepFile = (char*) strSplit(NULL, DELIMITER);
         char *useProperty = (char*) strSplit(NULL, DELIMITER);
         char *skipIntervalStr = (char*) strSplit(NULL, DELIMITER);
+        char *firstSeekFromEOF = (char*) strSplit(NULL, DELIMITER);
         int skipInterval;
         if(NULL == grepFile || NULL == grepPattern || NULL == header || NULL == skipIntervalStr || NULL == useProperty)
             continue;
@@ -164,7 +165,8 @@ static T2ERROR addGrepMarkersToMap () {
             gMarker->u.count = 0;
         }
         gMarker->skipFreq = skipInterval;
-        T2Debug("Adding maker to grep list : %s %s %s %s %d  \n", gMarker->markerName, gMarker->searchString, gMarker->logFile, gMarker->mType == MTYPE_COUNTER ? USE_COUNTER:USE_ABSOLUTE,  gMarker->skipFreq);
+        gMarker->firstSeekFromEOF = atoi(firstSeekFromEOF);
+        T2Debug("Adding maker to grep list : %s %s %s %s %d %d \n", gMarker->markerName, gMarker->searchString, gMarker->logFile, gMarker->mType == MTYPE_COUNTER ? USE_COUNTER:USE_ABSOLUTE,  gMarker->skipFreq,gMarker->firstSeekFromEOF);
         Vector_PushBack(markerList, gMarker);
     }
     hash_map_put(grepMarkerListMap, ProfileName, markerList, freegrepMarkerListMap);

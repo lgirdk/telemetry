@@ -212,94 +212,46 @@ static void* CollectAndReportXconf(void* data)
             }
             if(profile->paramList != NULL && Vector_Size(profile->paramList) > 0)
             {
-            pthread_mutex_unlock(&plMutex);
-            return NULL;
-        }
-        if(profile->paramList != NULL && Vector_Size(profile->paramList) > 0)
-        {
-           pthread_mutex_unlock(&plMutex);
-           profileParamVals = getProfileParameterValues(profile->paramList);
-           pthread_mutex_lock(&plMutex);
-           T2Info("Fetch complete for TR-181 Object/Parameter Values for parameters \n");
-           if(profileParamVals != NULL)
-           {
-              encodeParamResultInJSON(valArray, profile->paramList, profileParamVals);
-           }
-           Vector_Destroy(profileParamVals, freeProfileValues);
-        }
-        if(profile->gMarkerList != NULL && Vector_Size(profile->gMarkerList) > 0)
-        {
-           getGrepResults(profile->name, profile->gMarkerList, &grepResultList, profile->bClearSeekMap, true); // Passing 5th argument as true to check rotated logs only in case of single profile
-           T2Info("Grep complete for %lu markers \n", (unsigned long)Vector_Size(profile->gMarkerList));
-           encodeGrepResultInJSON(valArray, grepResultList);
-           Vector_Destroy(grepResultList, freeGResult);
-        }
-        if(profile->eMarkerList != NULL && Vector_Size(profile->eMarkerList) > 0)
-        {
-           encodeEventMarkersInJSON(valArray, profile->eMarkerList);
-        }
-        ret = prepareJSONReport(profile->jsonReportObj, &jsonReport);
-        destroyJSONReport(profile->jsonReportObj);
-        profile->jsonReportObj = NULL;
-
-        if(ret != T2ERROR_SUCCESS)
-        {
-            T2Error("Unable to generate report for : %s\n", profile->name);
-            profile->reportInProgress = false;
-            //pthread_mutex_unlock(&plMutex);
-            //return NULL;
-            goto reportXconfThreadEnd;
-        }
-        long size = strlen(jsonReport);
-        T2Info("cJSON Report = %s\n", jsonReport);
-        T2Info("Report Size = %ld\n", size);
-        if(profile->isUpdated)
-        {
-            T2Info("Profile is udpated, report is cached to send with updated Profile TIMEOUT\n");
-            T2Debug("Vector list size = %lu\n",  (unsigned long) Vector_Size(profile->cachedReportList));
-            if(profile->cachedReportList != NULL && Vector_Size(profile->cachedReportList) >= MAX_CACHED_REPORTS) {
-                while(Vector_Size(profile->cachedReportList) > MAX_CACHED_REPORTS){
-                    int pos = Vector_Size(profile->cachedReportList);
-                    T2Info("Max Cached Reports Limit Exceeded, Removing the extra reports\n");
-                    char *extraCachedreport =  (char*) Vector_At(profile->cachedReportList, (pos - 1));
-                    Vector_RemoveItem(profile->cachedReportList,(void*) extraCachedreport, NULL);
-                    free(extraCachedreport);
-                }
-                T2Info("Max Cached Reports Limit Reached, Overwriting third recent report\n");
-                char *thirdCachedReport = (char*) Vector_At(profile->cachedReportList, MAX_CACHED_REPORTS - 3);
-                Vector_RemoveItem(profile->cachedReportList,(void*) thirdCachedReport, NULL);
-                free(thirdCachedReport);
-            }
-            Vector_PushBack(profile->cachedReportList, strdup(jsonReport));
-            profile->reportInProgress = false;
-            /* CID 187010: Dereference before null check */
-            free(jsonReport);
-            jsonReport= NULL;
-            T2Debug("%s --out\n", __FUNCTION__);
-            //pthread_mutex_unlock(&plMutex);
-            //return NULL;
-            goto reportXconfThreadEnd;
-        }
-        if(size > DEFAULT_MAX_REPORT_SIZE)
-        {
-            T2Warning("Report size is exceeding the max limit : %d\n", DEFAULT_MAX_REPORT_SIZE);
-        }
-        if(profile->protocol != NULL && strcmp(profile->protocol, "HTTP") == 0)
-        {
-            // If a terminate is initiated, do not attempt to upload report
-            if(isAbortTriggered) {
-                T2Info("On-demand report upload has been aborted. Skip report upload \n");
-                ret = T2ERROR_FAILURE ;
-            } else {
-                T2Debug("Abort upload is not yet set.\n");
                 pthread_mutex_unlock(&plMutex);
-                ret = sendReportOverHTTP(profile->t2HTTPDest->URL, jsonReport, &xconfReportPid);
+                profileParamVals = getProfileParameterValues(profile->paramList);
                 pthread_mutex_lock(&plMutex);
+                T2Info("Fetch complete for TR-181 Object/Parameter Values for parameters \n");
+                if(profileParamVals != NULL)
+                {
+                    encodeParamResultInJSON(valArray, profile->paramList, profileParamVals);
+                }
+                Vector_Destroy(profileParamVals, freeProfileValues);
             }
-
-            xconfReportPid = -1 ;
-            if(ret == T2ERROR_FAILURE)
+            if(profile->gMarkerList != NULL && Vector_Size(profile->gMarkerList) > 0)
             {
+                getGrepResults(profile->name, profile->gMarkerList, &grepResultList, profile->bClearSeekMap, true); // Passing 5th argument as true to check rotated logs only in case of single profile
+                T2Info("Grep complete for %lu markers \n", (unsigned long)Vector_Size(profile->gMarkerList));
+                encodeGrepResultInJSON(valArray, grepResultList);
+                Vector_Destroy(grepResultList, freeGResult);
+            }
+            if(profile->eMarkerList != NULL && Vector_Size(profile->eMarkerList) > 0)
+            {
+                encodeEventMarkersInJSON(valArray, profile->eMarkerList);
+            }
+            ret = prepareJSONReport(profile->jsonReportObj, &jsonReport);
+            destroyJSONReport(profile->jsonReportObj);
+            profile->jsonReportObj = NULL;
+
+            if(ret != T2ERROR_SUCCESS)
+            {
+                T2Error("Unable to generate report for : %s\n", profile->name);
+                profile->reportInProgress = false;
+                //pthread_mutex_unlock(&plMutex);
+                //return NULL;
+                goto reportXconfThreadEnd;
+            }
+            long size = strlen(jsonReport);
+            T2Info("cJSON Report = %s\n", jsonReport);
+            T2Info("Report Size = %ld\n", size);
+            if(profile->isUpdated)
+            {
+                T2Info("Profile is udpated, report is cached to send with updated Profile TIMEOUT\n");
+                T2Debug("Vector list size = %lu\n",  (unsigned long) Vector_Size(profile->cachedReportList));
                 if(profile->cachedReportList != NULL && Vector_Size(profile->cachedReportList) >= MAX_CACHED_REPORTS) {
                     while(Vector_Size(profile->cachedReportList) > MAX_CACHED_REPORTS){
                         int pos = Vector_Size(profile->cachedReportList);
@@ -314,25 +266,68 @@ static void* CollectAndReportXconf(void* data)
                     free(thirdCachedReport);
                 }
                 Vector_PushBack(profile->cachedReportList, strdup(jsonReport));
-
-                T2Info("Report Cached, No. of reportes cached = %lu\n", (unsigned long)Vector_Size(profile->cachedReportList));
-                // Save messages from cache to a file in persistent location.
-                saveCachedReportToPersistenceFolder(profile->name, profile->cachedReportList);
+                profile->reportInProgress = false;
+                /* CID 187010: Dereference before null check */
+                free(jsonReport);
+                jsonReport= NULL;
+                T2Debug("%s --out\n", __FUNCTION__);
+                //pthread_mutex_unlock(&plMutex);
+                //return NULL;
+                goto reportXconfThreadEnd;
             }
-            else if(profile->cachedReportList != NULL && Vector_Size(profile->cachedReportList) > 0)
+            if(size > DEFAULT_MAX_REPORT_SIZE)
             {
-                T2Info("Trying to send  %lu cached reports\n", (unsigned long)Vector_Size(profile->cachedReportList));
-                ret = sendCachedReportsOverHTTP(profile->t2HTTPDest->URL, profile->cachedReportList);
-                if(ret == T2ERROR_SUCCESS){
-                    // Do not get misleaded by function name. Call is to delete the directory for storing cached reports
-                    removeProfileFromDisk(CACHED_MESSAGE_PATH, profile->name);
+                T2Warning("Report size is exceeding the max limit : %d\n", DEFAULT_MAX_REPORT_SIZE);
+            }
+            if(profile->protocol != NULL && strcmp(profile->protocol, "HTTP") == 0)
+            {
+            // If a terminate is initiated, do not attempt to upload report
+                if(isAbortTriggered) {
+                    T2Info("On-demand report upload has been aborted. Skip report upload \n");
+                    ret = T2ERROR_FAILURE ;
+                } else {
+                    T2Debug("Abort upload is not yet set.\n");
+                    pthread_mutex_unlock(&plMutex);
+                    ret = sendReportOverHTTP(profile->t2HTTPDest->URL, jsonReport, &xconfReportPid);
+                    pthread_mutex_lock(&plMutex);
+                }
+
+                xconfReportPid = -1 ;
+                if(ret == T2ERROR_FAILURE)
+                {
+                    if(profile->cachedReportList != NULL && Vector_Size(profile->cachedReportList) >= MAX_CACHED_REPORTS) {
+                        while(Vector_Size(profile->cachedReportList) > MAX_CACHED_REPORTS){
+                            int pos = Vector_Size(profile->cachedReportList);
+                            T2Info("Max Cached Reports Limit Exceeded, Removing the extra reports\n");
+                            char *extraCachedreport =  (char*) Vector_At(profile->cachedReportList, (pos - 1));
+                            Vector_RemoveItem(profile->cachedReportList,(void*) extraCachedreport, NULL);
+                            free(extraCachedreport);
+                        }
+                        T2Info("Max Cached Reports Limit Reached, Overwriting third recent report\n");
+                        char *thirdCachedReport = (char*) Vector_At(profile->cachedReportList, MAX_CACHED_REPORTS - 3);
+                        Vector_RemoveItem(profile->cachedReportList,(void*) thirdCachedReport, NULL);
+                        free(thirdCachedReport);
+                    }
+                    Vector_PushBack(profile->cachedReportList, strdup(jsonReport));
+
+                    T2Info("Report Cached, No. of reportes cached = %lu\n", (unsigned long)Vector_Size(profile->cachedReportList));
+                    // Save messages from cache to a file in persistent location.
+                    saveCachedReportToPersistenceFolder(profile->name, profile->cachedReportList);
+                }
+                else if(profile->cachedReportList != NULL && Vector_Size(profile->cachedReportList) > 0)
+                {
+                    T2Info("Trying to send  %lu cached reports\n", (unsigned long)Vector_Size(profile->cachedReportList));
+                    ret = sendCachedReportsOverHTTP(profile->t2HTTPDest->URL, profile->cachedReportList);
+                    if(ret == T2ERROR_SUCCESS){
+                        // Do not get misleaded by function name. Call is to delete the directory for storing cached reports
+                        removeProfileFromDisk(CACHED_MESSAGE_PATH, profile->name);
+                    }
                 }
             }
-        }
-        else
-        {
-            T2Error("Unsupported report send protocol : %s\n", profile->protocol);
-        }
+            else
+            {
+                T2Error("Unsupported report send protocol : %s\n", profile->protocol);
+            }
         }
         else
         {

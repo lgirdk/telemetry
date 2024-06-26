@@ -219,6 +219,8 @@ getGrepResults (char *profileName, Vector *markerList, Vector **grepResultList, 
                     GrepResult* grepResult = (GrepResult*) malloc(sizeof(GrepResult));
                     grepResult->markerName = strdup(pSubitem->child->string);
                     grepResult->markerValue = strdup(pSubitem->child->valuestring);
+                    grepResult->trimParameter = false;
+                    grepResult->regexParameter = NULL;
                     Vector_PushBack(vgrepResult, grepResult);
                 }
             }

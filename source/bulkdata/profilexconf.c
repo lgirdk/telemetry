@@ -121,7 +121,10 @@ static void freeProfileXConf()
         }
 
         // Data elements from this list is copied in new profile. So do not destroy the vector
-        free(singleProfile->cachedReportList);
+        if(singleProfile->cachedReportList) {
+            free(singleProfile->cachedReportList);
+            singleProfile->cachedReportList = NULL;
+        }
         free(singleProfile);
         singleProfile = NULL;
     }
@@ -642,6 +645,7 @@ T2ERROR ProfileXConf_delete(ProfileXConf *profile)
     else{
         if(count > 0){ //Destroy the cachedReportList vector when the profile name is not equal
             Vector_Destroy(singleProfile->cachedReportList, free);
+            singleProfile->cachedReportList = NULL;
         }
     }
     // copy max events irrespective of the profile name

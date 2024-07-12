@@ -150,6 +150,7 @@ static void freeProfile(void *data)
 
         if(profile->cachedReportList){
             Vector_Destroy(profile->cachedReportList, free);
+            profile->cachedReportList = NULL;
         }
         if(profile->jsonReportObj){
              cJSON_Delete(profile->jsonReportObj);

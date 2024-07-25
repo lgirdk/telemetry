@@ -85,9 +85,6 @@ pthread_mutex_t rpMutex = PTHREAD_MUTEX_INITIALIZER;
 T2ERROR RemovePreRPfromDisk(const char* path , hash_map_t *map);
 static bool isT2MtlsEnable = false;
 static bool initT2MtlsEnable = false;
-#if defined(PRIVACYMODES_CONTROL)
-static char* paramValue = NULL;
-#endif
 struct rusage pusage;
 unsigned int profilemem=0;
 
@@ -450,11 +447,13 @@ T2ERROR initReportProfiles()
     // Drop root privileges for Telemetry 2.0, If NonRootSupport RFC is true
     drop_root();
     #endif
-
+    #ifndef DEVICE_EXTENDER
+    ProfileXConf_init();
+    #endif
     t2Version = strdup("2.0.1"); // Setting the version to 2.0.1
     {
         T2Debug("T2 Version = %s\n", t2Version);
-        //initProfileList();
+        initProfileList();
         free(t2Version);
         // Init datamodel processing thread
         if (T2ERROR_SUCCESS == datamodel_init())
@@ -520,11 +519,8 @@ T2ERROR initReportProfiles()
         {
             T2Error("Unable to start message processing thread!!! \n");
         }
-        initProfileList();
     }
-    #ifndef DEVICE_EXTENDER
-    ProfileXConf_init();
-    #endif
+
     if(ProfileXConf_isSet() || getProfileCount() > 0) {
 
         if(isRbusEnabled()){
@@ -714,13 +710,16 @@ void ReportProfiles_ProcessReportProfilesBlob(cJSON *profiles_root , bool rprofi
         return;
     }
 #if defined(PRIVACYMODES_CONTROL)
-    getParameterValue(PRIVACYMODES_RFC, &paramValue);
+    char* paramValue = NULL;
+    getPrivacyMode(&paramValue);
     if(strcmp(paramValue, "DO_NOT_SHARE") == 0){
         T2Warning("Privacy Mode is DO_NOT_SHARE. Reportprofiles is not supported\n");
         free(paramValue);
         paramValue = NULL;
         return;
     }
+    free(paramValue);
+    paramValue = NULL;
 #endif
     cJSON *profilesArray = cJSON_GetObjectItem(profiles_root, "profiles");
     int profiles_count = cJSON_GetArraySize(profilesArray);
@@ -1027,13 +1026,16 @@ void ReportProfiles_ProcessReportProfilesMsgPackBlob(char *msgpack_blob , int ms
 int __ReportProfiles_ProcessReportProfilesMsgPackBlob(void *msgpack)
 {
 #if defined(PRIVACYMODES_CONTROL)
-    getParameterValue(PRIVACYMODES_RFC, &paramValue);
+    char* paramValue = NULL;
+    getPrivacyMode(&paramValue);
     if(strcmp(paramValue, "DO_NOT_SHARE") == 0){
         T2Warning("Privacy Mode is DO_NOT_SHARE. Reportprofiles is not supported\n");
         free(paramValue);
         paramValue = NULL;
         return T2ERROR_SUCCESS;
     }
+    free(paramValue);
+    paramValue = NULL;
 #endif
     char *msgpack_blob = ((struct __msgpack__ *)msgpack)->msgpack_blob;
     int msgpack_blob_size = ((struct __msgpack__ *)msgpack)->msgpack_blob_size;

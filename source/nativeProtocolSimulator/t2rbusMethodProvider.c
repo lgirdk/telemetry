@@ -27,7 +27,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <getopt.h>
-#include <rbus.h>
+#include <rbus/rbus.h>
 
 int loopFor = 10;
 rbusHandle_t handle;

@@ -68,6 +68,7 @@ void freeSchedulerProfile(void *data)
         pthread_cond_destroy(&schProfile->tCond);
         pthread_detach(schProfile->tId);
         free(schProfile->name);
+        schProfile->name = NULL;
         free(schProfile);
     }
 }
@@ -229,7 +230,7 @@ void* TimeoutThread(void *arg)
 
             if(minThresholdTime == 0)
             {
-                  if (get_logdemand() == true){
+                 if (get_logdemand() == true){
                        set_logdemand(false);
                        timeoutNotificationCb(tProfile->name, false);
                  }
@@ -558,8 +559,9 @@ T2ERROR unregisterProfileFromScheduler(const char* profileName)
 	    }
             T2Info(" tProfile->tId = %d tProfile->name = %s\n", (int)tProfile->tId, tProfile->name);
             // pthread_join(tProfile->tId, NULL); // pthread_detach in freeSchedulerProfile will detach the thread
-
+            pthread_mutex_lock(&tProfile->tMutex);
             Vector_RemoveItem(profileList, tProfile, freeSchedulerProfile);
+            pthread_mutex_unlock(&tProfile->tMutex);
             T2Debug("%s:%d scMutex is unlocked\n", __FUNCTION__, __LINE__);
             if(pthread_mutex_unlock(&scMutex) != 0){
                 T2Error("scMutex unlock failed\n");

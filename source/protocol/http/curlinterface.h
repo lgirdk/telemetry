@@ -30,6 +30,7 @@
 
 
 #define CURL_OUTPUT_FILE    "/tmp/output.txt"
+#define TELEMETRY_REPORT    "/tmp/telemetry_report.txt"
 
 #define HTTP_METHOD         "POST"
 
@@ -47,6 +48,10 @@
 #define PRIVATE_KEY "cm_key_prv.bin"
 
 T2ERROR sendReportOverHTTP(char *httpUrl, char* payload, pid_t* outForkedPid);
+
+#if defined(_LG_OFW_)
+T2ERROR sendReportOverHTTP_bin(char *httpUrl, char* payload, pid_t* outForkedPid);
+#endif
 
 T2ERROR sendCachedReportsOverHTTP(char *httpUrl, Vector *reportList);
 

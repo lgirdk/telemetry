@@ -160,6 +160,8 @@ function build()
     $RDK_DUMP_SYMS commonlib/.libs/libtelemetry_msgsender.so.0.0.0 > commonlib/.libs/libtelemetry_msgsender.so.0.0.0.sym
     cp protocol/http/.libs/libhttp.so.0.0.0 protocol/http/.libs/libhttp_debug.so.0.0.0
     $RDK_DUMP_SYMS protocol/http/.libs/libhttp.so.0.0.0 > protocol/http/.libs/libhttp.so.0.0.0.sym
+    cp httpsend/.libs/http_send  httpsend/.libs/http_send_debug
+    $RDK_DUMP_SYMS httpsend/.libs/http_send > httpsend/.libs/http_send.sym
     cp protocol/rbusMethod/.libs/librbusmethod.so.0.0.0 protocol/rbusMethod/.libs/librbusmethod_debug.so.0.0.0
     $RDK_DUMP_SYMS protocol/rbusMethod/.libs/librbusmethod.so.0.0.0 > protocol/rbusMethod/.libs/librbusmethod.so.0.0.0.sym
     cp t2parser/.libs/libt2parser.so.0.0.0 t2parser/.libs/libt2parser_debug.so.0.0.0
@@ -183,6 +185,7 @@ function build()
     mv interChipHelper/.libs/libinterChipHelper.so.0.0.0.sym $PLATFORM_SYMBOL_PATH
     mv commonlib/.libs/libtelemetry_msgsender.so.0.0.0.sym $PLATFORM_SYMBOL_PATH
     mv protocol/http/.libs/libhttp.so.0.0.0.sym $PLATFORM_SYMBOL_PATH
+	mv httpsend/.libs/http_send.sym $PLATFORM_SYMBOL_PATH
     mv protocol/rbusMethod/.libs/librbusmethod.so.0.0.0.sym $PLATFORM_SYMBOL_PATH
     mv t2parser/.libs/libt2parser.so.0.0.0.sym $PLATFORM_SYMBOL_PATH
     mv scheduler/.libs/libscheduler.so.0.0.0.sym $PLATFORM_SYMBOL_PATH
@@ -218,6 +221,7 @@ function install()
     cp commonlib/.libs/libtelemetry_msgsender.la ${RDK_FSROOT_PATH}/usr/lib/
     cp protocol/http/.libs/libhttp.so* ${RDK_FSROOT_PATH}/usr/lib/
     cp protocol/http/.libs/libhttp.la ${RDK_FSROOT_PATH}/usr/lib/
+	cp httpsend/.libs/http_send ${RDK_FSROOT_PATH}/usr/bin/
     cp protocol/rbusMethod/.libs/librbusmethod.so* ${RDK_FSROOT_PATH}/usr/lib/
     cp protocol/rbusMethod/.libs/librbusmethod.la ${RDK_FSROOT_PATH}/usr/lib/
     cp t2parser/.libs/libt2parser.so* ${RDK_FSROOT_PATH}/usr/lib/

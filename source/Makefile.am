@@ -16,7 +16,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 ##########################################################################
-SUBDIRS = utils ccspinterface t2parser xconf-client protocol nativeProtocolSimulator reportgen scheduler dcautil commonlib bulkdata interChipHelper
+SUBDIRS = utils ccspinterface t2parser xconf-client protocol nativeProtocolSimulator reportgen scheduler dcautil commonlib bulkdata interChipHelper httpsend
 
 if ENABLE_CCSP_SUPPORT
 SUBDIRS += t2dm

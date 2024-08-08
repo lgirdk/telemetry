@@ -34,6 +34,7 @@ AC_CONFIG_SRCDIR([source/protocol/rbusMethod])
 AC_CONFIG_SRCDIR([source/dcautil])
 AC_CONFIG_SRCDIR([source/nativeProtocolSimulator])
 AC_CONFIG_SRCDIR([source/testApp])
+AC_CONFIG_SRCDIR([source/httpsend])
 AM_INIT_AUTOMAKE([foreign no-dist-gzip dist-bzip2 1.9])
 LT_INIT
 GTEST_ENABLE_FLAG = ""
@@ -160,7 +161,8 @@ AC_CONFIG_FILES([Makefile
                  source/dcautil/Makefile
                  source/testApp/Makefile
                  source/protocol/http/Makefile
-                 source/protocol/rbusMethod/Makefile])
+                 source/protocol/rbusMethod/Makefile
+				 source/httpsend/Makefile])
 
 AM_COND_IF([ENABLE_CCSP_SUPPORT], [AC_CONFIG_FILES([source/t2dm/Makefile])])
 AM_COND_IF([ENABLE_CCSP_SUPPORT], [AC_CONFIG_SRCDIR([source/t2dm])])

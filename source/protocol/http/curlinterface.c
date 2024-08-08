@@ -370,6 +370,184 @@ static CURLcode load_certificates(CURL *curl, void *sslctx, void *parm)
     return return_status;
 }
 
+#if defined(_LG_OFW_)
+
+T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid) {
+
+    char command[256];
+    T2ERROR ret = T2ERROR_FAILURE;
+
+    if(httpUrl == NULL || payload == NULL)
+    {
+        return ret;
+    }
+
+    // take file instead of json content.
+    snprintf(command, sizeof(command), "/usr/bin/http_send %s %s", httpUrl,TELEMETRY_REPORT);
+    if(system(command) != 0) {
+        T2Error("%s,%d: %s  command failed\n", __FUNCTION__, __LINE__, command);
+        return ret;
+    }
+
+    return T2ERROR_SUCCESS;
+
+}
+
+T2ERROR sendReportOverHTTP_bin(char *httpUrl, char *payload, pid_t* outForkedPid) {
+    CURL *curl = NULL;
+    FILE *fp = NULL;
+    CURLcode res, code = CURLE_OK;
+    T2ERROR ret = T2ERROR_FAILURE;
+    childResponse childCurlResponse = {0};
+    struct curl_slist *headerList = NULL;
+    char buf[256];
+    char current_time[20];
+    int Timestamp_Status;
+    char errbuf[CURL_ERROR_SIZE];
+    char *pCertFile = NULL;
+    char *pKeyFile = NULL;
+    long http_code;
+    bool mtls_enable = false;
+
+    T2Info("%s ++in\n", __FUNCTION__);
+    if(httpUrl == NULL || payload == NULL)
+    {
+        return ret;
+    }
+    mtls_enable = isMtlsEnabled();
+    if(mtls_enable == true && T2ERROR_SUCCESS != getMtlsCerts(&pCertFile, &pKeyFile)){
+        T2Error("mTLS_cert get failed\n");
+        if(NULL != pCertFile)
+            free(pCertFile);
+        if(NULL != pKeyFile)
+            free(pKeyFile);
+        return ret;
+    }
+
+    T2Info("httpurl %s payload : %s \n ", httpUrl,payload);
+    curl = curl_easy_init();
+    if(curl) {
+            childCurlResponse.curlStatus = true;
+            if(setHeader(curl, httpUrl, &headerList, &childCurlResponse) != T2ERROR_SUCCESS) {
+                curl_easy_cleanup(curl);
+                goto child_cleanReturn;
+            }
+             T2Info("setHeader  set successfully\n");
+            if((mtls_enable == true) && (setMtlsHeaders(curl, pCertFile, pKeyFile, &childCurlResponse)!= T2ERROR_SUCCESS)) {
+                curl_easy_cleanup(curl); // CID 189985: Resource leak
+                goto child_cleanReturn;
+            }
+             T2Info("setMTLSHeader  set successfully\n");
+            if (setPayload(curl, payload, &childCurlResponse)!= T2ERROR_SUCCESS){
+                curl_easy_cleanup(curl); // CID 189985: Resource leak
+                goto child_cleanReturn;
+            }
+            T2Info("setPayload  set successfully\n");
+
+            fp = fopen(CURL_OUTPUT_FILE, "wb");
+            if(fp) {
+                /* CID 143029 Unchecked return value from library */
+                code = curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)fp);
+                if(code != CURLE_OK) {
+                    // This might not be working we need to review this
+                    childCurlResponse.curlSetopCode = code;
+                }
+                curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, errbuf);
+                res = curl_easy_perform(curl);
+                 T2Info("curl_easy_perform  successfully\n");
+                curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
+
+                snprintf(buf,sizeof(buf),"%d",http_code);
+                if (telemetry_syscfg_set("upload_httpStatus", buf) == 0)
+                {
+                    T2Info("upload_httpStatus set successfully\n");
+                }
+                if (http_code == 200)
+                {
+                    telemetry_syscfg_set("upload_httpStatusString", "OK");
+                }
+                else
+                {
+                    telemetry_syscfg_set("upload_httpStatusString", errbuf);
+                }
+                Timestamp_Status = getcurrenttime(current_time, sizeof(current_time));
+                if (Timestamp_Status != 0)
+                {
+                    T2Error("Failed to fetch current upload_lastAttemptTimestamp\n");
+                    telemetry_syscfg_set("upload_lastAttemptTimestamp", "");
+                }
+                else
+                {
+                    if (telemetry_syscfg_set("upload_lastAttemptTimestamp", current_time) == 0)
+                    {
+                        T2Info("upload_lastAttemptTimestamp set successfully\n");
+                    }
+                    else
+                    {
+                        T2Error("Failed to set upload_lastAttemptTimestamp\n");
+                    }
+                }
+
+                if(res != CURLE_OK || http_code != 200) {
+                    fprintf(stderr, "curl failed: %s\n", curl_easy_strerror(res));
+                    childCurlResponse.lineNumber = __LINE__;
+                }else {
+                    childCurlResponse.lineNumber = __LINE__;
+
+                    Timestamp_Status = getcurrenttime(current_time, sizeof(current_time));
+                    if (Timestamp_Status != 0)
+                    {
+                        T2Error("Failed to fetch current upload_lastSuccessTimestamp\n");
+                        telemetry_syscfg_set("upload_lastSuccessTimestamp", "");
+                    }
+                    else
+                    {
+                        if (telemetry_syscfg_set("upload_lastSuccessTimestamp", current_time) == 0)
+                        {
+                            T2Info("upload_lastSuccessTimestamp set successfully \n");
+                        }
+                        else
+                        {
+                            T2Error("Failed to set upload_lastSuccessTimestamp \n");
+                        }
+                    }
+                    T2Info("Report Sent Successfully over HTTP : %ld\n", http_code);
+                    ret = T2ERROR_SUCCESS;
+                }
+                childCurlResponse.curlResponse = res;
+                childCurlResponse.http_code = http_code;
+
+                fclose(fp);
+            }
+            curl_slist_free_all(headerList);
+            curl_easy_cleanup(curl);
+
+
+       }else {
+            childCurlResponse.curlStatus = false;
+      }
+
+child_cleanReturn:
+
+        ret = T2ERROR_FAILURE;
+        if(NULL != pCertFile)
+            free(pCertFile);
+        if(NULL != pKeyFile)
+            free(pKeyFile);
+        T2Info("The return status is CurlStatus : %d\n", childCurlResponse.curlStatus);
+        T2Info("The return status SetopCode: %s; ResponseCode : %s; HTTP_CODE : %ld; Line Number : %d \n", curl_easy_strerror(childCurlResponse.curlSetopCode), curl_easy_strerror(childCurlResponse.curlResponse), childCurlResponse.http_code, childCurlResponse.lineNumber);
+        if (childCurlResponse.http_code == 200 && childCurlResponse.curlResponse == CURLE_OK){
+            ret = T2ERROR_SUCCESS;
+            T2Info("Report Sent Successfully over HTTP : %ld\n", childCurlResponse.http_code);
+        }
+        T2Debug("%s --out\n", __FUNCTION__);
+        return ret;
+
+
+}
+
+#else
+
 T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid) {
     CURL *curl = NULL;
     FILE *fp = NULL;
@@ -679,6 +857,7 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid) {
     }
 
 }
+#endif
 
 T2ERROR sendCachedReportsOverHTTP(char *httpUrl, Vector *reportList)
 {

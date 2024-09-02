@@ -47,3 +47,7 @@ libbulkdata_la_CPPFLAGS += -I${top_srcdir}/source/t2ssp \
 endif
 
 libbulkdata_la_DEPENDENCIES = ${top_builddir}/source/utils/libt2utils.la ${top_builddir}/source/dcautil/libdcautil.la ${top_builddir}/source/protocol/http/libhttp.la ${top_builddir}/source/protocol/rbusMethod/librbusmethod.la ${top_builddir}/source/ccspinterface/libccspinterface.la ${top_builddir}/source/reportgen/libreportgen.la ${top_builddir}/source/scheduler/libscheduler.la ${top_builddir}/source/xconf-client/libxconfclient.la
+
+if IS_LIBRDKCERTSEL_ENABLED
+libbulkdata_la_CFLAGS = $(LIBRDKCERTSEL_FLAG)
+endif

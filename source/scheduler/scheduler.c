@@ -46,6 +46,8 @@ static pthread_mutex_t scMutex;
 static bool sc_initialized = false;
 static bool islogdemand = false;
 
+static bool signalrecived_and_executing=true;
+
 bool get_logdemand ()
 {
    T2Info(("get_logdemand ++in\n"));
@@ -195,6 +197,7 @@ void* TimeoutThread(void *arg)
              notifySchedulerstartcb(tProfile->name, true);
              T2Info("Waiting for %d sec for next TIMEOUT for profile as firstreporting interval is given - %s\n", tProfile->firstreportint, tProfile->name);
              n = pthread_cond_timedwait(&tProfile->tCond, &tProfile->tMutex, &_ts);
+	     signalrecived_and_executing = false;
         }
         else{
              if(tProfile->timeOutDuration == UINT_MAX && tProfile->timeRefinSec == 0){
@@ -429,7 +432,7 @@ void uninitScheduler()
     if(pthread_mutex_destroy(&scMutex) != 0){
         T2Error("scMutex destroy failed\n");
     }
-    timeoutNotificationCb = NULL;
+    //timeoutNotificationCb = NULL; Not Needed as we are in the shutdown sequence
 
     T2Debug("%s --out\n", __FUNCTION__);
 }
@@ -552,6 +555,7 @@ T2ERROR unregisterProfileFromScheduler(const char* profileName)
 	    }
             tProfile->terminated = true;
             pthread_cond_signal(&tProfile->tCond);
+	    signalrecived_and_executing = true;
             if(pthread_mutex_unlock(&tProfile->tMutex) != 0){
                 T2Error("tProfile Mutex unlock failed\n");
                 pthread_mutex_unlock(&scMutex);
@@ -559,7 +563,16 @@ T2ERROR unregisterProfileFromScheduler(const char* profileName)
 	    }
             T2Info(" tProfile->tId = %d tProfile->name = %s\n", (int)tProfile->tId, tProfile->name);
             // pthread_join(tProfile->tId, NULL); // pthread_detach in freeSchedulerProfile will detach the thread
-            pthread_mutex_lock(&tProfile->tMutex);
+            sched_yield(); // This will give chance for the signal receiving thread to start
+            int count = 0;
+            while(signalrecived_and_executing){
+                if(count++ > 30){
+                    break;
+                }
+                sleep(1);
+	    }
+
+	    pthread_mutex_lock(&tProfile->tMutex);
             Vector_RemoveItem(profileList, tProfile, freeSchedulerProfile);
             pthread_mutex_unlock(&tProfile->tMutex);
             T2Debug("%s:%d scMutex is unlocked\n", __FUNCTION__, __LINE__);

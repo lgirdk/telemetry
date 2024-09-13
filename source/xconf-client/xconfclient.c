@@ -1011,7 +1011,7 @@ static void* getUpdatedConfigurationThread(void *data)
                     T2Info("Successfully set new profile : %s\n", profile->name);
                     configFetch = T2ERROR_SUCCESS;
 
-                    if(isRbusEnabled())
+                    if(access(T2_CONFIG_READY, F_OK) != 0 && isRbusEnabled())
                     {
 			            createComponentDataElements();
 			            getMarkerCompRbusSub(true);

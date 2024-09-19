@@ -17,6 +17,7 @@
 
 #define PREFIX "cJSON Report = "
 
+sigset_t blocking_signal;
 
 void processArguments(int count, char *arguments[]) {
     

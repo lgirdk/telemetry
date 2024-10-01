@@ -33,35 +33,37 @@ bin_PROGRAMS = telemetry2_0
 
 telemetry2_0_SOURCES = telemetry2_0.c
 telemetry2_0_CFLAGS = -DFEATURE_SUPPORT_RDKLOG
-telemetry2_0_CPPFLAGS = -fPIC -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/dbus-1.0 \
-                                -I${PKG_CONFIG_SYSROOT_DIR}$(libdir)/dbus-1.0/include \
-                                -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/ \
-                                -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/rbus \
-                                -I${top_srcdir}/include \
-                                -I${top_srcdir}/source/utils \
-                                -I${top_srcdir}/source/bulkdata \
-                                -I${top_srcdir}/source/ccspinterface \
-                                -I${top_srcdir}/source/dcautil \
-                                -I${top_srcdir}/source/protocol/http \
-				-I${top_srcdir}/source/protocol/rbusMethod \
-                                -I${top_srcdir}/source/reportgen \
-                                -I${top_srcdir}/source/scheduler \
-                                -I${top_srcdir}/source/t2parser \
-                                -I${top_srcdir}/source/utils \
-                                -I${top_srcdir}/source/xconf-client \
-                                -I${top_srcdir}/source/interChipHelper
+telemetry2_0_CPPFLAGS = -fPIC \
+                        -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/dbus-1.0 \
+                        -I${PKG_CONFIG_SYSROOT_DIR}$(libdir)/dbus-1.0/include \
+                        -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/ \
+                        -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/rbus \
+                        -I${top_srcdir}/include \
+                        -I${top_srcdir}/source/utils \
+                        -I${top_srcdir}/source/bulkdata \
+                        -I${top_srcdir}/source/ccspinterface \
+                        -I${top_srcdir}/source/dcautil \
+                        -I${top_srcdir}/source/protocol/http \
+                        -I${top_srcdir}/source/protocol/rbusMethod \
+                        -I${top_srcdir}/source/reportgen \
+                        -I${top_srcdir}/source/scheduler \
+                        -I${top_srcdir}/source/t2parser \
+                        -I${top_srcdir}/source/utils \
+                        -I${top_srcdir}/source/xconf-client \
+                        -I${top_srcdir}/source/interChipHelper
+
 telemetry2_0_LDFLAGS = -lrdkloggers -lcjson -lwebconfig_framework
 if ENABLE_CCSP_SUPPORT
 telemetry2_0_LDFLAGS += -lccsp_common
 telemetry2_0_SOURCES += t2ssp/ssp_main.c t2ssp/ssp_action.c t2ssp/ssp_messagebus_interface.c t2ssp/dm_pack_datamodel.c
 telemetry2_0_CPPFLAGS += -I${top_srcdir}/source/t2ssp \
-                                -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/ccsp
+                         -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/ccsp
 endif
 telemetry2_0_LDADD = ${top_builddir}/source/utils/libt2utils.la ${top_builddir}/source/dcautil/libdcautil.la \
-		   ${top_builddir}/source/protocol/rbusMethod/librbusmethod.la \
-                  ${top_builddir}/source/bulkdata/libbulkdata.la ${top_builddir}/source/ccspinterface/libccspinterface.la \
-                  ${top_builddir}/source/reportgen/libreportgen.la ${top_builddir}/source/scheduler/libscheduler.la \
-                  ${top_builddir}/source/protocol/http/libhttp.la \
-                  ${top_builddir}/source/interChipHelper/libinterChipHelper.la \
-                  ${top_builddir}/source/t2parser/libt2parser.la \
-                  ${top_builddir}/source/xconf-client/libxconfclient.la
+                     ${top_builddir}/source/protocol/rbusMethod/librbusmethod.la \
+                     ${top_builddir}/source/bulkdata/libbulkdata.la ${top_builddir}/source/ccspinterface/libccspinterface.la \
+                     ${top_builddir}/source/reportgen/libreportgen.la ${top_builddir}/source/scheduler/libscheduler.la \
+                     ${top_builddir}/source/protocol/http/libhttp.la \
+                     ${top_builddir}/source/interChipHelper/libinterChipHelper.la \
+                     ${top_builddir}/source/t2parser/libt2parser.la \
+                     ${top_builddir}/source/xconf-client/libxconfclient.la

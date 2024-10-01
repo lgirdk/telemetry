@@ -26,7 +26,29 @@ ACLOCAL_AMFLAGS = -I m4
 
 bin_PROGRAMS = telemetry_gtest.bin
 
-telemetry_gtest_bin_CPPFLAGS = -I$(PKG_CONFIG_SYSROOT_DIR)$(includedir)/gtest -I${top_srcdir}/gtest/include -I${top_srcdir}/source/include -I${top_srcdir}/source -I${top_srcdir}/include -I${top_srcdir}/source/utils -I${top_srcdir}/source/protocol -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/rbus -I${top_srcdir}/source/bulkdata -I${top_srcdir}/source/ccspinterface -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/dbus-1.0 -I${PKG_CONFIG_SYSROOT_DIR}$(libdir)/dbus-1.0/include  -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/ccsp -I${top_srcdir}/source/reportgen  -I${PKG_CONFIG_SYSROOT_DIR}$(includedir) -I${top_srcdir}/source/t2ssp -I${top_srcdir}/source/dcautil -I${RDK_PROJECT_ROOT_PATH}/opensource/include -I${RDK_PROJECT_ROOT_PATH}/opensource/include/glib-2.0/ -I${RDK_PROJECT_ROOT_PATH}/opensource/lib/glib-2.0/include/ -I${RDK_PROJECT_ROOT_PATH}/opensource/include/glib-2.0/glib -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/glib-2.0 -I${PKG_CONFIG_SYSROOT_DIR}$(libdir)/glib-2.0/include
+telemetry_gtest_bin_CPPFLAGS = -I$(PKG_CONFIG_SYSROOT_DIR)$(includedir)/gtest \
+                               -I${top_srcdir}/gtest/include \
+                               -I${top_srcdir}/source/include \
+                               -I${top_srcdir}/source \
+                               -I${top_srcdir}/include \
+                               -I${top_srcdir}/source/utils \
+                               -I${top_srcdir}/source/protocol \
+                               -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/rbus \
+                               -I${top_srcdir}/source/bulkdata \
+                               -I${top_srcdir}/source/ccspinterface \
+                               -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/dbus-1.0 \
+                               -I${PKG_CONFIG_SYSROOT_DIR}$(libdir)/dbus-1.0/include \
+                               -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/ccsp \
+                               -I${top_srcdir}/source/reportgen \
+                               -I${PKG_CONFIG_SYSROOT_DIR}$(includedir) \
+                               -I${top_srcdir}/source/t2ssp \
+                               -I${top_srcdir}/source/dcautil \
+                               -I${RDK_PROJECT_ROOT_PATH}/opensource/include \
+                               -I${RDK_PROJECT_ROOT_PATH}/opensource/include/glib-2.0/ \
+                               -I${RDK_PROJECT_ROOT_PATH}/opensource/lib/glib-2.0/include/ \
+                               -I${RDK_PROJECT_ROOT_PATH}/opensource/include/glib-2.0/glib \
+                               -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/glib-2.0 \
+                               -I${PKG_CONFIG_SYSROOT_DIR}$(libdir)/glib-2.0/include
 
 if ENABLE_CCSP_SUPPORT
 telemetry_gtest_bin_SOURCES = gtest_main.cpp mocks/SystemMock.cpp mocks/FileioMock.cpp utils/UtilsTest.cpp protocol/ProtocolTest.cpp dcautils/dcautilTest.cpp  ../t2ssp/ssp_main.c ../t2ssp/ssp_action.c ../t2ssp/ssp_messagebus_interface.c ../t2ssp/dm_pack_datamodel.c

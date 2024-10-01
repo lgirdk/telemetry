@@ -22,12 +22,11 @@ lib_LTLIBRARIES = libinterChipHelper.la
 
 libinterChipHelper_la_SOURCES = interChipHelper.c
 
-libinterChipHelper_la_CPPFLAGS = -fPIC -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/ccsp \
-                                -I${top_srcdir}/include \
-                                -I${top_srcdir}/source/xconf-client \
-                                -I${top_srcdir}/source/bulkdata \
-                                -I${top_srcdir}/source/ccspinterface \
-                                -I${top_srcdir}/source/utils \
-                                -I${top_srcdir}/source/dcautil
-                                
-
+libinterChipHelper_la_CPPFLAGS = -fPIC \
+                                 -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/ccsp \
+                                 -I${top_srcdir}/include \
+                                 -I${top_srcdir}/source/xconf-client \
+                                 -I${top_srcdir}/source/bulkdata \
+                                 -I${top_srcdir}/source/ccspinterface \
+                                 -I${top_srcdir}/source/utils \
+                                 -I${top_srcdir}/source/dcautil

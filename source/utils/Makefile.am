@@ -30,9 +30,11 @@ if IS_LIBSYSWRAPPER_ENABLED
 libt2utils_la_CFLAGS = $(LIBSYSWRAPPER_FLAG)
 libt2utils_la_LDFLAGS += -lsecure_wrapper
 endif
-libt2utils_la_CPPFLAGS = -fPIC -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/dbus-1.0 \
-                                -I${PKG_CONFIG_SYSROOT_DIR}$(libdir)/dbus-1.0/include \
-                                -I${PKG_CONFIG_SYSROOT_DIR}$(includedir) \
-                                -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/ccsp \
-                                -I${top_srcdir}/include \
-                                -I${top_srcdir}/source/utils
+
+libt2utils_la_CPPFLAGS = -fPIC \
+                         -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/dbus-1.0 \
+                         -I${PKG_CONFIG_SYSROOT_DIR}$(libdir)/dbus-1.0/include \
+                         -I${PKG_CONFIG_SYSROOT_DIR}$(includedir) \
+                         -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/ccsp \
+                         -I${top_srcdir}/include \
+                         -I${top_srcdir}/source/utils

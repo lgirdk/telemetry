@@ -78,7 +78,13 @@ int main(int argc, char *argv[])
             return 1;
         }
 
-        sendReportOverHTTP_bin(argv[1], new_content , NULL);
+        T2ERROR ret = sendReportOverHTTP_bin(argv[1], new_content, NULL);
+        if (ret != T2ERROR_SUCCESS) {
+            T2Debug("Failed to send report over HTTP:\n");
+            free(new_content);
+            free(buffer);
+            return 1;
+        }
         free(new_content);
     }
 

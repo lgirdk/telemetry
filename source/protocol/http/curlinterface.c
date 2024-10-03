@@ -344,11 +344,21 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid) {
 
     char command[256];
     T2ERROR ret = T2ERROR_FAILURE;
+    FILE *fpReport = NULL;
 
     if(httpUrl == NULL || payload == NULL)
     {
         return ret;
     }
+
+    //copy the json payload to /tmp/telemetry_report.txt before sending the report using http_send
+    fpReport = fopen(TELEMETRY_REPORT, "w");
+    if(fpReport != NULL)
+    {
+        fprintf(fpReport,"cJSON Report = %s\n", payload);
+        fclose(fpReport);
+    }
+    T2Info("cJSON Report written to file %s\n",TELEMETRY_REPORT);
 
     // take file instead of json content.
     snprintf(command, sizeof(command), "/usr/bin/http_send %s %s", httpUrl,TELEMETRY_REPORT);

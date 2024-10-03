@@ -190,7 +190,6 @@ static void* CollectAndReportXconf(void* data)
     Vector *grepResultList = NULL;
     cJSON *valArray = NULL;
     char* jsonReport = NULL;
-    FILE *fpReport = NULL;
 
     struct timespec startTime;
     struct timespec endTime;
@@ -245,14 +244,6 @@ static void* CollectAndReportXconf(void* data)
            pthread_mutex_unlock(&plMutex);
            return NULL;
         }
-
-        fpReport = fopen(TELEMETRY_REPORT_FILE, "w");
-        if(fpReport != NULL) 
-        {
-            fprintf(fpReport,"cJSON Report = %s\n", jsonReport);
-            fclose(fpReport);
-        }
-        T2Info("cJSON Report written to file %s\n",TELEMETRY_REPORT_FILE);
 
         long size = strlen(jsonReport);
         T2Info("Report Size = %ld\n", size);

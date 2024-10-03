@@ -252,14 +252,6 @@ static void* CollectAndReportXconf(void* data)
                 goto reportXconfThreadEnd;
             }
 
-            FILE *fpReport = fopen(TELEMETRY_REPORT_FILE, "w");
-            if (fpReport != NULL) 
-            {
-                fprintf(fpReport,"cJSON Report = %s\n", jsonReport);
-                fclose(fpReport);
-            }
-            T2Info("cJSON Report written to file %s\n",TELEMETRY_REPORT_FILE);
-
             long size = strlen(jsonReport);
             T2Info("Report Size = %ld\n", size);
             if(profile->isUpdated)

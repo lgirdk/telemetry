@@ -33,6 +33,10 @@
 
 #define TR181_DEVICE_MODEL                          "Device.DeviceInfo.ModelName"
 
+#if defined(USE_SERIALIZED_MANUFACTURER_NAME)
+#define TR181_DEVICE_MFR                          "Device.DeviceInfo.Manufacturer"
+#endif
+
 #if defined(WHOAMI_ENABLED)
 #define TR181_DEVICE_PARTNER_ID                     "Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Bootstrap.PartnerName"
 #define TR181_DEVICE_OSCLASS                        "Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Bootstrap.OsClass"
